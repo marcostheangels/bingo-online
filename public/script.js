@@ -156,7 +156,7 @@ function connectSocket() {
     alert(msg);
   });
 
-  // === EVENTOS DE VITÓRIA ===
+  // ✅ ANIMAÇÕES DE VITÓRIA — VISÍVEIS PARA TODOS
   socket.on('line1-victory', (data) => {
     showLine1Victory(data.prize, data.playerName);
   });
@@ -171,6 +171,11 @@ function connectSocket() {
 
   socket.on('jackpot-victory', (data) => {
     showJackpotVictory(data.prize, data.playerName, data.ballsUsed);
+  });
+
+  // 🔊 SOM DO SORTEIO
+  socket.on('play-sound', ({ type, number }) => {
+    playSound(type, number);
   });
 }
 
@@ -616,8 +621,94 @@ function showJackpotVictory(amount, name, ballsUsed) {
   document.head.appendChild(style);
 })();
 
-// Inicializar
+// Áudio
+let audioContext = null;
+function playSound(type, number = null) {
+  try {
+    if (!audioContext) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      audioContext = new AudioContext();
+    }
+    if (audioContext.state === 'suspended') audioContext.resume();
+    const ctx = audioContext;
+    const now = ctx.currentTime;
+    if (type === 'sorteio') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(300 + (number % 10) * 20, now);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    } else if (type === 'linha1') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, now);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } else if (type === 'linha2') {
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc1.type = 'sine';
+      osc2.type = 'triangle';
+      osc1.frequency.setValueAtTime(660, now);
+      osc2.frequency.setValueAtTime(1320, now);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.5);
+      osc2.stop(now + 0.5);
+    } else if (type === 'bingo') {
+      const notes = [523, 659, 784, 1046];
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + i * 0.15);
+        gain.gain.setValueAtTime(0.2, now + i * 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.2);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + i * 0.15);
+        osc.stop(now + i * 0.15 + 0.2);
+      });
+    }
+  } catch (e) { console.warn('Erro ao reproduzir som:', e); }
+}
+
+// Menu de Admin (clicar 5x no nome)
 document.addEventListener('DOMContentLoaded', () => {
+  let clickCount = 0;
+  let clickTimer = null;
+
+  // Escuta cliques no campo de nome (mesmo que ele desapareça, o evento persiste)
+  document.addEventListener('click', (e) => {
+    if (e.target.id === 'player-name') {
+      clickCount++;
+      if (clickTimer) clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => clickCount = 0, 500);
+      if (clickCount === 5) {
+        toggleAdminMode();
+        clickCount = 0;
+        clearTimeout(clickTimer);
+      }
+    }
+  });
+
   connectSocket();
 
   // Botões
@@ -636,3 +727,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') sendChatMessage();
   });
 });
+
+function toggleAdminMode() {
+  const adminControls = document.getElementById('admin-controls');
+  if (adminControls) {
+    adminControls.style.display = adminControls.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+function sendAdminCommand() {
+  const playerName = document.getElementById('admin-player-name')?.value;
+  const amount = parseInt(document.getElementById('admin-amount')?.value);
+  const password = document.getElementById('admin-password')?.value;
+  if (!playerName || isNaN(amount) || !password) {
+    alert('Preencha todos os campos.');
+    return;
+  }
+  socket.emit('admin-add-chips', { playerName, amount, adminPassword: password });
+  document.getElementById('admin-player-name').value = '';
+  document.getElementById('admin-amount').value = '';
+  document.getElementById('admin-password').value = '';
+}
