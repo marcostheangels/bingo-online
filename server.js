@@ -186,14 +186,6 @@ function broadcastPlayerList(roomId) {
 
 function broadcastRanking(roomId) {
   const room = rooms[roomId];
-  // Garantir que todos os jogadores tenham chips atualizados
-  Object.keys(room.players).forEach(id => {
-    const p = room.players[id];
-    if (p.chips === undefined || p.chips === null) {
-      p.chips = 10000;
-    }
-  });
-
   const ranking = Object.values(room.players)
     .map(p => ({ name: p.name, chips: p.chips }))
     .sort((a, b) => b.chips - a.chips)
@@ -222,7 +214,6 @@ function aiRespond(message, senderSocketId, room) {
 
   let response = "";
 
-  // Saudações
   if (msgLower.includes('boa tarde') || msgLower.includes('boatarde')) {
     response = `👋 Boa tarde, ${room.players[senderSocketId]?.name || 'amigo'}! Vamos jogar Bingo? 🎰`;
   } else if (msgLower.includes('boa noite') || msgLower.includes('boanoite')) {
@@ -232,8 +223,6 @@ function aiRespond(message, senderSocketId, room) {
   } else if (msgLower.includes('olá') || msgLower.includes('oi') || msgLower.includes('opa') || msgLower.includes('e aí')) {
     response = `👋 Olá, ${room.players[senderSocketId]?.name || 'amigo'}! Vamos jogar Bingo? 🎰`;
   }
-
-  // Perguntas sobre jogo
   else if (msgLower.includes('quem') && (msgLower.includes('lider') || msgLower.includes('primeiro') || msgLower.includes('top'))) {
     response = `🏆 O líder do ranking é ${topPlayer} com R$ ${topChips} em chips!`;
   } else if (msgLower.includes('como') && (msgLower.includes('jogar') || msgLower.includes('bingo'))) {
@@ -308,7 +297,6 @@ io.on('connection', (socket) => {
 
     io.to('bingo90').emit('chat-message', { message, sender, isBot });
 
-    // Só responde se for humano e não for sistema
     if (!isBot && sender !== "Sistema") {
       const room = rooms.bingo90;
       const aiResponse = aiRespond(message, socket.id, room);
@@ -414,12 +402,9 @@ io.on('connection', (socket) => {
     }
 
     player.cards90 = player.cards90.concat(newCards);
-    // Não desconta chips ainda — só quando iniciar o jogo
-
     db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
     saveDB(db);
 
-    // Bots NÃO compram nem perdem chips aqui — só na hora do start-draw
     socket.emit('cards-received', { cards: newCards.map(c => ({ card: c })), cardType: '90' });
     broadcastRoomState('bingo90');
     broadcastPlayerList('bingo90');
@@ -454,7 +439,6 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Agora sim: descontar chips de todos (humanos e bots) e fazer bots comprarem
     const humanCardCounts = {};
     for (const id in room.players) {
       const p = room.players[id];
@@ -463,10 +447,8 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Determinar quantidade máxima comprada por humanos
     const maxHumanCards = Math.max(...Object.values(humanCardCounts), 0);
 
-    // Descontar chips dos humanos e resetar cartelas dos bots
     for (const id in room.players) {
       const p = room.players[id];
       if (!p.isBot) {
@@ -474,7 +456,6 @@ io.on('connection', (socket) => {
         p.chips -= spent;
         db.players[p.name] = { chips: p.chips, cards90: p.cards90 };
       } else {
-        // Bot compra EXATAMENTE a mesma quantidade que o máximo comprado pelos humanos
         p.cards90 = [];
         if (maxHumanCards > 0) {
           const botNewCards = [];
@@ -493,9 +474,8 @@ io.on('connection', (socket) => {
     room.drawnNumbers = [];
     room.lastNumber = null;
     room.pot = 0;
-    room.jackpot = INITIAL_JACKPOT; // Jackpot começa em 1.5M e acumula
+    room.jackpot = INITIAL_JACKPOT;
 
-    // Calcular pote e jackpot com base nas cartelas atuais
     for (const id in room.players) {
       const p = room.players[id];
       const spent = p.cards90.length * 100;
@@ -506,7 +486,6 @@ io.on('connection', (socket) => {
     broadcastPot('bingo90');
     broadcastRoomState('bingo90');
     broadcastPlayerList('bingo90');
-    broadcastRanking('bingo90'); // Forçar atualização do ranking
 
     drawNextNumber('bingo90', 0);
   });
@@ -543,7 +522,6 @@ io.on('connection', (socket) => {
     if (room.players[socket.id]) {
       const player = room.players[socket.id];
       if (!room.gameStarted && player.cards90.length > 0) {
-        // Não há desconto real ainda, então não precisa reembolsar
         player.cards90 = [];
         if (db.players[player.name]) {
           db.players[player.name].cards90 = [];
@@ -598,6 +576,37 @@ function processWin(winType, room, winners) {
     room.gameStarted = false;
   }
 
+  const ballsUsed = room.drawnNumbers.length;
+  winners.forEach(w => {
+    const player = room.players[w.id];
+    if (!player) return;
+
+    if (winType === 'linha1') {
+      io.to(w.id).emit('line1-victory', {
+        playerName: player.name,
+        prize: prizePerWinner
+      });
+    } else if (winType === 'linha2') {
+      io.to(w.id).emit('line2-victory', {
+        playerName: player.name,
+        prize: prizePerWinner
+      });
+    } else if (winType === 'bingo') {
+      io.to(w.id).emit('bingo-victory', {
+        playerName: player.name,
+        prize: prizePerWinner
+      });
+
+      if (ballsUsed <= 60) {
+        io.to(w.id).emit('jackpot-victory', {
+          playerName: player.name,
+          prize: jackpotPerWinner,
+          ballsUsed: ballsUsed
+        });
+      }
+    }
+  });
+
   winners.forEach(w => {
     const player = room.players[w.id];
     if (player) {
@@ -627,13 +636,9 @@ function processWin(winType, room, winners) {
     }, 6000);
   }
 
-  if (winType === 'bingo') {
-    // Não reinicia automaticamente — só quando o usuário clicar em "reiniciar"
-  }
-
   broadcastRoomState('bingo90');
   broadcastPlayerList('bingo90');
-  broadcastRanking('bingo90'); // Forçar atualização do ranking
+  broadcastRanking('bingo90');
   broadcastPot('bingo90');
 }
 
@@ -674,35 +679,6 @@ function drawNextNumber(roomId, index) {
   } else if (room.currentStage === 'bingo') {
     const winners = getWinningPlayers(room, 'bingo');
     if (winners.length > 0) {
-      const ballsUsed = room.drawnNumbers.length;
-      const jackpotWinners = [];
-      for (const w of winners) {
-        if (ballsUsed <= 60) {
-          jackpotWinners.push(w);
-        }
-      }
-      if (jackpotWinners.length > 0) {
-        const jackpotPerWinner = Math.floor(room.jackpot / jackpotWinners.length);
-        jackpotWinners.forEach(w => {
-          const player = room.players[w.id];
-          if (player) {
-            player.chips += jackpotPerWinner;
-            db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
-          }
-        });
-        saveDB(db);
-        // Enviar animação de jackpot fullscreen
-        io.to('bingo90').emit('jackpot-animation', {
-          playerName: jackpotWinners.map(w => w.playerName).join(', '),
-          amount: jackpotPerWinner,
-          ballsUsed: ballsUsed
-        });
-        io.to('bingo90').emit('chat-message', {
-          sender: "Sistema",
-          message: `🎁 JACKPOT! ${jackpotWinners.map(w => w.playerName).join(', ')} ganharam R$ ${jackpotPerWinner.toLocaleString('pt-BR')} cada por completar a cartela em ${ballsUsed} bolas!`,
-          isBot: false
-        });
-      }
       processWin('bingo', room, winners);
       shouldContinue = false;
     }
@@ -721,9 +697,7 @@ function resetRoom(roomId) {
   room.currentStage = 'linha1';
   room.lastNumber = null;
   room.pot = 0;
-  // Jackpot NÃO é resetado aqui — só é resetado ao ser ganho
 
-  // Limpa as cartelas APENAS dos humanos
   for (const id in room.players) {
     const p = room.players[id];
     if (!p.isBot) {
@@ -732,13 +706,7 @@ function resetRoom(roomId) {
         db.players[p.name].cards90 = [];
         saveDB(db);
       }
-    }
-  }
-
-  // Bots mantêm seus chips, mas perdem cartelas
-  for (const id in room.players) {
-    const p = room.players[id];
-    if (p.isBot) {
+    } else {
       p.cards90 = [];
     }
   }
@@ -746,7 +714,7 @@ function resetRoom(roomId) {
   io.to(roomId).emit('room-reset');
   broadcastRoomState(roomId);
   broadcastPlayerList(roomId);
-  broadcastRanking(roomId); // Forçar atualização do ranking
+  broadcastRanking(roomId);
   broadcastPot(roomId);
 }
 
