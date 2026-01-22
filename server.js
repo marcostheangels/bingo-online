@@ -329,7 +329,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    let chips = 10000; // Sempre começar com 10.000 chips
+    let chips = 10000;
     let cards90 = [];
 
     // 🔸 Correção: só restaurar cartelas se o jogo estiver em andamento
@@ -345,7 +345,7 @@ io.on('connection', (socket) => {
       }
     }
 
-    // 🔸 Se não há rodada ativa, descartar qualquer cartela carregada
+    // 🔸 Forçar limpeza de cartelas se jogo não estiver ativo
     if (!room.gameStarted && !room.gameCompleted) {
       cards90 = [];
     }
@@ -429,7 +429,7 @@ io.on('connection', (socket) => {
     }
 
     player.cards90 = player.cards90.concat(newCards);
-    player.chips -= cost; // Deduzir chips imediatamente
+    player.chips -= cost;
     db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
     saveDB(db);
 
@@ -617,8 +617,8 @@ function processWin(winType, room, winners) {
     room.gameStarted = false;
   }
 
-  // 🔊 Emitir som para todos — SEM o número, apenas tipo
-  io.to('bingo90').emit('play-sound', { type: 'sorteio' });
+  // 🔊 Emitir som para todos — COM número
+  io.to('bingo90').emit('play-sound', { type: 'sorteio', number: room.lastNumber });
 
   // ✅ ANIMAÇÕES PARA TODOS OS JOGADORES
   const winnerData = {
@@ -690,8 +690,8 @@ function drawNextNumber(roomId, index) {
   room.drawnNumbers.push(number);
   room.lastNumber = number;
 
-  // 🔊 Som de sorteio para todos — SEM o número
-  io.to(roomId).emit('play-sound', { type: 'sorteio' });
+  // 🔊 Som de sorteio para todos — COM número
+  io.to(roomId).emit('play-sound', { type: 'sorteio', number });
 
   io.to(roomId).emit('number-drawn', {
     number,
