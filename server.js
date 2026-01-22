@@ -135,13 +135,13 @@ function checkWin(card, drawn) {
 
 function getWinningPlayers(room, winType) {
   const winners = [];
-  for (const id in room.players) {
-    const player = room.players[id];
+  for (const name in room.players) {
+    const player = room.players[name];
     if (player.cards90) {
       for (const card of player.cards90) {
         const win = checkWin(card, room.drawnNumbers);
         if (win[winType]) {
-          winners.push({ id, playerName: player.name });
+          winners.push({ playerName: player.name });
           break;
         }
       }
@@ -158,6 +158,7 @@ function maybeAddBotAfterHumanWin(winnerName) {
 
 function broadcastRoomState(roomId) {
   const room = rooms[roomId];
+  // Envia estado para todos os sockets conectados
   io.to(roomId).emit('room-state', {
     players: room.players,
     drawnNumbers: room.drawnNumbers,
@@ -172,8 +173,8 @@ function broadcastPlayerList(roomId) {
   const withChips = [];
   const withoutChips = [];
 
-  for (const id in room.players) {
-    const p = room.players[id];
+  for (const name in room.players) {
+    const p = room.players[name];
     if (p.chips <= 0) {
       withoutChips.push({ name: p.name });
     } else {
@@ -215,13 +216,13 @@ function aiRespond(message, senderSocketId, room) {
   let response = "";
 
   if (msgLower.includes('boa tarde') || msgLower.includes('boatarde')) {
-    response = `👋 Boa tarde, ${room.players[senderSocketId]?.name || 'amigo'}! Vamos jogar Bingo? 🎰`;
+    response = `👋 Boa tarde, ${getPlayerNameBySocket(senderSocketId, room) || 'amigo'}! Vamos jogar Bingo? 🎰`;
   } else if (msgLower.includes('boa noite') || msgLower.includes('boanoite')) {
-    response = `🌙 Boa noite, ${room.players[senderSocketId]?.name || 'amigo'}! O Bingo não dorme!`;
+    response = `🌙 Boa noite, ${getPlayerNameBySocket(senderSocketId, room) || 'amigo'}! O Bingo não dorme!`;
   } else if (msgLower.includes('bom dia') || msgLower.includes('bomdia')) {
-    response = `☀️ Bom dia, ${room.players[senderSocketId]?.name || 'amigo'}! Que comece a sorte! 🍀`;
+    response = `☀️ Bom dia, ${getPlayerNameBySocket(senderSocketId, room) || 'amigo'}! Que comece a sorte! 🍀`;
   } else if (msgLower.includes('olá') || msgLower.includes('oi') || msgLower.includes('opa') || msgLower.includes('e aí')) {
-    response = `👋 Olá, ${room.players[senderSocketId]?.name || 'amigo'}! Vamos jogar Bingo? 🎰`;
+    response = `👋 Olá, ${getPlayerNameBySocket(senderSocketId, room) || 'amigo'}! Vamos jogar Bingo? 🎰`;
   }
   else if (msgLower.includes('quem') && (msgLower.includes('lider') || msgLower.includes('primeiro') || msgLower.includes('top'))) {
     response = `🏆 O líder do ranking é ${topPlayer} com R$ ${topChips} em chips!`;
@@ -264,6 +265,16 @@ function aiRespond(message, senderSocketId, room) {
   }
 
   return response;
+}
+
+// Função auxiliar para encontrar nome pelo socket.id
+function getPlayerNameBySocket(socketId, room) {
+  for (const name in room.players) {
+    if (room.players[name].id === socketId) {
+      return name;
+    }
+  }
+  return null;
 }
 
 io.on('connection', (socket) => {
@@ -315,6 +326,12 @@ io.on('connection', (socket) => {
     const roomId = 'bingo90';
     const room = rooms[roomId];
 
+    // Verifica se o nome já está em uso
+    if (room.players[playerName]) {
+      socket.emit('error', 'Nome já em uso. Escolha outro.');
+      return;
+    }
+
     let chips = 10000;
     let cards90 = [];
 
@@ -328,7 +345,7 @@ io.on('connection', (socket) => {
 
     if (cards90.length > 10) cards90 = cards90.slice(0, 10);
 
-    room.players[socket.id] = {
+    room.players[playerName] = {
       id: socket.id,
       name: playerName,
       chips,
@@ -343,10 +360,13 @@ io.on('connection', (socket) => {
     const currentBots = Object.values(room.players).filter(p => p.isBot);
     if (currentBots.length === 0 && (playerName === 'Markim' || playerName === 'Marília')) {
       for (let i = 0; i < 3; i++) {
-        const randomName = FUNNY_BOT_NAMES[Math.floor(Math.random() * FUNNY_BOT_NAMES.length)];
-        const botId = `bot_initial_${i}_${Date.now()}`;
-        room.players[botId] = {
-          id: botId,
+        let randomName;
+        do {
+          randomName = FUNNY_BOT_NAMES[Math.floor(Math.random() * FUNNY_BOT_NAMES.length)];
+        } while (room.players[randomName]); // Evita nomes duplicados
+
+        room.players[randomName] = {
+          id: `bot_initial_${i}_${Date.now()}`,
           name: randomName,
           chips: 10000,
           isBot: true,
@@ -372,10 +392,10 @@ io.on('connection', (socket) => {
     broadcastPot(roomId);
   });
 
-  socket.on('buy-cards', ({ count, cardType }) => {
-    if (cardType !== '90') return;
+  socket.on('buy-cards', ({ count, cardType, playerName }) => {
+    if (cardType !== '90' || !playerName) return;
     const room = rooms.bingo90;
-    const player = room.players[socket.id];
+    const player = room.players[playerName];
     if (!player || room.gameStarted) return;
 
     if (player.cards90.length >= 10) {
@@ -411,16 +431,19 @@ io.on('connection', (socket) => {
     broadcastRanking('bingo90');
   });
 
-  socket.on('start-draw', () => {
+  socket.on('start-draw', ({ playerName }) => {
     const room = rooms.bingo90;
     if (room.gameStarted || room.gameCompleted) return;
 
     if (pendingBotsToAdd.length > 0) {
       for (let i = 0; i < pendingBotsToAdd.length; i++) {
-        const randomName = FUNNY_BOT_NAMES[Math.floor(Math.random() * FUNNY_BOT_NAMES.length)];
-        const botId = `bot_auto_${Date.now()}_${i}`;
-        room.players[botId] = {
-          id: botId,
+        let randomName;
+        do {
+          randomName = FUNNY_BOT_NAMES[Math.floor(Math.random() * FUNNY_BOT_NAMES.length)];
+        } while (room.players[randomName]);
+
+        room.players[randomName] = {
+          id: `bot_auto_${Date.now()}_${i}`,
           name: randomName,
           chips: 10000,
           isBot: true,
@@ -435,13 +458,13 @@ io.on('connection', (socket) => {
 
     const hasHumanWithCards = Object.values(room.players).some(p => !p.isBot && p.cards90.length > 0);
     if (!hasHumanWithCards) {
-      io.to('bingo90').emit('message', 'É necessário pelo menos 1 humano com cartela para iniciar.');
+      socket.emit('message', 'É necessário pelo menos 1 humano com cartela para iniciar.');
       return;
     }
 
     const humanCardCounts = {};
-    for (const id in room.players) {
-      const p = room.players[id];
+    for (const name in room.players) {
+      const p = room.players[name];
       if (!p.isBot && p.cards90.length > 0) {
         humanCardCounts[p.name] = p.cards90.length;
       }
@@ -449,8 +472,8 @@ io.on('connection', (socket) => {
 
     const maxHumanCards = Math.max(...Object.values(humanCardCounts), 0);
 
-    for (const id in room.players) {
-      const p = room.players[id];
+    for (const name in room.players) {
+      const p = room.players[name];
       if (!p.isBot) {
         const spent = p.cards90.length * 100;
         p.chips -= spent;
@@ -476,8 +499,8 @@ io.on('connection', (socket) => {
     room.pot = 0;
     room.jackpot = INITIAL_JACKPOT;
 
-    for (const id in room.players) {
-      const p = room.players[id];
+    for (const name in room.players) {
+      const p = room.players[name];
       const spent = p.cards90.length * 100;
       room.pot += spent;
       room.jackpot += spent;
@@ -490,15 +513,15 @@ io.on('connection', (socket) => {
     drawNextNumber('bingo90', 0);
   });
 
-  socket.on('claim-win', ({ winType }) => {
+  socket.on('claim-win', ({ winType, playerName }) => {
     const room = rooms.bingo90;
     if (!room.gameStarted || room.gameCompleted) return;
 
-    const player = room.players[socket.id];
+    const player = room.players[playerName];
     if (!player) return;
 
     const winners = getWinningPlayers(room, winType);
-    const thisPlayerWon = winners.some(w => w.id === socket.id);
+    const thisPlayerWon = winners.some(w => w.playerName === playerName);
     if (!thisPlayerWon) {
       socket.emit('error', 'Você não completou essa conquista!');
       return;
@@ -507,7 +530,7 @@ io.on('connection', (socket) => {
     processWin(winType, room, winners);
   });
 
-  socket.on('restart-game', () => {
+  socket.on('restart-game', ({ playerName }) => {
     const room = rooms.bingo90;
     if (!room.gameCompleted) {
       socket.emit('error', 'Só é possível reiniciar após o Bingo.');
@@ -519,18 +542,22 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     const room = rooms.bingo90;
-    if (room.players[socket.id]) {
-      const player = room.players[socket.id];
-      if (!room.gameStarted && player.cards90.length > 0) {
-        player.cards90 = [];
-        if (db.players[player.name]) {
-          db.players[player.name].cards90 = [];
-          saveDB(db);
+    // Remove jogador pelo socket.id
+    for (const name in room.players) {
+      if (room.players[name].id === socket.id) {
+        const player = room.players[name];
+        if (!room.gameStarted && player.cards90.length > 0) {
+          player.cards90 = [];
+          if (db.players[player.name]) {
+            db.players[player.name].cards90 = [];
+            saveDB(db);
+          }
         }
+        delete room.players[name];
+        broadcastPlayerList('bingo90');
+        broadcastRanking('bingo90');
+        break;
       }
-      delete room.players[socket.id];
-      broadcastPlayerList('bingo90');
-      broadcastRanking('bingo90');
     }
   });
 });
@@ -558,7 +585,7 @@ function processWin(winType, room, winners) {
   });
 
   winners.forEach(w => {
-    const player = room.players[w.id];
+    const player = room.players[w.playerName];
     if (player) {
       player.chips += prizePerWinner;
       if (jackpotPerWinner) player.chips += jackpotPerWinner;
@@ -578,27 +605,29 @@ function processWin(winType, room, winners) {
 
   const ballsUsed = room.drawnNumbers.length;
   winners.forEach(w => {
-    const player = room.players[w.id];
+    const player = room.players[w.playerName];
     if (!player) return;
 
+    // Envia evento diretamente para o socket do jogador
+    const targetSocketId = player.id;
     if (winType === 'linha1') {
-      io.to(w.id).emit('line1-victory', {
+      io.to(targetSocketId).emit('line1-victory', {
         playerName: player.name,
         prize: prizePerWinner
       });
     } else if (winType === 'linha2') {
-      io.to(w.id).emit('line2-victory', {
+      io.to(targetSocketId).emit('line2-victory', {
         playerName: player.name,
         prize: prizePerWinner
       });
     } else if (winType === 'bingo') {
-      io.to(w.id).emit('bingo-victory', {
+      io.to(targetSocketId).emit('bingo-victory', {
         playerName: player.name,
         prize: prizePerWinner
       });
 
       if (ballsUsed <= 60) {
-        io.to(w.id).emit('jackpot-victory', {
+        io.to(targetSocketId).emit('jackpot-victory', {
           playerName: player.name,
           prize: jackpotPerWinner,
           ballsUsed: ballsUsed
@@ -608,7 +637,7 @@ function processWin(winType, room, winners) {
   });
 
   winners.forEach(w => {
-    const player = room.players[w.id];
+    const player = room.players[w.playerName];
     if (player) {
       const msgType = winType === 'bingo' ? 'bingo' : winType;
       const messages = WIN_MESSAGES[msgType] || WIN_MESSAGES.linha1;
@@ -698,8 +727,8 @@ function resetRoom(roomId) {
   room.lastNumber = null;
   room.pot = 0;
 
-  for (const id in room.players) {
-    const p = room.players[id];
+  for (const name in room.players) {
+    const p = room.players[name];
     if (!p.isBot) {
       p.cards90 = [];
       if (db.players[p.name]) {
