@@ -65,12 +65,13 @@ const BOT_NAMES = [
 
 // ✅ CONFIGURAÇÕES JUSTAS
 const PRICE_PER_CARD = 100;
-const INITIAL_CHIPS = 10000; // Chips iniciais para novos jogadores
-const MAX_CARDS_PER_PLAYER = 10; // Limite máximo de 10 cartelas por jogador
-const JACKPOT_BALL_LIMIT = 60; // ✅ CORRIGIDO DE 40 PARA 60
+const INITIAL_CHIPS = 10000;
+const MAX_CARDS_PER_PLAYER = 10;
+const JACKPOT_BALL_LIMIT = 60;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '0589';
+const MAX_BOTS_ALLOWED = 10; // ✅ Limite máximo justo
 
-// ✅ Salas em memória - INICIAM COM 3 BOTS
+// ✅ Salas em memória - começam com 3 bots
 const rooms = {
   'bingo75': { 
     name: 'Bingo 75 (Americano)', 
@@ -78,14 +79,14 @@ const rooms = {
     drawnNumbers: [], 
     gameActive: false, 
     lastNumber: null,
-    maxBots: 3, // ✅ ALTERADO: começa com 3 bots
+    maxBots: 3, // começa com 3
     pot: 0,
     drawInterval: null,
     currentStage: 'linha1',
     stageCompleted: { linha1: false, linha2: false, bingo: false },
     jackpot: 1000000,
     gameCompleted: false,
-    addBotOnNextRestart: false // ✅ nova flag
+    addBotOnNextRestart: false
   },
   'bingo90': { 
     name: 'Bingo 90 (Brasileiro)', 
@@ -93,14 +94,14 @@ const rooms = {
     drawnNumbers: [], 
     gameActive: false, 
     lastNumber: null,
-    maxBots: 3, // ✅ ALTERADO: começa com 3 bots
+    maxBots: 3, // começa com 3
     pot: 0,
     drawInterval: null,
     currentStage: 'linha1',
     stageCompleted: { linha1: false, linha2: false, bingo: false },
     jackpot: 1000000,
     gameCompleted: false,
-    addBotOnNextRestart: false // ✅ nova flag
+    addBotOnNextRestart: false
   }
 };
 
@@ -110,7 +111,14 @@ function shouldAddBotOnWin(winnerNames) {
   return winners.some(name => name === 'Markim' || name === 'Marília');
 }
 
-// ✅ MENSAGENS DE PARABENIZAÇÃO
+// ✅ Função adaptativa: quantas cartelas o bot deve comprar?
+function getBotCardCount(totalBots) {
+  if (totalBots <= 6) return 3;
+  if (totalBots <= MAX_BOTS_ALLOWED) return 2;
+  return 1;
+}
+
+// ✅ MENSAGENS DE PARABENIZAÇÃO (mantidas)
 function getVictoryMessage(winType, winnerNames) {
   const messages = {
     linha1: [
@@ -147,7 +155,7 @@ function getVictoryMessage(winType, winnerNames) {
   return msgArray[Math.floor(Math.random() * msgArray.length)];
 }
 
-// ✅ Funções de validação e geração
+// ✅ Funções de validação e geração (mantidas)
 function countTotalNumbersInCard(card) {
   if (!Array.isArray(card) || card.length !== 3) return 0;
   let count = 0;
@@ -449,10 +457,10 @@ function handleWin(roomType, allWinners) {
   const winnerNames = results.map(r => r.playerName).join(', ');
   const totalPrize = results.reduce((sum, r) => sum + r.prize, 0);
   
-  // ✅ Verifica se deve adicionar bot no próximo restart
+  // ✅ Adiciona flag se Markim ou Marília vencerem
   if (shouldAddBotOnWin(winnerNames)) {
     room.addBotOnNextRestart = true;
-    console.log(`✅ Vitória de Markim ou Marília detectada. Bot será adicionado no próximo restart.`);
+    console.log(`✅ Vitória de Markim ou Marília! Bot será adicionado no próximo restart.`);
   }
   
   const victoryMessage = getVictoryMessage(currentStage, winnerNames);
@@ -499,6 +507,7 @@ function handleWin(roomType, allWinners) {
   }, 5000);
 }
 
+// ✅ Função atualizada: adiciona bot com cartelas adaptativas
 function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
   const room = rooms[roomType];
   const currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
@@ -516,7 +525,8 @@ function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
   
   const botId = `bot_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
   
-  const cardCount = MAX_CARDS_PER_PLAYER;
+  // ✅ Cartelas adaptativas
+  const cardCount = getBotCardCount(currentBots + 1); // +1 porque vai entrar
   const totalCost = cardCount * PRICE_PER_CARD;
   
   if (initialChips < totalCost) {
@@ -786,27 +796,37 @@ io.on('connection', (socket) => {
     pauseDraw(roomType);
     const room = rooms[roomType];
     
-    // ✅ Se vitória foi de Markim ou Marília, aumenta maxBots temporariamente
-    if (room.addBotOnNextRestart) {
+    // ✅ Remover bots zerados
+    const playersToKeep = {};
+    let activeBots = 0;
+    for (const [id, player] of Object.entries(room.players)) {
+      if (player.isBot && player.chips <= 0) {
+        console.log(`🗑️ Bot removido (sem chips): ${player.name}`);
+        continue; // remove
+      }
+      playersToKeep[id] = player;
+      if (player.isBot) activeBots++;
+    }
+    
+    // ✅ Se vitória foi de Markim/Marília, aumenta maxBots (até 10)
+    if (room.addBotOnNextRestart && room.maxBots < MAX_BOTS_ALLOWED) {
       room.maxBots += 1;
       room.addBotOnNextRestart = false;
-      console.log(`🔄 Reiniciando jogo com ${room.maxBots} bots (1 adicionado por vitória de Markim/Marília).`);
+      console.log(`📈 Limite de bots aumentado para ${room.maxBots}`);
     }
     
-    const allPlayers = {};
-    for (const [id, player] of Object.entries(room.players)) {
-      allPlayers[id] = {
-        name: player.name,
-        chips: player.chips,
-        isBot: player.isBot,
-        winsCount: player.winsCount || 0,
-        cards75: [],
-        cards90: [],
-        currentWins: 0
-      };
+    // ✅ Garantir que maxBots nunca ultrapasse 10
+    room.maxBots = Math.min(room.maxBots, MAX_BOTS_ALLOWED);
+    
+    // ✅ Repopular até maxBots
+    room.players = playersToKeep;
+    let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
+    while (currentBots < room.maxBots) {
+      addBotToRoom(roomType, INITIAL_CHIPS);
+      currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
     }
     
-    room.players = allPlayers;
+    // ✅ Resetar estado do jogo
     room.drawnNumbers = [];
     room.lastNumber = null;
     room.pot = 0;
@@ -815,15 +835,11 @@ io.on('connection', (socket) => {
     room.gameCompleted = false;
     room.gameActive = false;
     
-    let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
-    const botsToAdd = room.maxBots - currentBots;
-    for (let i = 0; i < botsToAdd; i++) {
-      addBotToRoom(roomType, INITIAL_CHIPS);
-    }
-    
+    // ✅ Bots repõem cartelas (com regra adaptativa)
     for (const [id, player] of Object.entries(room.players)) {
-      if (player.isBot && player.cards90.length === 0 && player.cards75.length === 0) {
-        const cardCount = Math.min(MAX_CARDS_PER_PLAYER, Math.floor(player.chips / PRICE_PER_CARD));
+      if (player.isBot) {
+        const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
+        const cardCount = Math.min(getBotCardCount(totalBotsNow), Math.floor(player.chips / PRICE_PER_CARD));
         if (cardCount > 0) {
           const totalCost = cardCount * PRICE_PER_CARD;
           player.chips -= totalCost;
@@ -832,10 +848,16 @@ io.on('connection', (socket) => {
           
           if (roomType === 'bingo90') {
             player.cards90 = Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card()));
+            player.cards75 = [];
           } else {
             player.cards75 = Array(cardCount).fill().map(() => generateBingo75Card());
+            player.cards90 = [];
           }
         }
+      } else {
+        // Humanos mantêm chips, mas perdem cartelas (regra sua)
+        player.cards75 = [];
+        player.cards90 = [];
       }
     }
     
@@ -843,7 +865,7 @@ io.on('connection', (socket) => {
     io.to(roomType).emit('room-reset');
     broadcastPlayerList(roomType);
     broadcastRanking(roomType);
-    console.log(`[${roomType}] Jogo reiniciado. ${Object.keys(room.players).filter(id => id.startsWith('bot_')).length} bots ativos.`);
+    console.log(`🔄 Jogo reiniciado. Bots ativos: ${Object.keys(room.players).filter(id => id.startsWith('bot_')).length} (máximo: ${room.maxBots})`);
   });
 
   socket.on('chat-message', ({ message, sender, isBot }) => {
