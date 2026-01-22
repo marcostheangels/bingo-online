@@ -491,7 +491,6 @@ function startAutoRestart(roomType) {
   const room = rooms[roomType];
   if (room.autoRestartTimeout) clearTimeout(room.autoRestartTimeout);
   
-  // ✅ Anunciar contagem regressiva nos últimos 5s
   let countdown = 25;
   const countdownInterval = setInterval(() => {
     if (countdown <= 5) {
@@ -515,7 +514,6 @@ function handleAutoRestart(roomType) {
   const room = rooms[roomType];
   if (!room) return;
 
-  // Limpar timeouts anteriores
   if (room.autoRestartTimeout) clearTimeout(room.autoRestartTimeout);
   room.autoRestartTimeout = null;
 
@@ -549,7 +547,6 @@ function handleAutoRestart(roomType) {
   room.gameActive = false;
   room.currentWinnerId = null;
 
-  // Re-comprar cartelas para bots (só se houver humanos)
   for (const [id, player] of Object.entries(room.players)) {
     if (player.isBot && hasHumanPlayers(roomType)) {
       const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
@@ -623,7 +620,6 @@ function handleWin(roomType, allWinners) {
     console.log(`✅ Vitória de Markim ou Marília! Bot será adicionado no próximo restart.`);
   }
   
-  // ✅ Corrigido: usar "SYSTEM"
   let formattedMessage = "";
   if (currentStage === 'linha1') {
     formattedMessage = `[L1]🎉 Parabéns, ${winnerNames}! Você ganhou R$ ${totalPrize.toLocaleString('pt-BR')} com a primeira linha![/L1]`;
@@ -635,7 +631,7 @@ function handleWin(roomType, allWinners) {
 
   io.to(roomType).emit('chat-message', {
     message: formattedMessage,
-    sender: "SYSTEM", // ✅ Corrigido
+    sender: "SYSTEM",
     isBot: false,
     type: currentStage
   });
@@ -678,7 +674,7 @@ function handleWin(roomType, allWinners) {
   
   if (wonJackpot) {
     const jackpotNames = jackpotWinners.map(w => w.playerName).join(', ');
-    const jackpotAmount = room.jackpot; // valor ANTES do reset
+    const jackpotAmount = room.jackpot;
     setTimeout(() => {
       io.to(roomType).emit('chat-message', {
         message: `[JACKPOT]💰💰💰 JACKPOT HISTÓRICO! ${jackpotNames} levaram R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
@@ -704,13 +700,12 @@ function handleWin(roomType, allWinners) {
   broadcastRanking(roomType);
   pauseDraw(roomType);
   
-  // ✅ Delay após vitória (exceto bingo final)
   if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
     startAutoRestart(roomType);
   } else {
     setTimeout(() => {
       resumeDraw(roomType);
-    }, 4000); // ✅ Aguarda animações
+    }, 4000);
   }
 }
 
@@ -816,7 +811,6 @@ function addChipsToPlayer(roomType, playerName, amount) {
   return { success: true, message: `✅ ${amount} chips adicionados ao jogador "${playerName}".` };
 }
 
-// ✅ Corrigido: só procura humanos
 function findPlayerByName(roomType, playerName) {
   const room = rooms[roomType];
   if (!room) return null;
@@ -1044,7 +1038,6 @@ io.on('connection', (socket) => {
     socket.emit(result.success ? 'message' : 'error', result.message);
   });
 
-  // ✅ Corrigido: restart sem socket artificial
   socket.on('restart-game', () => {
     const roomType = socket.data?.roomType;
     if (!roomType || !rooms[roomType]) return socket.emit('error', 'Sala inválida.');
