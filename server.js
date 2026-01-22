@@ -1,4 +1,4 @@
-// server.js — Bingo Multiplayer com IA corrigida, divisão justa de prêmios e tudo funcionando
+// server.js — Bingo Multiplayer com todas as regras corrigidas e completas
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -70,7 +70,6 @@ const BAD_WORDS = [
   'cuzão', 'vai se foder', 'se foder', 'arrombado', 'desgraça', 'porra', 'cacete'
 ];
 
-// === Geração de Cartela Corrigida ===
 function generateValidBingo90Card() {
   const columns = [
     [1, 9], [10, 19], [20, 29], [30, 39], [40, 49],
@@ -114,7 +113,6 @@ function generateValidBingo90Card() {
   }
 }
 
-// === Validação de Vitória ===
 function isLineComplete(row, drawn) {
   const nums = row.filter(n => n !== null);
   if (nums.length !== 5) return false;
@@ -153,11 +151,9 @@ function getWinningPlayers(room, winType) {
 function maybeAddBotAfterHumanWin(winnerName) {
   if (HUMAN_NAMES.includes(winnerName)) {
     pendingBotsToAdd.push(true);
-    console.log(`✅ Bot pendente adicionado após vitória de ${winnerName}`);
   }
 }
 
-// === Broadcasts ===
 function broadcastRoomState(roomId) {
   const room = rooms[roomId];
   io.to(roomId).emit('room-state', {
@@ -205,7 +201,6 @@ function broadcastPot(roomId) {
   });
 }
 
-// ✅ IA Inteligente no Chat (agora chamada de SYSTEM)
 function aiRespond(message, senderSocketId, room) {
   const msgLower = message.toLowerCase().trim();
   const ranking = Object.values(room.players)
@@ -240,14 +235,12 @@ function aiRespond(message, senderSocketId, room) {
   } else if (msgLower.includes('quantas') && msgLower.includes('bolas')) {
     response = `🔢 Até agora foram sorteadas ${room.drawnNumbers.length} bolas. O próximo número pode ser o seu!`;
   } else {
-    // Resposta padrão
     response = `🤖 Não entendi sua pergunta. Tente: "quem é o líder?", "como jogar?", "quantas cartelas posso comprar?" ou "qual é o pote?"`;
   }
 
   return response;
 }
 
-// === Socket.IO ===
 io.on('connection', (socket) => {
   console.log('🔌 Novo jogador conectado:', socket.id);
 
@@ -308,7 +301,6 @@ io.on('connection', (socket) => {
       cards90 = savedCards90 || [];
     }
 
-    // Garantir que não exceda 10 cartelas ao carregar
     if (cards90.length > 10) cards90 = cards90.slice(0, 10);
 
     room.players[socket.id] = {
@@ -325,7 +317,6 @@ io.on('connection', (socket) => {
 
     const currentBots = Object.values(room.players).filter(p => p.isBot);
     if (currentBots.length === 0 && (playerName === 'Markim' || playerName === 'Marília')) {
-      console.log(`🤖 Adicionando 3 bots iniciais para ${playerName}...`);
       for (let i = 0; i < 3; i++) {
         const randomName = FUNNY_BOT_NAMES[Math.floor(Math.random() * FUNNY_BOT_NAMES.length)];
         const botId = `bot_initial_${i}_${Date.now()}`;
@@ -362,7 +353,6 @@ io.on('connection', (socket) => {
     const player = room.players[socket.id];
     if (!player || room.gameStarted) return;
 
-    // ✅ LIMITE DE 10 CARTELAS — verifica antes de comprar
     if (player.cards90.length >= 10) {
       socket.emit('error', 'Você já atingiu o limite de 10 cartelas!');
       return;
@@ -392,7 +382,6 @@ io.on('connection', (socket) => {
     db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
     saveDB(db);
 
-    // Bots também respeitam o limite de 10
     for (const id in room.players) {
       const p = room.players[id];
       if (p.isBot && !room.gameStarted) {
@@ -421,7 +410,6 @@ io.on('connection', (socket) => {
     if (room.gameStarted || room.gameCompleted) return;
 
     if (pendingBotsToAdd.length > 0) {
-      console.log(`🤖 Adicionando ${pendingBotsToAdd.length} bot(s) pendente(s)...`);
       for (let i = 0; i < pendingBotsToAdd.length; i++) {
         const randomName = FUNNY_BOT_NAMES[Math.floor(Math.random() * FUNNY_BOT_NAMES.length)];
         const botId = `bot_auto_${Date.now()}_${i}`;
@@ -511,23 +499,18 @@ io.on('connection', (socket) => {
   });
 });
 
-// === Lógica de Jogo ===
 function processWin(winType, room, winners) {
   if (winners.length === 0 || room.gameCompleted) return;
 
   let prize = 0;
-  let jackpotPrize = 0;
-
-  // ✅ Dividir o pote conforme a conquista
   if (winType === 'linha1') {
-    prize = Math.floor(room.pot * 0.2); // 20% do pote
+    prize = Math.floor(room.pot * 0.2);
   } else if (winType === 'linha2') {
-    prize = Math.floor(room.pot * 0.3); // 30% do pote
+    prize = Math.floor(room.pot * 0.3);
   } else if (winType === 'bingo') {
-    prize = Math.floor(room.pot * 0.5); // 50% do pote
+    prize = Math.floor(room.pot * 0.5);
   }
 
-  // ✅ Dividir entre todos os vencedores
   const prizePerWinner = Math.floor(prize / winners.length);
   const jackpotPerWinner = winType === 'bingo' ? Math.floor(room.jackpot / winners.length) : 0;
 
@@ -587,7 +570,8 @@ function processWin(winType, room, winners) {
   }
 
   if (winType === 'bingo') {
-    setTimeout(() => resetRoom('bingo90'), 6000);
+    // Não reinicia automaticamente — só quando o usuário clicar em "reiniciar"
+    // Aguarda o jogador manualmente clicar em restart
   }
 
   broadcastRoomState('bingo90');
@@ -633,7 +617,6 @@ function drawNextNumber(roomId, index) {
   } else if (room.currentStage === 'bingo') {
     const winners = getWinningPlayers(room, 'bingo');
     if (winners.length > 0) {
-      // ✅ JACKPOT SÓ SE FOR ATÉ 60 BOLAS
       const ballsUsed = room.drawnNumbers.length;
       const jackpotWinners = [];
       for (const w of winners) {
@@ -642,7 +625,6 @@ function drawNextNumber(roomId, index) {
         }
       }
       if (jackpotWinners.length > 0) {
-        // Processar jackpot apenas se for até 60 bolas
         const jackpotPerWinner = Math.floor(room.jackpot / jackpotWinners.length);
         jackpotWinners.forEach(w => {
           const player = room.players[w.id];
@@ -652,7 +634,6 @@ function drawNextNumber(roomId, index) {
           }
         });
         saveDB(db);
-        // Emitir mensagem especial de jackpot
         io.to('bingo90').emit('chat-message', {
           sender: "Sistema",
           message: `🎁 JACKPOT! ${jackpotWinners.map(w => w.playerName).join(', ')} ganharam R$ ${jackpotPerWinner.toLocaleString('pt-BR')} cada por completar a cartela em ${ballsUsed} bolas!`,
@@ -679,6 +660,7 @@ function resetRoom(roomId) {
   room.pot = 0;
   room.jackpot = 0;
 
+  // Limpa as cartelas APENAS dos humanos (bots mantêm as cartelas até o próximo join ou compra)
   for (const id in room.players) {
     const p = room.players[id];
     if (!p.isBot) {
@@ -697,10 +679,8 @@ function resetRoom(roomId) {
   broadcastPot(roomId);
 }
 
-// Iniciar backup
 require('./backup');
 
-// Iniciar servidor
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
