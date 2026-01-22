@@ -143,7 +143,8 @@ const rooms = {
     addBotOnNextRestart: false,
     autoRestartTimeout: null,
     currentWinnerId: null,
-    autoMessageInterval: null
+    autoMessageInterval: null,
+    initialCountdownActive: false
   },
   'bingo90': { 
     name: 'Bingo 90 (Brasileiro)', 
@@ -161,7 +162,8 @@ const rooms = {
     addBotOnNextRestart: false,
     autoRestartTimeout: null,
     currentWinnerId: null,
-    autoMessageInterval: null
+    autoMessageInterval: null,
+    initialCountdownActive: false
   }
 };
 
@@ -446,6 +448,7 @@ function pauseDraw(roomType) {
 
 function resumeDraw(roomType) {
   const room = rooms[roomType];
+  if (room.initialCountdownActive) return; // ✅ não inicia durante countdown
   if (!hasHumanPlayers(roomType)) {
     console.log(`⏸️ Standby: nenhuma humano na sala ${roomType}`);
     room.gameActive = false;
@@ -490,10 +493,50 @@ function resumeDraw(roomType) {
 function startAutoRestart(roomType) {
   const room = rooms[roomType];
   if (room.autoRestartTimeout) clearTimeout(room.autoRestartTimeout);
-  io.to(roomType).emit('countdown-start', { seconds: 25 });
+  io.to(roomType).emit('countdown-start', { seconds: 25, type: 'restart' });
   room.autoRestartTimeout = setTimeout(() => {
     const fakeSocket = { data: { roomType }, id: 'system' };
     handleAutoRestart(fakeSocket, roomType);
+  }, 25000);
+}
+
+function startInitialCountdown(roomType) {
+  const room = rooms[roomType];
+  if (room.initialCountdownActive || room.gameActive) return;
+  
+  room.initialCountdownActive = true;
+  io.to(roomType).emit('countdown-start', { seconds: 25, type: 'initial' });
+  
+  // Bots compram cartelas AGORA (antes do sorteio)
+  for (const [id, player] of Object.entries(room.players)) {
+    if (player.isBot && player.cards90.length === 0 && player.cards75.length === 0) {
+      const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
+      const cardCount = Math.min(getBotCardCount(totalBotsNow), Math.floor(player.chips / PRICE_PER_CARD));
+      if (cardCount > 0) {
+        const totalCost = cardCount * PRICE_PER_CARD;
+        player.chips -= totalCost;
+        room.pot += totalCost;
+        room.jackpot += Math.floor(totalCost * 0.5);
+        if (roomType === 'bingo90') {
+          player.cards90 = Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card()));
+        } else {
+          player.cards75 = Array(cardCount).fill().map(() => generateBingo75Card());
+        }
+      }
+    }
+  }
+  
+  io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
+  broadcastPlayerList(roomType);
+  broadcastRanking(roomType);
+  
+  setTimeout(() => {
+    room.initialCountdownActive = false;
+    if (hasHumanPlayers(roomType)) {
+      resumeDraw(roomType);
+    } else {
+      console.log(`⏸️ Countdown finalizado, mas sem humanos. Sala em standby.`);
+    }
   }, 25000);
 }
 
@@ -626,11 +669,14 @@ function handleWin(roomType, allWinners) {
   broadcastRanking(roomType);
   pauseDraw(roomType);
   
-  if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
-    startAutoRestart(roomType);
-  } else {
-    resumeDraw(roomType);
-  }
+  // ✅ Aguarda 5s para garantir que a animação termine
+  setTimeout(() => {
+    if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
+      startAutoRestart(roomType);
+    } else {
+      resumeDraw(roomType);
+    }
+  }, 5000);
 }
 
 function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
@@ -775,6 +821,7 @@ function handleAutoRestart(socket, roomType) {
   room.gameActive = false;
   room.autoRestartTimeout = null;
   room.currentWinnerId = null;
+  room.initialCountdownActive = false;
 
   for (const [id, player] of Object.entries(room.players)) {
     if (player.isBot) {
@@ -919,13 +966,9 @@ io.on('connection', (socket) => {
       startAutoMessages(roomType);
     }
     
-    // ✅ Tenta iniciar jogo se houver humanos
-    if (hasHumanPlayers(roomType) && !room.gameActive && !room.gameCompleted) {
-      setTimeout(() => {
-        if (hasHumanPlayers(roomType)) {
-          resumeDraw(roomType);
-        }
-      }, 1000);
+    // ✅ Inicia contador de 25s antes do primeiro sorteio
+    if (!room.gameActive && !room.gameCompleted && !room.initialCountdownActive) {
+      startInitialCountdown(roomType);
     }
   });
 
