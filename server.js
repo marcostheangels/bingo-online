@@ -406,38 +406,16 @@ io.on('connection', (socket) => {
     }
 
     player.cards90 = player.cards90.concat(newCards);
-    player.chips -= cost;
+    // Não desconta chips ainda — só quando iniciar o jogo
 
     db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
     saveDB(db);
 
-    // Bots compram EXATAMENTE a mesma quantidade que o humano comprou
-    for (const id in room.players) {
-      const p = room.players[id];
-      if (p.isBot && !room.gameStarted) {
-        // Remover cartelas antigas dos bots
-        p.cards90 = [];
-        // Comprar a mesma quantidade
-        const botNewCards = [];
-        for (let i = 0; i < finalCount; i++) {
-          botNewCards.push(generateValidBingo90Card());
-        }
-        p.cards90 = botNewCards;
-        p.chips -= finalCount * 100;
-        if (p.chips < 0) p.chips = 0;
-      }
-    }
-
-    // Adicionar valor gasto ao pote e ao jackpot
-    const totalSpent = (finalCount + (Object.values(room.players).filter(p => p.isBot).length * finalCount)) * 100;
-    room.pot += totalSpent;
-    room.jackpot += totalSpent;
-
+    // Bots NÃO compram nem perdem chips aqui — só na hora do start-draw
     socket.emit('cards-received', { cards: newCards.map(c => ({ card: c })), cardType: '90' });
     broadcastRoomState('bingo90');
     broadcastPlayerList('bingo90');
     broadcastRanking('bingo90');
-    broadcastPot('bingo90');
   });
 
   socket.on('start-draw', () => {
@@ -468,17 +446,53 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Agora sim: descontar chips de todos (humanos e bots) e fazer bots comprarem
+    const humanCardCounts = {};
+    for (const id in room.players) {
+      const p = room.players[id];
+      if (!p.isBot && p.cards90.length > 0) {
+        humanCardCounts[p.name] = p.cards90.length;
+      }
+    }
+
+    // Determinar quantidade máxima comprada por humanos
+    const maxHumanCards = Math.max(...Object.values(humanCardCounts), 0);
+
+    // Descontar chips dos humanos e resetar cartelas dos bots
+    for (const id in room.players) {
+      const p = room.players[id];
+      if (!p.isBot) {
+        const spent = p.cards90.length * 100;
+        p.chips -= spent;
+        db.players[p.name] = { chips: p.chips, cards90: p.cards90 };
+      } else {
+        // Bot compra EXATAMENTE a mesma quantidade que o máximo comprado pelos humanos
+        p.cards90 = [];
+        if (maxHumanCards > 0) {
+          const botNewCards = [];
+          for (let i = 0; i < maxHumanCards; i++) {
+            botNewCards.push(generateValidBingo90Card());
+          }
+          p.cards90 = botNewCards;
+          p.chips -= maxHumanCards * 100;
+          if (p.chips < 0) p.chips = 0;
+        }
+      }
+    }
+    saveDB(db);
+
     room.gameStarted = true;
     room.drawnNumbers = [];
     room.lastNumber = null;
-    // O pote é zerado ao iniciar, mas o jackpot permanece acumulado
     room.pot = 0;
+    room.jackpot = INITIAL_JACKPOT; // Jackpot começa em 1.5M e acumula
 
-    // Recalcular o pote com base nas cartelas atuais
+    // Calcular pote e jackpot com base nas cartelas atuais
     for (const id in room.players) {
       const p = room.players[id];
       const spent = p.cards90.length * 100;
       room.pot += spent;
+      room.jackpot += spent;
     }
 
     broadcastPot('bingo90');
@@ -520,12 +534,12 @@ io.on('connection', (socket) => {
     if (room.players[socket.id]) {
       const player = room.players[socket.id];
       if (!room.gameStarted && player.cards90.length > 0) {
-        const refund = player.cards90.length * 100;
-        player.chips += refund;
+        // Não há desconto real ainda, então não precisa reembolsar
         player.cards90 = [];
-
-        db.players[player.name] = { chips: player.chips, cards90: [] };
-        saveDB(db);
+        if (db.players[player.name]) {
+          db.players[player.name].cards90 = [];
+          saveDB(db);
+        }
       }
       delete room.players[socket.id];
       broadcastPlayerList('bingo90');
