@@ -158,7 +158,6 @@ function maybeAddBotAfterHumanWin(winnerName) {
 
 function broadcastRoomState(roomId) {
   const room = rooms[roomId];
-  // Envia estado para todos os sockets conectados
   io.to(roomId).emit('room-state', {
     players: room.players,
     drawnNumbers: room.drawnNumbers,
@@ -267,7 +266,6 @@ function aiRespond(message, senderSocketId, room) {
   return response;
 }
 
-// Função auxiliar para encontrar nome pelo socket.id
 function getPlayerNameBySocket(socketId, room) {
   for (const name in room.players) {
     if (room.players[name].id === socketId) {
@@ -326,7 +324,6 @@ io.on('connection', (socket) => {
     const roomId = 'bingo90';
     const room = rooms[roomId];
 
-    // Verifica se o nome já está em uso
     if (room.players[playerName]) {
       socket.emit('error', 'Nome já em uso. Escolha outro.');
       return;
@@ -363,7 +360,7 @@ io.on('connection', (socket) => {
         let randomName;
         do {
           randomName = FUNNY_BOT_NAMES[Math.floor(Math.random() * FUNNY_BOT_NAMES.length)];
-        } while (room.players[randomName]); // Evita nomes duplicados
+        } while (room.players[randomName]);
 
         room.players[randomName] = {
           id: `bot_initial_${i}_${Date.now()}`,
@@ -542,7 +539,6 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     const room = rooms.bingo90;
-    // Remove jogador pelo socket.id
     for (const name in room.players) {
       if (room.players[name].id === socket.id) {
         const player = room.players[name];
@@ -575,7 +571,9 @@ function processWin(winType, room, winners) {
   }
 
   const prizePerWinner = Math.floor(prize / winners.length);
-  const jackpotPerWinner = winType === 'bingo' ? Math.floor(room.jackpot / winners.length) : 0;
+  const ballsUsed = room.drawnNumbers.length;
+  // 🔥 CORREÇÃO: jackpot só se <= 60 bolas
+  const jackpotPerWinner = (winType === 'bingo' && ballsUsed <= 60) ? Math.floor(room.jackpot / winners.length) : 0;
 
   const winnerNames = winners.map(w => w.playerName);
   winnerNames.forEach(name => {
@@ -588,7 +586,7 @@ function processWin(winType, room, winners) {
     const player = room.players[w.playerName];
     if (player) {
       player.chips += prizePerWinner;
-      if (jackpotPerWinner) player.chips += jackpotPerWinner;
+      if (jackpotPerWinner > 0) player.chips += jackpotPerWinner; // só adiciona se válido
       db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
     }
   });
@@ -603,12 +601,13 @@ function processWin(winType, room, winners) {
     room.gameStarted = false;
   }
 
-  const ballsUsed = room.drawnNumbers.length;
+  // 🔊 Emitir evento de áudio para todos
+  io.to('bingo90').emit('play-sound', { type: winType });
+
   winners.forEach(w => {
     const player = room.players[w.playerName];
     if (!player) return;
 
-    // Envia evento diretamente para o socket do jogador
     const targetSocketId = player.id;
     if (winType === 'linha1') {
       io.to(targetSocketId).emit('line1-victory', {
@@ -686,6 +685,9 @@ function drawNextNumber(roomId, index) {
 
   room.drawnNumbers.push(number);
   room.lastNumber = number;
+
+  // 🔊 Emitir som de sorteio para todos
+  io.to(roomId).emit('play-sound', { type: 'sorteio', number });
 
   io.to(roomId).emit('number-drawn', {
     number,
