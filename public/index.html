@@ -24,22 +24,6 @@ background: rgba(0, 0, 0, 0.3);
 border-radius: 12px;
 border: 1px solid #5d4037;
 box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-position: relative;
-}
-/* ✅ TIMER VISUAL */
-#countdown-timer {
-position: absolute;
-top: -40px;
-left: 50%;
-transform: translateX(-50%);
-background: #ff6b6b;
-color: white;
-font-weight: bold;
-font-size: 1.3em;
-padding: 6px 16px;
-border-radius: 20px;
-box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-display: none;
 }
 .header h2 {
 font-size: 1.8em;
@@ -128,15 +112,12 @@ padding: 10px;
 margin-bottom: 8px;
 background: rgba(30, 30, 50, 0.7);
 border-radius: 8px;
+border-left: 4px solid gold;
 }
-/* ✅ Ranking com troféus e cores */
-.ranking-position {
-font-weight: bold;
-min-width: 40px;
-display: flex;
-align-items: center;
-gap: 6px;
-}
+.ranking-list li:nth-child(1) { border-left-color: gold; }
+.ranking-list li:nth-child(2) { border-left-color: silver; }
+.ranking-list li:nth-child(3) { border-left-color: #cd7f32; }
+.ranking-position { font-weight: bold; min-width: 30px; }
 .ranking-name { flex: 1; margin: 0 10px; }
 .ranking-chips { font-weight: bold; color: #4CAF50; }
 .controls {
@@ -225,21 +206,22 @@ transform: translateY(-5px);
 box-shadow: 0 10px 25px rgba(0,0,0,0.7);
 border-color: #3498db;
 }
-/* ✅ Cartela dourada piscante */
-.card-wrapper.golden-bingo {
+.card-wrapper.bingo-complete {
 background: gold !important;
 color: #1a1a2e;
-border: 3px solid gold;
-box-shadow: 0 0 30px gold, 0 10px 40px rgba(255,215,0,0.8) !important;
-animation: goldenPulse 1.2s infinite alternate;
+border-color: gold;
+box-shadow: 0 0 25px gold, 0 10px 30px rgba(255,215,0,0.6) !important;
+animation: pulseGold 1.5s infinite alternate;
 }
-.card-wrapper.golden-bingo .cell {
-color: #1a1a2e !important;
-font-weight: bold;
+/* ✅ Borda dourada só quando faltar 1 bola para a fase ATUAL */
+.card-wrapper.near-win {
+border: 2px solid gold;
+box-shadow: 0 0 15px rgba(255,215,0,0.6);
+animation: glowBorder 1.5s infinite alternate;
 }
-@keyframes goldenPulse {
-0% { box-shadow: 0 0 20px gold, 0 5px 20px rgba(255,215,0,0.6); }
-100% { box-shadow: 0 0 50px gold, 0 15px 50px rgba(255,215,0,0.9); }
+@keyframes glowBorder {
+0% { box-shadow: 0 0 10px gold; }
+100% { box-shadow: 0 0 25px gold; }
 }
 .card-title {
 text-align: center;
@@ -353,7 +335,7 @@ border: none;
 border-radius: 6px;
 cursor: pointer;
 }
-/* ============ ANIMAÇÕES EXISTENTES MANTIDAS ============ */
+/* ============ ANIMAÇÕES PERSONALIZADAS ============ */
 /* LINHA 1 */
 #line-victory-overlay {
 position: fixed;
@@ -808,7 +790,6 @@ to { opacity: 1; transform: translateY(0); }
 </div>
 <div id="game-area">
 <div class="header">
-<div id="countdown-timer">25s</div>
 <h2 id="room-title">Sala: ?</h2>
 <div class="player-info">
 <span>Jogador: <strong id="player-name-display"></strong></span>
@@ -918,7 +899,7 @@ Cartelas:
 </div>
 </div>
 <script>
-// ✅ Web Worker embutido (mantido)
+// ✅ Web Worker embutido
 const workerCode = `
 self.onmessage = function(e) {
 const { cards, drawnNumbers } = e.data;
@@ -962,7 +943,7 @@ if (window.Worker) {
 const blob = new Blob([workerCode], { type: 'application/javascript' });
 validationWorker = new Worker(URL.createObjectURL(blob));
 }
-// ✅ Áudio (mantido)
+// ✅ Áudio
 let audioContext = null;
 function playSound(type, number = null) {
 try {
@@ -1038,7 +1019,7 @@ utterance.lang = 'pt-BR';
 utterance.rate = 0.9;
 speechSynthesis.speak(utterance);
 }
-// ✅ Conquistas (mantidas)
+// ✅ Conquistas
 let achievements = JSON.parse(localStorage.getItem('bingo_achievements') || '[]');
 let totalCardsBought = 0;
 let consecutiveWins = 0;
@@ -1071,7 +1052,7 @@ speak(msg.replace(/[^a-zA-ZÀ-ÿ\s]/g, ''));
 });
 }
 }
-// ✅ Wake Lock (mantido)
+// ✅ Wake Lock
 if ('wakeLock' in navigator) {
 let wakeLock = null;
 const requestWakeLock = async () => {
@@ -1079,7 +1060,7 @@ try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) { con
 };
 document.addEventListener('DOMContentLoaded', requestWakeLock);
 }
-// ✅ Gestos de toque (mantidos)
+// ✅ Gestos de toque
 let touchStartX = 0;
 document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
 document.addEventListener('touchend', (e) => {
@@ -1101,64 +1082,6 @@ let roomsDrawnNumbers = [];
 let gameEnded = false;
 let playerName = '';
 let currentStage = 'linha1';
-let countdownInterval = null; // ✅ novo
-
-// ✅ IA SUPER INTELIGENTE - CENTENAS DE FRASES ÚNICAS
-const AI_RESPONSES = [
-  "No bingo, você ganha completando linhas ou o cartão inteiro!",
-  "O pote é dividido em: 20% linha 1, 30% linha 2, 50% bingo!",
-  "O jackpot só é liberado se você fizer bingo em até 60 bolas!",
-  "Cada cartela custa 100 chips. Compre até 10!",
-  "Humanos e bots têm as mesmas chances — total justiça!",
-  "Seu nome fica em verde quando você vence!",
-  "Cartelas com menos bolas faltando aparecem no topo!",
-  "O jogo pausa após cada vitória para celebrar!",
-  "Você pode comprar cartelas a qualquer momento!",
-  "Bots entram automaticamente quando Markim ou Marília vencem!",
-  "Claro! No bingo, quanto mais cartelas, maiores suas chances!",
-  "As regras são simples: complete linhas ou o bingo completo!",
-  "Estratégia real? Compre até 10 cartelas como todos os jogadores!",
-  "Fique atento aos números sorteados e às suas cartelas!",
-  "Os bots também jogam com as mesmas regras que você!",
-  "Cada fase tem seu prêmio: linha 1 (20%), linha 2 (30%) e bingo (50%)!",
-  "Seu nome fica em destaque quando você vence!",
-  "A sala entra em standby se não houver humanos!",
-  "Ganhou várias vezes seguidas? Você é imparável!",
-  "O jackpot só ativa se você fizer bingo em menos de 60 bolas!",
-  "Sabia que o bingo surgiu na Itália no século XVI?",
-  "O maior jackpot da história foi de R$ 5 milhões!",
-  "Alguns jogadores ganham 3 vezes seguidas — será você?",
-  "Cada cartela tem exatamente 15 números no bingo 90!",
-  "O número 7 é considerado o mais sortudo!",
-  "Bingo é matemática + sorte — e você tem as duas!",
-  "O tempo médio de um bingo é de 45 bolas!",
-  "Você já está entre os melhores da sala!",
-  "Seu nome pode entrar para a história do bingo!",
-  "Essa sala já gerou 10 campeões este mês!",
-  "Você está quase lá! Mais uma bola e é vitória!",
-  "Hoje é seu dia de sorte? Só jogando pra saber!",
-  "Nunca desista — o próximo número pode ser o seu!",
-  "Você tem o espírito de um campeão!",
-  "A glória do bingo está ao seu alcance!",
-  "Mostre a esses bots do que humanos são feitos!",
-  "Sua vez de brilhar está chegando!",
-  "O pote está chamando o seu nome!",
-  "Você merece esse prêmio!",
-  "Acredite: sua cartela vai fechar!"
-];
-let lastAiResponse = '';
-
-function getSmartAiResponse(message) {
-  let response;
-  let attempts = 0;
-  do {
-    response = AI_RESPONSES[Math.floor(Math.random() * AI_RESPONSES.length)];
-    attempts++;
-    if (attempts > 20) break;
-  } while (response === lastAiResponse && attempts < AI_RESPONSES.length);
-  lastAiResponse = response;
-  return response;
-}
 
 // ✅ CONEXÃO
 const SOCKET_URL = 'https://bingo-online-production.up.railway.app';
@@ -1167,11 +1090,13 @@ transports: ['websocket'],
 reconnection: true,
 reconnectionAttempts: Infinity
 });
+
 function toggleAdminMode() {
 const controls = document.getElementById('admin-controls');
 controls.style.display = isAdminMode ? 'none' : 'block';
 isAdminMode = !isAdminMode;
 }
+
 function showAdminMessage(message, type = 'info') {
 const msgElement = document.getElementById('admin-message');
 msgElement.textContent = message;
@@ -1179,6 +1104,7 @@ msgElement.style.display = 'block';
 msgElement.style.background = type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3';
 setTimeout(() => msgElement.style.display = 'none', 5000);
 }
+
 function sendAdminCommand() {
 const playerName = document.getElementById('admin-player-name').value;
 const amount = parseInt(document.getElementById('admin-amount').value);
@@ -1192,6 +1118,7 @@ document.getElementById('admin-player-name').value = '';
 document.getElementById('admin-amount').value = '';
 document.getElementById('admin-password').value = '';
 }
+
 let clickCount = 0;
 let clickTimer = null;
 document.getElementById('player-name').addEventListener('click', function() {
@@ -1204,6 +1131,7 @@ clickCount = 0;
 clearTimeout(clickTimer);
 }
 });
+
 function loadGameState(name) {
 try {
 const saved = localStorage.getItem(`bingo_player_${name}`);
@@ -1219,6 +1147,7 @@ localStorage.removeItem(`bingo_player_${name}`);
 return null;
 }
 }
+
 function saveGameState(name, chips, cards75, cards90) {
 try {
 localStorage.setItem(`bingo_player_${name}`, JSON.stringify({ chips, cards75, cards90 }));
@@ -1226,7 +1155,8 @@ localStorage.setItem(`bingo_player_${name}`, JSON.stringify({ chips, cards75, ca
 console.warn('Não foi possível salvar o estado do jogo:', e);
 }
 }
-// ✅ Função corrigida para fase atual (mantida)
+
+// ✅ Função corrigida: conta bolas faltantes PARA A FASE ATUAL
 function getBallsLeftForCurrentStage(card, drawnNumbers, stage) {
 if (!card || card.length !== 3) return Infinity;
 const markedInRow = [0, 0, 0];
@@ -1238,22 +1168,20 @@ markedInRow[r]++;
 }
 }
 if (stage === 'linha1') {
-const completedLines = markedInRow.filter(count => count === 5).length;
-if (completedLines >= 1) return 0;
-const ballsForLine1 = Math.min(5 - markedInRow[0], 5 - markedInRow[1], 5 - markedInRow[2]);
-return Math.max(0, ballsForLine1);
+const completed = markedInRow.filter(c => c === 5).length;
+if (completed >= 1) return 0;
+return Math.min(5 - markedInRow[0], 5 - markedInRow[1], 5 - markedInRow[2]);
 }
 else if (stage === 'linha2') {
-const completedLines = markedInRow.filter(count => count === 5).length;
-if (completedLines >= 2) return 0;
-if (completedLines === 0) {
+const completed = markedInRow.filter(c => c === 5).length;
+if (completed >= 2) return 0;
+if (completed === 0) {
 const sorted = [...markedInRow].sort((a, b) => b - a);
-return Math.max(0, (5 - sorted[0]) + (5 - sorted[1]));
-} else {
-const incompleteLines = markedInRow.filter(count => count < 5);
-const easiest = Math.min(...incompleteLines);
-return Math.max(0, 5 - easiest);
+return (5 - sorted[0]) + (5 - sorted[1]);
 }
+// Se já tem 1 linha, falta completar outra
+const incomplete = markedInRow.filter(c => c < 5);
+return Math.min(...incomplete.map(c => 5 - c));
 }
 else if (stage === 'bingo') {
 const totalMarked = markedInRow.reduce((a, b) => a + b, 0);
@@ -1261,24 +1189,18 @@ return Math.max(0, 15 - totalMarked);
 }
 return Infinity;
 }
+
 function updateControlButtons(stage) {
 if (!stage) return;
 currentStage = stage;
 document.getElementById('main-controls').className = `controls stage-${stage}`;
 }
-// ✅ Adicionar mensagem no chat (atualizado para processar tags)
+
+// ✅ Adicionar mensagem no chat
 function addChatMessage(text, sender, isBot = false, isSystem = false) {
 const chatMessages = document.getElementById('chat-messages');
 const p = document.createElement('p');
-// ✅ Remover tags para exibição limpa
-let cleanMsg = text
-  .replace(/\[L1\](.*?)\[\/L1\]/g, '$1')
-  .replace(/\[L2\](.*?)\[\/L2\]/g, '$1')
-  .replace(/\[BINGO\](.*?)\[\/BINGO\]/g, '$1')
-  .replace(/\[JACKPOT\](.*?)\[\/JACKPOT\]/g, '$1')
-  .replace(/\[GOLDEN-BINGO\](.*?)\[\/GOLDEN-BINGO\]/g, '$1');
-
-p.textContent = `${sender}: ${cleanMsg}`;
+p.textContent = `${sender}: ${text}`;
 if (isSystem) {
 p.className = 'system';
 } else if (isBot) {
@@ -1289,7 +1211,8 @@ p.className = 'human';
 chatMessages.appendChild(p);
 chatMessages.scrollTop = chatMessages.scrollHeight;
 }
-// ✅ Enviar mensagem do usuário (com IA inteligente)
+
+// ✅ Enviar mensagem do usuário
 document.getElementById('chat-send').addEventListener('click', () => {
 const input = document.getElementById('chat-input');
 const msg = input.value.trim();
@@ -1300,17 +1223,13 @@ sender: playerName,
 isBot: false
 });
 input.value = '';
-// ✅ IA responde QUALQUER mensagem
-const aiMessage = getSmartAiResponse(msg);
-setTimeout(() => {
-addChatMessage(aiMessage, "🤖 SYSTEM", true, false);
-}, 1200 + Math.random() * 800);
 });
 document.getElementById('chat-input').addEventListener('keypress', (e) => {
 if (e.key === 'Enter') {
 document.getElementById('chat-send').click();
 }
 });
+
 document.addEventListener('DOMContentLoaded', () => {
 function initAudio() {
 if (!audioContext) {
@@ -1324,12 +1243,14 @@ document.body.removeEventListener('touchstart', initAudio);
 }
 document.body.addEventListener('click', initAudio);
 document.body.addEventListener('touchstart', initAudio);
+
 const playerNameInput = document.getElementById('player-name');
 const loginScreen = document.getElementById('login-screen');
 const gameArea = document.getElementById('game-area');
 const potDisplay = document.getElementById('pot-display');
 const jackpotDisplay = document.getElementById('jackpot-display');
 const ballsCountDisplay = document.getElementById('balls-count');
+
 window.joinRoom = function(roomType) {
 let name = playerNameInput.value.trim();
 name = name.replace(/[^a-zA-ZÀ-ÿ\s]/g, '').substring(0, 15).trim() || 'Anônimo';
@@ -1344,6 +1265,7 @@ const savedCards90 = savedState ? savedState.cards90 : null;
 const savedChips = savedState ? savedState.chips : null;
 socket.emit('join-room', { playerName: name, roomType, savedChips, savedCards75, savedCards90 });
 };
+
 socket.on('room-welcome', (data) => {
 currentRoom = data.roomId;
 cardType = currentRoom === 'bingo75' ? '75' : '90';
@@ -1353,6 +1275,7 @@ document.getElementById('room-title').textContent = `Sala: ${data.roomName}`;
 gameEnded = data.gameCompleted || false;
 updateControlButtons(data.currentStage || 'linha1');
 });
+
 socket.on('room-state', (data) => {
 document.getElementById('player-name-display').textContent = data.players[socket.id]?.name || '?';
 const chips = data.players[socket.id]?.chips || 10000;
@@ -1365,10 +1288,12 @@ updateControlButtons(data.currentStage || 'linha1');
 const player = data.players[socket.id];
 if (player) saveGameState(playerName, player.chips, player.cards75, player.cards90);
 });
+
 socket.on('pot-update', (data) => {
 potDisplay.textContent = `Pote: R$ ${data.pot.toLocaleString('pt-BR')}`;
 jackpotDisplay.textContent = `Jackpot: R$ ${data.jackpot.toLocaleString('pt-BR')}`;
 });
+
 socket.on('player-list', (data) => {
 const withoutList = document.getElementById('without-chips-list').querySelector('ul');
 const withList = document.getElementById('with-chips-list').querySelector('ul');
@@ -1389,78 +1314,33 @@ if (p.currentWins > 0) li.classList.add('winner');
 withList.appendChild(li);
 });
 });
-// ✅ Ranking com troféus e cores
+
 socket.on('ranking-update', (ranking) => {
 const rankingList = document.getElementById('ranking-list');
 rankingList.innerHTML = '';
-ranking.forEach((player, index) => {
-const position = index + 1;
-let rankStyle = { color: '#ffffff', trophy: '' };
-if (position === 1) {
-rankStyle = { color: '#FFD700', trophy: '🥇' };
-} else if (position === 2) {
-rankStyle = { color: '#CD7F32', trophy: '🥉' };
-} else if (position === 3) {
-rankStyle = { color: '#C0C0C0', trophy: '🥈' };
-}
+ranking.forEach(player => {
 const li = document.createElement('li');
 li.innerHTML = `
-<div class="ranking-position" style="color:${rankStyle.color}">${rankStyle.trophy} ${position}º</div>
+<div class="ranking-position">${player.position}º</div>
 <div class="ranking-name">${player.name}</div>
 <div class="ranking-chips">R$ ${player.chips.toLocaleString('pt-BR')}</div>
 `;
 rankingList.appendChild(li);
 });
 });
+
 socket.on('update-player', (data) => {
 document.getElementById('chips-display').textContent = data.chips.toLocaleString('pt-BR');
 const currentState = loadGameState(playerName) || {};
 saveGameState(playerName, data.chips, currentState.cards75 || [], currentState.cards90 || []);
 });
-// ✅ Receber mensagens do chat (com processamento de tags)
+
+// ✅ Receber mensagens do chat — agora reconhece "SYSTEM"
 socket.on('chat-message', (data) => {
-addChatMessage(data.message, data.sender, data.isBot, data.sender === "Sistema");
-// ✅ Processar tags especiais para estilizar
-if (data.message.includes('[L1]')) {
-showLineVictoryFromTag(data.message);
-} else if (data.message.includes('[L2]')) {
-showLine2VictoryFromTag(data.message);
-} else if (data.message.includes('[BINGO]')) {
-showBingoVictoryFromTag(data.message);
-} else if (data.message.includes('[JACKPOT]')) {
-showJackpotVictoryFromTag(data.message);
-} else if (data.message.includes('[GOLDEN-BINGO]')) {
-activateGoldenBingo();
-}
+const isSystem = (data.sender === "SYSTEM");
+addChatMessage(data.message, data.sender, data.isBot, isSystem);
 });
-// ✅ Funções para processar tags
-function showLineVictoryFromTag(message) {
-const match = message.match(/\[L1\]🎉 Parabéns, (.+?)! Você ganhou R\$ ([\d.,]+) com a primeira linha!\[\/L1\]/);
-if (match) {
-showLineVictory(parseInt(match[2].replace(/\./g, '').replace(/,/g, '')), match[1]);
-}
-}
-function showLine2VictoryFromTag(message) {
-const match = message.match(/\[L2\]🎊 Dupla vitória! (.+?) levou R\$ ([\d.,]+) pelas duas linhas!\[\/L2\]/);
-if (match) {
-showLine2Victory(parseInt(match[2].replace(/\./g, '').replace(/,/g, '')), match[1]);
-}
-}
-function showBingoVictoryFromTag(message) {
-const match = message.match(/\[BINGO\]🏆🏆🏆 BINGO ÉPICO! (.+?) faturou R\$ ([\d.,]+)!\[\/BINGO\]/);
-if (match) {
-showBingoVictory(parseInt(match[2].replace(/\./g, '').replace(/,/g, '')), match[1]);
-}
-}
-function showJackpotVictoryFromTag(message) {
-const match = message.match(/\[JACKPOT\]💰💰💰 JACKPOT HISTÓRICO! (.+?) levaram R\$ ([\d.,]+)!\[\/JACKPOT\]/);
-if (match) {
-// Jackpot é tratado separadamente, mas podemos extrair valor
-const amount = parseInt(match[2].replace(/\./g, '').replace(/,/g, ''));
-// Assume ballsCount from last known state or default
-showJackpotVictory(amount, match[1], roomsDrawnNumbers.length);
-}
-}
+
 socket.on('cards-received', (data) => {
 const newCards = data.cards.map(cardObj => ({
 card: cardObj.card,
@@ -1481,6 +1361,7 @@ renderCards();
 roomsDrawnNumbers.forEach(num => markDrawnNumbers(num));
 });
 });
+
 socket.on('number-drawn', (data) => {
 document.getElementById('last-number').textContent = data.number;
 roomsDrawnNumbers = data.drawnNumbers;
@@ -1491,36 +1372,36 @@ renderCards();
 playSound('sorteio', data.number);
 speak(data.number.toString());
 });
+
 socket.on('player-won', (data) => {
 if (data.winners[0].winType === 'linha1') {
 playSound('linha1');
 speak(`Linha 1 ganha por ${data.winnerNames}!`);
 checkAchievements('linha1', 0);
+showLineVictory(data.totalPrize, data.winnerNames);
 } else if (data.winners[0].winType === 'linha2') {
 playSound('linha2');
 speak(`Linhas completas por ${data.winnerNames}!`);
 checkAchievements('linha2', 0);
+showLine2Victory(data.totalPrize, data.winnerNames);
 } else if (data.winners[0].winType === 'bingo') {
 playSound('bingo');
 speak(`Bingo feito por ${data.winnerNames}!`);
 checkAchievements('bingo', 0, data.ballsCount);
+showBingoVictory(data.totalPrize, data.winnerNames);
 }
 if (data.newStage) updateControlButtons(data.newStage);
 if (data.winners[0].winType === 'bingo') gameEnded = true;
 });
-// ✅ Evento golden-bingo
-socket.on('golden-bingo', (data) => {
-activateGoldenBingo();
-});
+
 socket.on('jackpot-won', (data) => {
 showJackpotVictory(data.jackpotAmount, data.winnerNames, data.ballsCount);
 });
+
 socket.on('show-restart-button', () => { gameEnded = true; });
+
 socket.on('game-over', () => { gameEnded = true; });
-// ✅ Timer visual
-socket.on('countdown-start', (data) => {
-startCountdown(data.seconds, data.type);
-});
+
 socket.on('room-reset', () => {
 roomsDrawnNumbers = [];
 playerCards = [];
@@ -1533,11 +1414,11 @@ document.getElementById('chat-messages').innerHTML = '';
 localStorage.removeItem(`bingo_player_${playerName}`);
 renderCards();
 updateControlButtons('linha1');
-// ✅ Limpar efeito dourado
-document.querySelectorAll('.card-wrapper.golden-bingo').forEach(el => el.classList.remove('golden-bingo'));
 });
+
 socket.on('error', (msg) => showAdminMessage(msg, 'error'));
 socket.on('message', (msg) => showAdminMessage(msg, 'success'));
+
 // ✅ Eventos de compra e controles
 document.getElementById('buy-btn').addEventListener('click', () => {
 if (gameEnded) {
@@ -1551,27 +1432,33 @@ return;
 }
 socket.emit('buy-cards', { count, cardType });
 });
+
 document.getElementById('start-btn').addEventListener('click', () => {
 if (gameEnded) return;
 socket.emit('start-draw');
 });
+
 document.getElementById('line1-btn').addEventListener('click', () => {
 if (gameEnded) return;
 socket.emit('claim-win', { winType: 'linha1' });
 });
+
 document.getElementById('line2-btn').addEventListener('click', () => {
 if (gameEnded) return;
 socket.emit('claim-win', { winType: 'linha2' });
 });
+
 document.getElementById('bingo-btn').addEventListener('click', () => {
 if (gameEnded) return;
 socket.emit('claim-win', { winType: 'bingo' });
 });
+
 document.getElementById('restart-btn').addEventListener('click', () => {
 if (confirm('Deseja reiniciar o jogo?')) {
 socket.emit('restart-game');
 }
 });
+
 window.addEventListener('beforeunload', (e) => {
 if (currentRoom && !gameEnded) {
 e.preventDefault();
@@ -1579,6 +1466,7 @@ e.returnValue = '';
 return '';
 }
 });
+
 function updateHistory(numbers) {
 const hist = document.getElementById('history');
 hist.innerHTML = '';
@@ -1589,38 +1477,52 @@ span.textContent = num;
 hist.appendChild(span);
 });
 }
+
 function markDrawnNumbers(number) {
 const numStr = String(number);
 document.querySelectorAll(`.cell[data-num="${numStr}"]`).forEach(cell => {
 cell.classList.add('marked');
 });
 }
+
 function renderCards() {
 const container = document.getElementById('cards-container');
 container.innerHTML = '';
+
 const validCards = playerCards.filter(item =>
 item && item.card &&
 ((cardType === '75' && item.card.length === 25) ||
 (cardType === '90' && item.card.length === 3 && item.card.every(row => Array.isArray(row) && row.length === 9)))
 );
+
+// ✅ Ordenar: primeiro as que faltam 1 bola para a fase atual
 const sortedCards = [...validCards].sort((a, b) => {
 const ballsA = getBallsLeftForCurrentStage(a.card, roomsDrawnNumbers, currentStage);
 const ballsB = getBallsLeftForCurrentStage(b.card, roomsDrawnNumbers, currentStage);
+// Prioriza quem tem 1 bola faltando
+if (ballsA === 1 && ballsB !== 1) return -1;
+if (ballsB === 1 && ballsA !== 1) return 1;
 return ballsA - ballsB;
 });
+
 sortedCards.forEach((item, idx) => {
 item.index = idx;
 });
+
 sortedCards.forEach(item => {
 const wrapper = document.createElement('div');
 wrapper.className = 'card-wrapper';
-const ballsLeftForStage = getBallsLeftForCurrentStage(item.card, roomsDrawnNumbers, currentStage);
-if (ballsLeftForStage === 1) {
+
+const ballsLeft = getBallsLeftForCurrentStage(item.card, roomsDrawnNumbers, currentStage);
+// ✅ Só aplica near-win se faltar EXATAMENTE 1 bola para a fase atual
+if (ballsLeft === 1) {
 wrapper.classList.add('near-win');
 }
+
 wrapper.innerHTML = `<div class="card-title">Cartela ${item.index + 1}</div>`;
 const grid = document.createElement('div');
 grid.className = cardType === '75' ? 'grid-75' : 'grid-90';
+
 if (cardType === '90') {
 const markedInRow = [0, 0, 0];
 for (let r = 0; r < 3; r++) {
@@ -1636,6 +1538,7 @@ if (markedInRow[0] >= 5) completedLines.push(0);
 if (markedInRow[1] >= 5) completedLines.push(1);
 if (markedInRow[2] >= 5) completedLines.push(2);
 const bingo = completedLines.length >= 3;
+
 for (let r = 0; r < 3; r++) {
 for (let c = 0; c < 9; c++) {
 const cell = document.createElement('div');
@@ -1650,10 +1553,7 @@ cell.classList.add('marked');
 if (bingo) {
 // será tratado no wrapper
 } else if (completedLines.length >= 2) {
-if (completedLines[0] === r) {
-cell.style.backgroundColor = '#27ae60';
-cell.style.color = 'white';
-} else if (completedLines.includes(r)) {
+if (completedLines.includes(r)) {
 cell.style.backgroundColor = '#8e44ad';
 cell.style.color = 'white';
 }
@@ -1694,6 +1594,7 @@ grid.appendChild(cell);
 wrapper.appendChild(grid);
 container.appendChild(wrapper);
 });
+
 if (cardType === '90' && sortedCards.length > 0 && validationWorker) {
 const cardsToValidate = sortedCards.slice(0, 100).map(item => item.card);
 validationWorker.postMessage({ cards: cardsToValidate, drawnNumbers: roomsDrawnNumbers });
@@ -1711,226 +1612,7 @@ wrapper.title = 'Cartela inválida (≠15 números)';
 });
 };
 }
-}
-// ✅ Timer visual
-function startCountdown(seconds, type) {
-const timerEl = document.getElementById('countdown-timer');
-timerEl.style.display = 'block';
-timerEl.textContent = `${seconds}s`;
-
-if (countdownInterval) clearInterval(countdownInterval);
-
-countdownInterval = setInterval(() => {
-seconds--;
-if (seconds >= 0) {
-timerEl.textContent = `${seconds}s`;
-// ✅ Avisar no chat nos marcos principais
-if ([25,20,15,10,5].includes(seconds)) {
-addChatMessage(`⏰ ${seconds} segundos para ${type === 'initial' ? 'começar o sorteio' : 'nova rodada'}!`, "🤖 SYSTEM", true, true);
-}
-} else {
-clearInterval(countdownInterval);
-timerEl.style.display = 'none';
-}
-}, 1000);
-}
-
-// ✅ Ativar efeito dourado
-function activateGoldenBingo() {
-const wrappers = document.querySelectorAll('.card-wrapper');
-wrappers.forEach(w => w.classList.add('golden-bingo'));
-setTimeout(() => {
-wrappers.forEach(w => w.classList.remove('golden-bingo'));
-}, 8000);
-}
 });
-// ============ FUNÇÕES DAS ANIMAÇÕES EXISTENTES ============
-// Linha 1
-function showLineVictory(amount, name) {
-const overlay = document.getElementById('line-victory-overlay');
-const counter = document.getElementById('chip-counter');
-const nameDisplay = document.getElementById('winner-display');
-nameDisplay.innerText = name;
-overlay.classList.add('active');
-const interval = setInterval(() => {
-if (!overlay.classList.contains('active')) {
-clearInterval(interval);
-return;
-}
-createColorChip();
-}, 80);
-let current = 0;
-const duration = 2000;
-const startTime = performance.now();
-function updateCounter(currentTime) {
-const elapsed = currentTime - startTime;
-const progress = Math.min(elapsed / duration, 1);
-current = Math.floor(progress * amount);
-counter.innerText = current.toLocaleString('pt-BR');
-if (progress < 1) {
-requestAnimationFrame(updateCounter);
-}
-}
-requestAnimationFrame(updateCounter);
-setTimeout(() => {
-overlay.classList.remove('active');
-}, 5000);
-}
-function createColorChip() {
-const chip = document.createElement('div');
-const CORES = ['c-blue', 'c-red', 'c-green', 'c-purple'];
-const colorClass = CORES[Math.floor(Math.random() * CORES.length)];
-chip.className = `chip-particle ${colorClass}`;
-chip.innerText = 'B';
-chip.style.left = Math.random() * 100 + 'vw';
-const duration = Math.random() * 1.5 + 1.5;
-chip.style.animation = `chipFly ${duration}s ease-in forwards`;
-const size = Math.random() * 10 + 30;
-chip.style.width = size + 'px';
-chip.style.height = size + 'px';
-document.body.appendChild(chip);
-setTimeout(() => chip.remove(), duration * 1000);
-}
-// Linha 2
-function showLine2Victory(amount, name) {
-const overlay = document.getElementById('line2-victory-overlay');
-const chipsText = document.getElementById('line2-chips-text');
-const winnerName = document.getElementById('line2-winner-name');
-winnerName.innerText = name;
-overlay.classList.add('active');
-let current = 0;
-const duration = 2500;
-const startTime = performance.now();
-function updateCounter(currentTime) {
-const elapsed = currentTime - startTime;
-const progress = Math.min(elapsed / duration, 1);
-current = Math.floor(progress * amount);
-chipsText.innerText = current.toLocaleString('pt-BR');
-if (progress < 1) requestAnimationFrame(updateCounter);
-}
-requestAnimationFrame(updateCounter);
-const chipInterval = setInterval(() => {
-if (!overlay.classList.contains('active')) {
-clearInterval(chipInterval);
-return;
-}
-createLine2Chip();
-}, 120);
-setTimeout(() => {
-overlay.classList.remove('active');
-clearInterval(chipInterval);
-}, 5000);
-}
-function createLine2Chip() {
-const chip = document.createElement('div');
-const CORES = ['c-emerald', 'c-turquoise', 'c-gold'];
-const colorClass = CORES[Math.floor(Math.random() * CORES.length)];
-chip.className = `chip ${colorClass}`;
-chip.innerText = 'B';
-chip.style.left = Math.random() * 100 + 'vw';
-const duration = Math.random() * 2 + 2;
-chip.style.animation = `chipFall ${duration}s linear forwards`;
-const size = Math.random() * 15 + 30;
-chip.style.width = size + 'px';
-chip.style.height = size + 'px';
-document.body.appendChild(chip);
-setTimeout(() => chip.remove(), duration * 1000);
-}
-// Bingo
-function showBingoVictory(amount, name) {
-const overlay = document.getElementById('bingo-victory-overlay');
-const prizeEl = document.getElementById('bingo-prize-amount');
-const winnerEl = document.getElementById('bingo-winner-name');
-winnerEl.innerText = name;
-overlay.classList.add('active');
-let current = 0;
-const duration = 2000;
-const startTime = performance.now();
-function updateCounter(currentTime) {
-const elapsed = currentTime - startTime;
-const progress = Math.min(elapsed / duration, 1);
-current = Math.floor(progress * amount);
-prizeEl.innerText = current.toLocaleString('pt-BR', {
-style: 'currency',
-currency: 'BRL',
-maximumFractionDigits: 0
-});
-if (progress < 1) requestAnimationFrame(updateCounter);
-}
-requestAnimationFrame(updateCounter);
-const particleInterval = setInterval(() => {
-if (!overlay.classList.contains('active')) {
-clearInterval(particleInterval);
-return;
-}
-createBingoParticle();
-}, 100);
-setTimeout(() => {
-overlay.classList.remove('active');
-clearInterval(particleInterval);
-}, 6000);
-}
-function createBingoParticle() {
-const p = document.createElement('div');
-const CORES = ['p-gold', 'p-emerald', 'p-blue'];
-const cor = CORES[Math.floor(Math.random() * CORES.length)];
-p.className = `particle ${cor}`;
-p.style.left = Math.random() * 100 + 'vw';
-const duration = Math.random() * 2 + 2;
-p.style.animation = `fall ${duration}s linear forwards`;
-document.body.appendChild(p);
-setTimeout(() => p.remove(), duration * 1000);
-}
-// Jackpot
-function showJackpotVictory(amount, name, ballsCount) {
-const overlay = document.getElementById('jackpot-overlay');
-const prizeEl = document.getElementById('jackpot-prize-amount');
-const winnerEl = document.getElementById('jackpot-winner-name');
-const ballsEl = document.getElementById('jackpot-balls-info');
-winnerEl.innerText = name;
-ballsEl.innerText = `✨ BINGO EM ${ballsCount} BOLAS ✨`;
-overlay.classList.add('active');
-let current = 0;
-const duration = 2500;
-const startTime = performance.now();
-function updateCounter(currentTime) {
-const elapsed = currentTime - startTime;
-const progress = Math.min(elapsed / duration, 1);
-current = Math.floor(progress * amount);
-prizeEl.innerText = current.toLocaleString('pt-BR', {
-style: 'currency',
-currency: 'BRL',
-maximumFractionDigits: 0
-});
-if (progress < 1) requestAnimationFrame(updateCounter);
-}
-requestAnimationFrame(updateCounter);
-const coinInterval = setInterval(() => {
-if (!overlay.classList.contains('active')) {
-clearInterval(coinInterval);
-return;
-}
-createCoin();
-}, 100);
-setTimeout(() => {
-overlay.classList.remove('active');
-clearInterval(coinInterval);
-}, 7000);
-}
-function createCoin() {
-const coin = document.createElement('div');
-const isFront = Math.random() > 0.4;
-coin.className = isFront ? 'coin front-coin' : 'coin back-coin';
-coin.innerText = '$';
-coin.style.left = Math.random() * 100 + 'vw';
-const duration = Math.random() * 3 + 2;
-coin.style.animation = `coinFall ${duration}s linear forwards`;
-const size = Math.random() * 20 + 25;
-coin.style.width = size + 'px';
-coin.style.height = size + 'px';
-document.body.appendChild(coin);
-setTimeout(() => coin.remove(), duration * 1000);
-}
 </script>
 </body>
 </html>
