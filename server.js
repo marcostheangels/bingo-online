@@ -186,6 +186,14 @@ function broadcastPlayerList(roomId) {
 
 function broadcastRanking(roomId) {
   const room = rooms[roomId];
+  // Garantir que todos os jogadores tenham chips atualizados
+  Object.keys(room.players).forEach(id => {
+    const p = room.players[id];
+    if (p.chips === undefined || p.chips === null) {
+      p.chips = 10000;
+    }
+  });
+
   const ranking = Object.values(room.players)
     .map(p => ({ name: p.name, chips: p.chips }))
     .sort((a, b) => b.chips - a.chips)
@@ -498,6 +506,7 @@ io.on('connection', (socket) => {
     broadcastPot('bingo90');
     broadcastRoomState('bingo90');
     broadcastPlayerList('bingo90');
+    broadcastRanking('bingo90'); // Forçar atualização do ranking
 
     drawNextNumber('bingo90', 0);
   });
@@ -624,7 +633,7 @@ function processWin(winType, room, winners) {
 
   broadcastRoomState('bingo90');
   broadcastPlayerList('bingo90');
-  broadcastRanking('bingo90');
+  broadcastRanking('bingo90'); // Forçar atualização do ranking
   broadcastPot('bingo90');
 }
 
@@ -737,7 +746,7 @@ function resetRoom(roomId) {
   io.to(roomId).emit('room-reset');
   broadcastRoomState(roomId);
   broadcastPlayerList(roomId);
-  broadcastRanking(roomId);
+  broadcastRanking(roomId); // Forçar atualização do ranking
   broadcastPot(roomId);
 }
 
