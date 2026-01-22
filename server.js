@@ -586,7 +586,7 @@ function processWin(winType, room, winners) {
     const player = room.players[w.playerName];
     if (player) {
       player.chips += prizePerWinner;
-      if (jackpotPerWinner > 0) player.chips += jackpotPerWinner; // só adiciona se válido
+      if (jackpotPerWinner > 0) player.chips += jackpotPerWinner;
       db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
     }
   });
@@ -601,39 +601,27 @@ function processWin(winType, room, winners) {
     room.gameStarted = false;
   }
 
-  // 🔊 Emitir evento de áudio para todos
+  // 🔊 Emitir som para todos
   io.to('bingo90').emit('play-sound', { type: winType });
 
-  winners.forEach(w => {
-    const player = room.players[w.playerName];
-    if (!player) return;
+  // ✅ ANIMAÇÕES PARA TODOS OS JOGADORES
+  const winnerData = {
+    winners: winners.map(w => ({ playerName: w.playerName, prize: prizePerWinner })),
+    winnerNames: winnerNames.join(', '),
+    jackpotWinners: jackpotPerWinner ? winners.map(w => ({ playerName: w.playerName, prize: jackpotPerWinner })) : null,
+    ballsUsed: ballsUsed
+  };
 
-    const targetSocketId = player.id;
-    if (winType === 'linha1') {
-      io.to(targetSocketId).emit('line1-victory', {
-        playerName: player.name,
-        prize: prizePerWinner
-      });
-    } else if (winType === 'linha2') {
-      io.to(targetSocketId).emit('line2-victory', {
-        playerName: player.name,
-        prize: prizePerWinner
-      });
-    } else if (winType === 'bingo') {
-      io.to(targetSocketId).emit('bingo-victory', {
-        playerName: player.name,
-        prize: prizePerWinner
-      });
-
-      if (ballsUsed <= 60) {
-        io.to(targetSocketId).emit('jackpot-victory', {
-          playerName: player.name,
-          prize: jackpotPerWinner,
-          ballsUsed: ballsUsed
-        });
-      }
+  if (winType === 'linha1') {
+    io.to('bingo90').emit('line1-victory-all', winnerData);
+  } else if (winType === 'linha2') {
+    io.to('bingo90').emit('line2-victory-all', winnerData);
+  } else if (winType === 'bingo') {
+    io.to('bingo90').emit('bingo-victory-all', winnerData);
+    if (ballsUsed <= 60) {
+      io.to('bingo90').emit('jackpot-victory-all', winnerData);
     }
-  });
+  }
 
   winners.forEach(w => {
     const player = room.players[w.playerName];
@@ -686,7 +674,7 @@ function drawNextNumber(roomId, index) {
   room.drawnNumbers.push(number);
   room.lastNumber = number;
 
-  // 🔊 Emitir som de sorteio para todos
+  // 🔊 Som de sorteio para todos
   io.to(roomId).emit('play-sound', { type: 'sorteio', number });
 
   io.to(roomId).emit('number-drawn', {
