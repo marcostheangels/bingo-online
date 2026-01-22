@@ -382,20 +382,20 @@ io.on('connection', (socket) => {
     db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
     saveDB(db);
 
+    // Bots só compram cartelas quando humanos compram — mesma quantidade exata
     for (const id in room.players) {
       const p = room.players[id];
       if (p.isBot && !room.gameStarted) {
-        const botRemaining = 10 - p.cards90.length;
-        const botFinalCount = Math.min(finalCount, botRemaining);
-        if (botFinalCount > 0) {
-          const botNewCards = [];
-          for (let i = 0; i < botFinalCount; i++) {
-            botNewCards.push(generateValidBingo90Card());
-          }
-          p.cards90 = p.cards90.concat(botNewCards);
-          p.chips -= botFinalCount * 100;
-          if (p.chips < 0) p.chips = 0;
+        // Resetar cartelas dos bots antes de comprar novas
+        p.cards90 = [];
+        // Comprar EXATAMENTE a mesma quantidade que o humano comprou
+        const botNewCards = [];
+        for (let i = 0; i < finalCount; i++) {
+          botNewCards.push(generateValidBingo90Card());
         }
+        p.cards90 = botNewCards;
+        p.chips -= finalCount * 100;
+        if (p.chips < 0) p.chips = 0;
       }
     }
 
@@ -571,7 +571,6 @@ function processWin(winType, room, winners) {
 
   if (winType === 'bingo') {
     // Não reinicia automaticamente — só quando o usuário clicar em "reiniciar"
-    // Aguarda o jogador manualmente clicar em restart
   }
 
   broadcastRoomState('bingo90');
