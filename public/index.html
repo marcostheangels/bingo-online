@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Bingo Multiplayer</title>
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js  "></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -460,6 +460,11 @@ body {
   cursor: pointer;
 }
 </style>
+
+<!-- ✅ Scripts adicionados aqui -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="script.js"></script>
+
 </head>
 <body>
 <div class="container">
@@ -723,7 +728,7 @@ let playerName = '';
 let currentStage = 'linha1';
 
 // ✅ Conexão
-const SOCKET_URL = 'https://bingo-online-production.up.railway.app';
+const SOCKET_URL = 'https://bingo-online-production.up.railway.app  ';
 socket = io(SOCKET_URL, {
   transports: ['websocket'],
   reconnection: true,
