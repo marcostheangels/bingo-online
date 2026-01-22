@@ -682,6 +682,12 @@ function drawNextNumber(roomId, index) {
           }
         });
         saveDB(db);
+        // Enviar animação de jackpot fullscreen
+        io.to('bingo90').emit('jackpot-animation', {
+          playerName: jackpotWinners.map(w => w.playerName).join(', '),
+          amount: jackpotPerWinner,
+          ballsUsed: ballsUsed
+        });
         io.to('bingo90').emit('chat-message', {
           sender: "Sistema",
           message: `🎁 JACKPOT! ${jackpotWinners.map(w => w.playerName).join(', ')} ganharam R$ ${jackpotPerWinner.toLocaleString('pt-BR')} cada por completar a cartela em ${ballsUsed} bolas!`,
