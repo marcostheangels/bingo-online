@@ -1,6 +1,4 @@
-// script.js — Bingo Master Pro Frontend (CORRIGIDO FINAL)
-
-// --- VARIÁVEIS GLOBAIS ---
+// script.js — Bingo Master Pro Frontend (CORRIGIDO E COMPLETO)
 let socket;
 let currentRoom = 'bingo90';
 let playerName = '';
@@ -8,9 +6,9 @@ let chips = 10000;
 let cards90 = [];
 let gameCompleted = false;
 let currentStage = 'linha1';
-let roomsDrawnNumbers = []; // Movido para escopo global para acesso em todas as funções
+let roomsDrawnNumbers = [];
 
-// --- IMPEDIR ZOOM NO MOBILE ---
+// Impedir zoom no mobile
 document.addEventListener('touchstart', function(event) {
   if (event.touches.length > 1) event.preventDefault();
 }, { passive: false });
@@ -22,41 +20,37 @@ document.addEventListener('touchend', function(event) {
   lastTouchEnd = now;
 }, false);
 
-// --- CONEXÃO E SOCKETS ---
+// Conectar ao servidor
 function connectSocket() {
   socket = io();
 
   socket.on('connect', () => {
     console.log('Conectado ao servidor');
-    joinRoom();
+    showLoginScreen();
   });
 
   socket.on('room-welcome', (data) => {
     gameCompleted = data.gameCompleted || false;
     currentStage = data.currentStage || 'linha1';
     
-    // Alternância de Telas (Login -> Jogo)
     const loginScreen = document.getElementById('login-screen');
     const gameArea = document.getElementById('game-area');
     if (loginScreen) loginScreen.style.display = 'none';
     if (gameArea) gameArea.style.display = 'block';
 
     const roomTitle = document.getElementById('room-title');
-    if (roomTitle) roomTitle.textContent = `Sala: ${data.roomName || 'Bingo 90'}`;
+    if (roomTitle) roomTitle.textContent = `Sala: ${data.roomName || '?'}`;
 
     updateUI();
   });
 
   socket.on('room-state', (data) => {
-    const player = data.players?.[socket.id];
-    
-    // Atualiza info do jogador
+    const player = Object.values(data.players).find(p => p.name === playerName);
     const nameDisplay = document.getElementById('player-name-display');
     const chipsDisplay = document.getElementById('chips-display');
-    if (nameDisplay) nameDisplay.textContent = player?.name || playerName;
-    if (chipsDisplay) chipsDisplay.textContent = (player?.chips || chips).toLocaleString('pt-BR');
+    if (nameDisplay) nameDisplay.textContent = playerName || '?';
+    if (chipsDisplay) chipsDisplay.textContent = (player?.chips || 10000).toLocaleString('pt-BR');
 
-    // Atualiza estado do sorteio
     roomsDrawnNumbers = data.drawnNumbers || [];
     const ballsCount = document.getElementById('balls-count');
     const lastNumberEl = document.getElementById('last-number');
@@ -66,32 +60,18 @@ function connectSocket() {
     currentStage = data.currentStage || 'linha1';
     gameCompleted = data.gameCompleted || false;
 
-    // Persistência e Renderização
-    if (player) {
-        chips = player.chips; // Sincroniza chips locais
-        saveGameState(player.name, player.chips, player.cards90);
-    }
-    
-    // Re-renderiza histórico e cartelas para garantir marcações corretas
-    renderDrawnNumbers(roomsDrawnNumbers);
-    
-    // Se tiver cartelas salvas e não desenhadas, desenha agora
-    if (cards90.length > 0) {
-        renderCards90(); 
-    }
-    
+    if (player) saveGameState(player.name, player.chips, player.cards90);
     updateUI();
   });
 
   socket.on('player-list', (data) => {
-    const withoutList = document.querySelector('#without-chips-list ul');
-    const withList = document.querySelector('#with-chips-list ul');
+    const withoutList = document.getElementById('without-chips-list')?.querySelector('ul');
+    const withList = document.getElementById('with-chips-list')?.querySelector('ul');
     const noChipsCount = document.getElementById('no-chips-count');
     const withChipsCount = document.getElementById('with-chips-count');
 
     if (withoutList) withoutList.innerHTML = '';
     if (withList) withList.innerHTML = '';
-    
     if (noChipsCount) noChipsCount.textContent = data.withoutChips?.length || 0;
     if (withChipsCount) withChipsCount.textContent = data.withChips?.length || 0;
 
@@ -138,15 +118,11 @@ function connectSocket() {
   });
 
   socket.on('number-drawn', (data) => {
-    // Atualiza a variável global imediatamente
-    roomsDrawnNumbers = data.drawnNumbers; 
-    
     const lastNumberEl = document.getElementById('last-number');
     const ballsCount = document.getElementById('balls-count');
     if (lastNumberEl) lastNumberEl.textContent = data.number;
-    if (ballsCount) ballsCount.textContent = roomsDrawnNumbers.length;
-    
-    renderDrawnNumbers(roomsDrawnNumbers);
+    if (ballsCount) ballsCount.textContent = data.drawnNumbers.length;
+    renderDrawnNumbers(data.drawnNumbers);
     highlightNumberOnCards(data.number);
   });
 
@@ -156,7 +132,6 @@ function connectSocket() {
 
   socket.on('cards-received', (data) => {
     if (data.cardType === '90' && Array.isArray(data.cards)) {
-      cards90 = []; // Limpa para evitar duplicatas ao reconectar
       data.cards.forEach(cardObj => {
         cards90.push(cardObj.card);
       });
@@ -167,42 +142,61 @@ function connectSocket() {
 
   socket.on('room-reset', () => {
     cards90 = [];
-    roomsDrawnNumbers = []; // Limpa histórico local
     renderCards90();
     gameCompleted = false;
     currentStage = 'linha1';
-    
-    // Limpa o histórico visual
-    const hist = document.getElementById('history');
-    if (hist) hist.innerHTML = '';
-    
     updateUI();
   });
 
-  socket.on('error', (msg) => alert(msg));
-  socket.on('message', (msg) => alert(msg));
+  socket.on('error', (msg) => {
+    alert(msg);
+  });
+
+  socket.on('message', (msg) => {
+    alert(msg);
+  });
 
   // === EVENTOS DE VITÓRIA ===
-  socket.on('line1-victory', (data) => showLine1Victory(data.prize, data.playerName));
-  socket.on('line2-victory', (data) => showLine2Victory(data.prize, data.playerName));
-  socket.on('bingo-victory', (data) => showBingoVictory(data.prize, data.playerName));
-  socket.on('jackpot-victory', (data) => showJackpotVictory(data.prize, data.playerName, data.ballsUsed));
+  socket.on('line1-victory', (data) => {
+    showLine1Victory(data.prize, data.playerName);
+  });
+
+  socket.on('line2-victory', (data) => {
+    showLine2Victory(data.prize, data.playerName);
+  });
+
+  socket.on('bingo-victory', (data) => {
+    showBingoVictory(data.prize, data.playerName);
+  });
+
+  socket.on('jackpot-victory', (data) => {
+    showJackpotVictory(data.prize, data.playerName, data.ballsUsed);
+  });
 }
 
-// --- FUNÇÕES DE LÓGICA DO JOGO ---
+// Mostrar tela de login
+function showLoginScreen() {
+  const loginScreen = document.getElementById('login-screen');
+  const gameArea = document.getElementById('game-area');
+  if (loginScreen) loginScreen.style.display = 'block';
+  if (gameArea) gameArea.style.display = 'none';
+}
 
-function joinRoom() {
-  // Lógica de Login/Registro simplificada via LocalStorage
-  playerName = localStorage.getItem('playerName');
-  
-  if (!playerName) {
-     playerName = prompt("Digite seu nome:");
-     if (!playerName) playerName = "Visitante_" + Math.floor(Math.random() * 1000);
+// Entrar na sala
+function joinRoom(roomType) {
+  let nameInput = document.getElementById('player-name');
+  let name = nameInput?.value.trim() || '';
+
+  name = name.replace(/[^a-zA-ZÀ-ÿ\s]/g, '').substring(0, 15).trim();
+  if (!name || name.length < 2) {
+    alert('Nome inválido. Use 2 a 15 letras.');
+    return;
   }
+
+  playerName = name;
   localStorage.setItem('playerName', playerName);
 
-  const savedData = JSON.parse(localStorage.getItem(`bingo_player_${playerName}`)) || {};
-  const savedChips = savedData.chips || 10000;
+  const savedChips = parseInt(localStorage.getItem('chips')) || 10000;
   const savedCards90 = JSON.parse(localStorage.getItem('cards90')) || [];
 
   chips = savedChips;
@@ -210,17 +204,17 @@ function joinRoom() {
 
   socket.emit('join-room', {
     playerName,
-    roomType: 'bingo90',
+    roomType,
     savedChips,
     savedCards90
   });
 }
 
+// Renderizar cartelas
 function renderCards90() {
   const container = document.getElementById('cards-container');
   if (!container) return;
   container.innerHTML = '';
-  
   cards90.forEach((card, idx) => {
     const cardEl = document.createElement('div');
     cardEl.className = 'card-wrapper';
@@ -230,7 +224,6 @@ function renderCards90() {
         if (num === null) {
           html += '<div class="cell empty"></div>';
         } else {
-          // Verifica se o número está no array global de sorteados
           const marked = roomsDrawnNumbers.includes(num) ? ' marked' : '';
           html += `<div class="cell${marked}" data-num="${num}">${num}</div>`;
         }
@@ -242,34 +235,51 @@ function renderCards90() {
   });
 }
 
+// Comprar cartelas
 function buyCards(count) {
-  if (gameCompleted) {
-    alert('O jogo acabou. Aguarde o reinício!');
-    return;
-  }
-  socket.emit('buy-cards', { count, cardType: '90' });
-}
-
-function startDraw() {
   if (gameCompleted) {
     alert('Reinicie o jogo primeiro!');
     return;
   }
-  socket.emit('start-draw');
+  if (!playerName) {
+    alert('Você não está logado!');
+    return;
+  }
+  socket.emit('buy-cards', { count, cardType: '90', playerName });
 }
 
+// Iniciar sorteio
+function startDraw() {
+  if (gameCompleted) return;
+  if (!playerName) {
+    alert('Você não está logado!');
+    return;
+  }
+  socket.emit('start-draw', { playerName });
+}
+
+// Reiniciar jogo
 function restartGame() {
   if (!gameCompleted) {
     alert('Só é possível reiniciar após o Bingo.');
     return;
   }
-  socket.emit('restart-game');
+  if (!playerName) return;
+  socket.emit('restart-game', { playerName });
 }
 
+// Reivindicar vitória
+function claimWin(winType) {
+  if (gameCompleted) return;
+  if (!playerName) return;
+  socket.emit('claim-win', { winType, playerName });
+}
+
+// Enviar mensagem no chat
 function sendChatMessage() {
   const input = document.getElementById('chat-input');
   const message = input?.value.trim();
-  if (!message) return;
+  if (!message || !playerName) return;
   socket.emit('chat-message', {
     message,
     sender: playerName,
@@ -278,12 +288,12 @@ function sendChatMessage() {
   if (input) input.value = '';
 }
 
+// Renderizar números sorteados
 function renderDrawnNumbers(numbers) {
   const hist = document.getElementById('history');
   if (!hist) return;
   hist.innerHTML = '';
-  // Mostra as últimas 15 bolas para não poluir a UI
-  [...numbers].reverse().slice(0, 20).forEach(num => {
+  [...numbers].reverse().forEach(num => {
     const span = document.createElement('span');
     span.className = 'ball';
     span.textContent = num;
@@ -291,41 +301,39 @@ function renderDrawnNumbers(numbers) {
   });
 }
 
+// Destacar número nas cartelas
 function highlightNumberOnCards(number) {
-  // Busca células com este número e adiciona a classe visual
   document.querySelectorAll(`.cell[data-num="${number}"]`).forEach(cell => {
     cell.classList.add('marked');
   });
 }
 
+// Adicionar mensagem no chat
 function appendChatMessage(msg) {
   const chatBox = document.getElementById('chat-messages');
   if (!chatBox) return;
   const div = document.createElement('p');
   div.innerHTML = `<strong>${msg.sender}:</strong> ${msg.message}`;
-  
   if (msg.sender === "Sistema") div.className = 'system';
   else if (msg.isBot) div.className = 'bot';
   else div.className = 'human';
-  
   chatBox.appendChild(div);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+// Atualizar UI (botões, etc.)
 function updateUI() {
   const controls = document.getElementById('main-controls');
   if (controls) {
     controls.className = `controls stage-${currentStage}`;
   }
-  
-  // CORREÇÃO: Usando os IDs corretos definidos no HTML (btn-start, btn-restart)
-  const restartBtn = document.getElementById('btn-restart');
-  const startBtn = document.getElementById('btn-start');
-  
+  const restartBtn = document.getElementById('restart-btn');
+  const startBtn = document.getElementById('start-btn');
   if (restartBtn) restartBtn.disabled = !gameCompleted;
   if (startBtn) startBtn.disabled = gameCompleted;
 }
 
+// Salvar estado
 function saveGameState(name, chips, cards90) {
   try {
     localStorage.setItem(`bingo_player_${name}`, JSON.stringify({ chips, cards90 }));
@@ -334,7 +342,7 @@ function saveGameState(name, chips, cards90) {
   }
 }
 
-// === SISTEMA DE ANIMAÇÕES E OVERLAYS ===
+// === ANIMAÇÕES DE VITÓRIA ===
 
 let victoryActive = false;
 
@@ -342,13 +350,11 @@ function createOverlay(id) {
   const el = document.createElement('div');
   el.id = id;
   el.style.cssText = `
-    position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; justify-content: center;
-    align-items: center; z-index: 2000; opacity: 0; transition: opacity 0.5s ease;
-    backdrop-filter: blur(5px);
+    position: fixed; inset: 0; background: black; display: flex; justify-content: center;
+    align-items: center; z-index: 1000; opacity: 0;
   `;
-  document.body.appendChild(el);
-  // Pequeno delay para permitir transição CSS
   setTimeout(() => el.style.opacity = '1', 10);
+  document.body.appendChild(el);
   return el;
 }
 
@@ -364,17 +370,11 @@ function animateCounter(el, target, onComplete) {
   let current = 0;
   const duration = 2000;
   const startTime = performance.now();
-  
   function update(currentTime) {
     const elapsed = currentTime - startTime;
     const progress = Math.min(elapsed / duration, 1);
-    
-    // Easing simples
-    const ease = 1 - Math.pow(1 - progress, 3);
-    
-    current = Math.floor(ease * target);
+    current = Math.floor(progress * target);
     el.innerText = current.toLocaleString('pt-BR');
-    
     if (progress < 1) {
       requestAnimationFrame(update);
     } else if (onComplete) {
@@ -388,19 +388,15 @@ function animateCurrencyCounter(el, target, onComplete) {
   let current = 0;
   const duration = 2000;
   const startTime = performance.now();
-  
   function update(currentTime) {
     const elapsed = currentTime - startTime;
     const progress = Math.min(elapsed / duration, 1);
-    const ease = 1 - Math.pow(1 - progress, 3);
-    
-    current = Math.floor(ease * target);
+    current = Math.floor(progress * target);
     el.innerText = current.toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL',
       maximumFractionDigits: 0
     });
-    
     if (progress < 1) {
       requestAnimationFrame(update);
     } else if (onComplete) {
@@ -410,26 +406,6 @@ function animateCurrencyCounter(el, target, onComplete) {
   requestAnimationFrame(update);
 }
 
-function createParticle(className, colors, sizeRange = [30, 45]) {
-  const p = document.createElement('div');
-  p.className = className + ' ' + colors[Math.floor(Math.random() * colors.length)];
-  p.innerText = 'B'; // Texto genérico ou pode ser removido no CSS
-  p.style.left = Math.random() * 95 + 'vw';
-  
-  const size = Math.random() * (sizeRange[1] - sizeRange[0]) + sizeRange[0];
-  p.style.width = size + 'px';
-  p.style.height = size + 'px';
-  
-  // Animação de queda/voo definida no CSS injetado
-  p.style.animationName = Math.random() > 0.5 ? 'chipFall' : 'chipFly';
-  p.style.animationDuration = (Math.random() * 2 + 1) + 's';
-  
-  document.body.appendChild(p);
-  setTimeout(() => { if(p.parentNode) p.remove(); }, 3000);
-  return p;
-}
-
-// === VITÓRIA LINHA 1 ===
 function showLine1Victory(amount, name) {
   if (victoryActive) return;
   victoryActive = true;
@@ -443,6 +419,7 @@ function showLine1Victory(amount, name) {
         <div id="chip-counter" style="font-size:clamp(2.5rem,12vw,3.8rem);font-weight:900;color:#fff;text-shadow:0 0 20px #00d2ff;">0</div>
         <p style="font-size:0.9rem;color:#00d2ff;letter-spacing:4px;font-weight:bold;">CHIPS</p>
       </div>
+      <p style="font-size:0.7rem;color:#555;letter-spacing:2px;">BINGO MASTER PRO</p>
     </div>
   `;
 
@@ -451,29 +428,45 @@ function showLine1Victory(amount, name) {
     setTimeout(() => {
       cleanupOverlay(overlay);
       victoryActive = false;
-    }, 2000);
+    }, 3000);
   });
 
   const interval = setInterval(() => {
-    createParticle('chip-particle', ['c-blue', 'c-red', 'c-green', 'c-purple'], [30, 40]);
+    const p = document.createElement('div');
+    p.className = 'chip-particle ' + ['c-blue','c-red','c-green','c-purple'][Math.floor(Math.random()*4)];
+    p.innerText = 'B';
+    p.style.left = Math.random() * 100 + 'vw';
+    const size = Math.random() * 10 + 30;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    p.style.cssText += `
+      position: absolute; border-radius: 50%; border: 4px dashed rgba(255,255,255,0.7);
+      display: flex; justify-content: center; align-items: center; font-weight: bold;
+      color: white; font-size: 12px; pointer-events: none; z-index: 105;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+      animation: chipFly ${Math.random() * 1.5 + 1.5}s ease-in forwards;
+    `;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 3000);
   }, 80);
   setTimeout(() => clearInterval(interval), 2500);
 }
 
-// === VITÓRIA LINHA 2 ===
 function showLine2Victory(amount, name) {
   if (victoryActive) return;
   victoryActive = true;
 
   const overlay = createOverlay('victory-stage');
   overlay.innerHTML = `
-    <div style="position:absolute;width:200%;height:200%;background:conic-gradient(from 0deg, transparent 0%, rgba(0,255,135,0.08) 15%, transparent 30%);animation:rotate 25s linear infinite;z-index:1;left:-50%;top:-50%;"></div>
+    <div style="position:absolute;width:300%;height:300%;background:conic-gradient(from 0deg, transparent 0%, rgba(0,255,135,0.08) 15%, transparent 30%);animation:rotate 25s linear infinite;z-index:1;"></div>
     <div class="line-frame" style="position:relative;z-index:20;width:88%;max-width:400px;background:rgba(0,0,0,0.9);backdrop-filter:blur(25px);border:3px solid #00ff87;border-radius:40px;padding:35px 15px;text-align:center;box-shadow:0 0 50px rgba(0,255,135,0.25);">
       <h1 style="font-family:'Goldman',cursive;font-size:clamp(2rem,9vw,2.8rem);background:linear-gradient(to bottom,#00ff87,#00f2fe);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px;">LINHA 2!</h1>
+      <p style="font-size:0.7rem;color:#888;letter-spacing:3px;margin-bottom:5px;">VENCEDOR</p>
       <span style="font-size:clamp(1.2rem,5vw,1.7rem);color:#fff;font-weight:900;margin-bottom:20px;display:block;">${name}</span>
       <div style="background:rgba(0,255,135,0.05);border:1px solid rgba(0,255,135,0.3);border-radius:20px;padding:22px 10px;width:90%;margin:0 auto;">
         <span id="chips-text" style="font-size:clamp(2.2rem,11vw,4rem);font-weight:900;color:#fff;text-shadow:0 0 20px #00ff87;">0</span>
       </div>
+      <p style="margin-top:15px;color:#00ff87;font-weight:bold;letter-spacing:3px;font-size:0.8rem;">CHIPS GANHOS</p>
     </div>
   `;
 
@@ -482,16 +475,30 @@ function showLine2Victory(amount, name) {
     setTimeout(() => {
       cleanupOverlay(overlay);
       victoryActive = false;
-    }, 2000);
+    }, 3000);
   });
 
   const interval = setInterval(() => {
-    createParticle('chip', ['c-emerald', 'c-turquoise', 'c-gold'], [30, 45]);
+    const p = document.createElement('div');
+    p.className = 'chip ' + ['c-emerald','c-turquoise','c-gold'][Math.floor(Math.random()*3)];
+    p.innerText = 'B';
+    p.style.left = Math.random() * 100 + 'vw';
+    const size = Math.random() * 15 + 30;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    p.style.cssText += `
+      position: absolute; border-radius: 50%; border: 3px dashed rgba(255,255,255,0.7);
+      display: flex; justify-content: center; align-items: center; font-weight: bold;
+      color: ${p.classList.contains('c-gold') ? '#000' : '#fff'};
+      font-size: 14px; z-index: 5; pointer-events: none;
+      animation: chipFall ${Math.random() * 2 + 2}s linear forwards;
+    `;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 3000);
   }, 120);
   setTimeout(() => clearInterval(interval), 2500);
 }
 
-// === VITÓRIA BINGO ===
 function showBingoVictory(amount, name) {
   if (victoryActive) return;
   victoryActive = true;
@@ -500,8 +507,9 @@ function showBingoVictory(amount, name) {
   overlay.innerHTML = `
     <div class="bingo-card" style="position:relative;z-index:110;width:90%;max-width:420px;background:rgba(0,0,0,0.95);backdrop-filter:blur(15px);border:4px solid gold;border-radius:40px;padding:40px 10px;text-align:center;box-shadow:0 0 50px rgba(255,215,0,0.3);">
       <h1 style="font-family:'Goldman',cursive;font-size:clamp(2.5rem,12vw,4rem);color:gold;text-shadow:0 0 20px rgba(255,215,0,0.5);margin-bottom:10px;">BINGO!</h1>
+      <p style="font-size:0.7rem;color:#888;letter-spacing:3px;">VENCEDOR</p>
       <span style="font-size:1.5rem;color:#fff;font-weight:900;margin-bottom:25px;display:block;">${name}</span>
-      <div style="background:rgba(255,215,0,0.05);border:2px solid rgba(255,215,0,0.3);border-radius:25px;padding:25px 5px;width:95%;display:flex;justify-content:center;align-items:center;min-height:100px;margin:0 auto;">
+      <div style="background:rgba(255,215,0,0.05);border:2px solid rgba(255,215,0,0.3);border-radius:25px;padding:25px 5px;width:95%;display:flex;justify-content:center;align-items:center;min-height:100px;">
         <div id="counter" style="font-size:clamp(1.8rem,10vw,3.8rem);font-weight:900;color:#fff;text-shadow:0 0 20px gold;white-space:nowrap;">R$ 0</div>
       </div>
       <p style="margin-top:25px;font-size:0.9rem;color:gold;letter-spacing:5px;font-weight:bold;">✨ CARTELA CHEIA ✨</p>
@@ -517,23 +525,32 @@ function showBingoVictory(amount, name) {
   });
 
   const interval = setInterval(() => {
-    createParticle('particle', ['p-gold', 'p-emerald', 'p-blue'], [30, 40]);
+    const p = document.createElement('div');
+    p.className = 'particle ' + ['p-gold','p-emerald','p-blue'][Math.floor(Math.random()*3)];
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.cssText += `
+      position: absolute; width: 35px; height: 35px; border-radius: 50%;
+      border: 3px dashed rgba(255,255,255,0.8); z-index: 5; pointer-events: none;
+      animation: fall ${Math.random() * 2 + 2}s linear forwards;
+    `;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 3000);
   }, 100);
   setTimeout(() => clearInterval(interval), 2500);
 }
 
-// === VITÓRIA JACKPOT ===
 function showJackpotVictory(amount, name, ballsUsed) {
   if (victoryActive) return;
   victoryActive = true;
 
   const overlay = createOverlay('jackpot-container');
   overlay.innerHTML = `
-    <div style="position:absolute;width:200%;height:200%;background:conic-gradient(from 0deg, transparent 0%, rgba(255,215,0,0.1) 15%, transparent 30%);animation:rotate 25s linear infinite;z-index:1;left:-50%;top:-50%;"></div>
+    <div style="position:absolute;width:300%;height:300%;background:conic-gradient(from 0deg, transparent 0%, rgba(255,215,0,0.1) 15%, transparent 30%);animation:rotate 25s linear infinite;z-index:1;"></div>
     <div class="winner-frame" style="position:relative;z-index:20;width:88%;max-width:400px;background:rgba(0,0,0,0.92);backdrop-filter:blur(20px);border:3px solid gold;border-radius:40px;padding:35px 15px;text-align:center;box-shadow:0 0 60px rgba(0,0,0,1);">
       <h1 style="font-family:'Goldman',cursive;font-size:clamp(2.2rem,10vw,3rem);background:linear-gradient(180deg,#FFD700,#B8860B);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px;">JACKPOT</h1>
+      <p style="font-size:0.7rem;color:#888;letter-spacing:3px;">VENCEDOR</p>
       <span style="font-size:clamp(1.2rem,5vw,1.6rem);color:#fff;font-weight:900;margin-bottom:15px;display:block;">${name}</span>
-      <div style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:20px;padding:22px 10px;width:92%;display:flex;justify-content:center;align-items:center;margin:0 auto;">
+      <div style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:20px;padding:22px 10px;width:92%;display:flex;justify-content:center;align-items:center;">
         <span id="prize-text" style="font-size:clamp(1.8rem,9vw,3.8rem);font-weight:900;color:#fff;text-shadow:0 0 20px rgba(255,215,0,0.8);white-space:nowrap;">R$ 0</span>
       </div>
       <p style="margin-top:20px;font-weight:700;color:gold;font-size:0.85rem;">✨ BINGO EM ${ballsUsed} BOLAS ✨</p>
@@ -545,14 +562,15 @@ function showJackpotVictory(amount, name, ballsUsed) {
     setTimeout(() => {
       cleanupOverlay(overlay);
       victoryActive = false;
-    }, 4000);
+    }, 3000);
   });
 
   const interval = setInterval(() => {
     const coin = document.createElement('div');
-    coin.className = Math.random() > 0.4 ? 'coin front-coin' : 'coin back-coin';
+    const isFront = Math.random() > 0.4;
+    coin.className = isFront ? 'coin front-coin' : 'coin back-coin';
     coin.innerText = '$';
-    coin.style.left = Math.random() * 95 + 'vw';
+    coin.style.left = Math.random() * 100 + 'vw';
     const size = Math.random() * 20 + 25;
     coin.style.width = size + 'px';
     coin.style.height = size + 'px';
@@ -562,83 +580,58 @@ function showJackpotVictory(amount, name, ballsUsed) {
       color: #8b6508; font-size: 14px; pointer-events: none;
       box-shadow: inset 0 0 8px rgba(0,0,0,0.4);
       animation: coinFall ${Math.random() * 3 + 2}s linear forwards;
-      z-index: ${coin.classList.contains('front-coin') ? 30 : 5};
+      z-index: ${isFront ? 30 : 5};
     `;
     document.body.appendChild(coin);
     setTimeout(() => coin.remove(), 3000);
   }, 100);
-  setTimeout(() => clearInterval(interval), 3000);
+  setTimeout(() => clearInterval(interval), 2500);
 }
 
-// === CSS DINÂMICO INJETADO ===
+// Estilos dinâmicos
 (function injectStyles() {
   const style = document.createElement('style');
   style.textContent = `
     @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    @keyframes chipFly { 
-      0% { transform: translateY(110vh) rotate(0deg); opacity: 1; } 
-      100% { transform: translateY(-20vh) rotate(720deg); opacity: 0; } 
-    }
-    @keyframes chipFall { 
-      0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; } 
-      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; } 
-    }
+    @keyframes chipFly { 0% { transform: translateY(110vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(-20vh) rotate(720deg); opacity: 0; } }
+    @keyframes chipFall { 0% { transform: translateY(-10vh) rotate(0deg); } 100% { transform: translateY(110vh) rotate(720deg); } }
+    @keyframes fall { 0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
     @keyframes coinFall {
       0% { transform: translateY(-15vh) rotate(0deg) translateX(0); }
       25% { transform: translateY(15vh) rotate(180deg) translateX(15px); }
       50% { transform: translateY(45vh) rotate(360deg) translateX(-15px); }
       100% { transform: translateY(115vh) rotate(720deg) translateX(0); }
     }
-    .chip-particle, .chip, .particle { position: fixed; border-radius: 50%; z-index: 2005; display:flex; justify-content:center; align-items:center; color:rgba(255,255,255,0.5); font-size:10px; pointer-events:none; }
-    
-    /* Cores das Partículas */
     .chip-particle.c-blue { background: #00d2ff; box-shadow: 0 0 15px #00d2ff; }
     .chip-particle.c-red { background: #ff4b2b; box-shadow: 0 0 15px #ff4b2b; }
     .chip-particle.c-green { background: #00ff87; box-shadow: 0 0 15px #00ff87; }
     .chip-particle.c-purple { background: #a800ff; box-shadow: 0 0 15px #a800ff; }
-    
     .chip.c-emerald { background: #00ff87; box-shadow: 0 0 15px #00ff87; }
     .chip.c-turquoise { background: #00f2fe; box-shadow: 0 0 15px #00f2fe; }
     .chip.c-gold { background: #ffeb3b; color: #000; border-color: #000; box-shadow: 0 0 15px #ffeb3b; }
-    
     .particle.p-gold { background: #FFD700; box-shadow: 0 0 15px #FFD700; }
     .particle.p-emerald { background: #00ff87; box-shadow: 0 0 15px #00ff87; }
     .particle.p-blue { background: #00d2ff; box-shadow: 0 0 15px #00d2ff; }
-
-    /* Estilos de Jogo */
-    .cell.marked {
-       background: #ffeb3b !important;
-       color: #000 !important;
-       font-weight: 900 !important;
-       transform: scale(1.1);
-       box-shadow: 0 0 10px #ffeb3b;
-       border-color: #ffd700 !important;
-    }
-    
-    /* Chat */
-    .system { color: #ff9800; font-style: italic; font-size: 0.8rem; }
-    .bot { color: #4caf50; font-weight: bold; }
-    .human { color: #fff; }
-    #chat-messages p { margin: 4px 0; line-height: 1.4; }
   `;
   document.head.appendChild(style);
 })();
 
-// --- INICIALIZAÇÃO ---
+// Inicializar
 document.addEventListener('DOMContentLoaded', () => {
   connectSocket();
 
-  // Mapeamento dos Botões (Garante que os IDs batem com o HTML)
-  document.getElementById('btn-buy-1')?.addEventListener('click', () => buyCards(1));
-  document.getElementById('btn-buy-5')?.addEventListener('click', () => buyCards(5));
-  document.getElementById('btn-buy-10')?.addEventListener('click', () => buyCards(10));
-  
-  // Controles de Jogo
-  document.getElementById('btn-start')?.addEventListener('click', startDraw);
-  document.getElementById('btn-restart')?.addEventListener('click', restartGame);
-  
-  // Chat
-  document.getElementById('btn-chat-send')?.addEventListener('click', sendChatMessage);
+  // Botões
+  document.getElementById('buy-btn')?.addEventListener('click', () => {
+    const count = parseInt(document.getElementById('card-count')?.value) || 1;
+    buyCards(count);
+  });
+
+  document.getElementById('start-btn')?.addEventListener('click', startDraw);
+  document.getElementById('line1-btn')?.addEventListener('click', () => claimWin('linha1'));
+  document.getElementById('line2-btn')?.addEventListener('click', () => claimWin('linha2'));
+  document.getElementById('bingo-btn')?.addEventListener('click', () => claimWin('bingo'));
+  document.getElementById('restart-btn')?.addEventListener('click', restartGame);
+  document.getElementById('chat-send')?.addEventListener('click', sendChatMessage);
   document.getElementById('chat-input')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendChatMessage();
   });
