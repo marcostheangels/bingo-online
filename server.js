@@ -1,4 +1,4 @@
-// server.js — Bingo Multiplayer com limite de 10 cartelas, IA, moderação e lógica justa
+// server.js — Bingo Multiplayer com todas as regras corrigidas
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -309,7 +309,7 @@ io.on('connection', (socket) => {
       cards90 = savedCards90 || [];
     }
 
-    // Garantir limite de 10 cartelas ao carregar
+    // Garantir que não exceda 10 cartelas ao carregar
     if (cards90.length > 10) cards90 = cards90.slice(0, 10);
 
     room.players[socket.id] = {
@@ -363,7 +363,7 @@ io.on('connection', (socket) => {
     const player = room.players[socket.id];
     if (!player || room.gameStarted) return;
 
-    // ✅ LIMITE DE 10 CARTELAS
+    // ✅ LIMITE DE 10 CARTELAS — verifica antes de comprar
     if (player.cards90.length >= 10) {
       socket.emit('error', 'Você já atingiu o limite de 10 cartelas!');
       return;
@@ -621,6 +621,32 @@ function drawNextNumber(roomId, index) {
   } else if (room.currentStage === 'bingo') {
     const winners = getWinningPlayers(room, 'bingo');
     if (winners.length > 0) {
+      // ✅ JACKPOT SÓ SE FOR ATÉ 60 BOLAS
+      const ballsUsed = room.drawnNumbers.length;
+      const jackpotWinners = [];
+      for (const w of winners) {
+        if (ballsUsed <= 60) {
+          jackpotWinners.push(w);
+        }
+      }
+      if (jackpotWinners.length > 0) {
+        // Processar jackpot apenas se for até 60 bolas
+        const jackpotPrize = Math.floor(room.jackpot / jackpotWinners.length);
+        jackpotWinners.forEach(w => {
+          const player = room.players[w.id];
+          if (player) {
+            player.chips += jackpotPrize;
+            db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
+          }
+        });
+        saveDB(db);
+        // Emitir mensagem especial de jackpot
+        io.to('bingo90').emit('chat-message', {
+          sender: "Sistema",
+          message: `🎁 JACKPOT! ${jackpotWinners.map(w => w.playerName).join(', ')} ganharam R$ ${jackpotPrize.toLocaleString('pt-BR')} cada por completar a cartela em ${ballsUsed} bolas!`,
+          isBot: false
+        });
+      }
       processWin('bingo', room, winners);
       shouldContinue = false;
     }
