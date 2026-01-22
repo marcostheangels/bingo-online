@@ -285,134 +285,6 @@ display: none;
 text-align: center;
 box-shadow: 0 4px 12px rgba(0,0,0,0.4);
 }
-#jackpot-fullscreen {
-position: fixed;
-top: 0;
-left: 0;
-width: 100%;
-height: 100%;
-background: linear-gradient(135deg, #8B0000, #FF4500, #FFD700);
-display: none;
-justify-content: center;
-align-items: center;
-flex-direction: column;
-color: white;
-font-family: 'Arial Black', 'Impact', sans-serif;
-z-index: 2001;
-text-align: center;
-padding: 20px;
-box-sizing: border-box;
-}
-#jackpot-fullscreen .jackpot-title {
-font-size: 4.5em;
-margin: 0;
-text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
-animation: glow 1.5s infinite alternate;
-}
-#jackpot-fullscreen .jackpot-player {
-font-size: 2.8em;
-margin: 15px 0;
-text-shadow: 0 0 10px white;
-}
-#jackpot-fullscreen .jackpot-amount {
-font-size: 3.2em;
-margin: 10px 0;
-color: #ffd700;
-text-shadow: 0 0 15px gold;
-}
-#jackpot-fullscreen .jackpot-balls {
-font-size: 1.8em;
-margin-top: 20px;
-background: rgba(0,0,0,0.3);
-padding: 10px 20px;
-border-radius: 10px;
-}
-@keyframes glow {
-from { text-shadow: 0 0 10px rgba(255, 215, 0, 0.8); }
-to { text-shadow: 0 0 30px rgba(255, 215, 0, 1), 0 0 40px gold; }
-}
-@media (max-width: 768px) {
-.players-section { flex-direction: column; }
-#jackpot-fullscreen .jackpot-title { font-size: 3.5em; }
-#jackpot-fullscreen .jackpot-player { font-size: 2.2em; }
-#jackpot-fullscreen .jackpot-amount { font-size: 2.6em; }
-#jackpot-fullscreen .jackpot-balls { font-size: 1.5em; }
-}
-@media (max-width: 480px) {
-#jackpot-fullscreen .jackpot-title { font-size: 2.8em; }
-#jackpot-fullscreen .jackpot-player { font-size: 1.9em; }
-#jackpot-fullscreen .jackpot-amount { font-size: 2.2em; }
-#jackpot-fullscreen .jackpot-balls { font-size: 1.3em; padding: 8px 16px; }
-}
-@keyframes pulseGold {
-from { transform: scale(1); box-shadow: 0 0 25px gold; }
-to { transform: scale(1.03); box-shadow: 0 0 35px gold, 0 10px 40px rgba(255,215,0,0.8); }
-}
-@keyframes glowBorder {
-0% { box-shadow: 0 0 10px gold; }
-100% { box-shadow: 0 0 20px gold, 0 0 25px rgba(255,215,0,0.6); }
-}
-.confetti {
-position: absolute;
-width: 10px;
-height: 10px;
-opacity: 0.8;
-animation: fall linear forwards;
-}
-@keyframes fall {
-to {
-transform: translateY(100vh) rotate(360deg);
-opacity: 0;
-}
-}
-#win-message {
-position: fixed;
-top: 0; left: 0; right: 0; bottom: 0;
-background: radial-gradient(circle, #0d0d1a 0%, #000000 100%);
-display: none;
-justify-content: center;
-align-items: center;
-z-index: 1000;
-overflow: hidden;
-}
-.win-animation {
-position: relative;
-text-align: center;
-padding: 30px;
-max-width: 90%;
-z-index: 10;
-}
-.win-title {
-font-size: 3.5em;
-font-weight: bold;
-margin-bottom: 20px;
-text-shadow: 0 0 15px currentColor;
-animation: bounce 1s infinite alternate;
-}
-.win-player {
-font-size: 2.2em;
-margin-bottom: 15px;
-color: white;
-text-shadow: 0 0 10px rgba(255,255,255,0.7);
-}
-.win-prize {
-font-size: 1.8em;
-margin-bottom: 20px;
-color: gold;
-}
-.bingo-overlay {
-position: absolute;
-top: 0; left: 0; right: 0; bottom: 0;
-background: rgba(0,0,0,0.7);
-display: flex;
-justify-content: center;
-align-items: center;
-color: gold;
-font-size: 2em;
-font-weight: bold;
-border-radius: 14px;
-z-index: 10;
-}
 
 /* ✅ Estilo do Chat */
 #chat-container {
@@ -940,7 +812,6 @@ to { opacity: 1; transform: translateY(0); }
 </style>
 </div>
 <div id="admin-message"></div>
-<div id="jackpot-fullscreen"></div>
 <div id="admin-controls" style="display:none;margin:20px auto;max-width:500px;background:rgba(255,255,255,0.1);padding:15px;border-radius:8px;">
 <h3>🔧 Controles Administrativos</h3>
 <input type="text" id="admin-player-name" placeholder="Nome do Jogador" style="margin:5px;padding:8px;width:calc(33%-10px);">
@@ -1009,7 +880,6 @@ Cartelas:
 </div>
 <div class="cards-container" id="cards-container"></div>
 </div>
-<div id="win-message"><div id="win-content"></div></div>
 
 <!-- OVERLAYS DE ANIMAÇÃO -->
 <!-- Linha 1 -->
@@ -1523,69 +1393,25 @@ playSound('sorteio', data.number);
 speak(data.number.toString());
 });
 socket.on('player-won', (data) => {
-const winMsg = document.getElementById('win-message');
-const winContent = document.getElementById('win-content');
-let title, color;
 if (data.winners[0].winType === 'linha1') {
-title = '🎉 LINHA 1! 🎉';
-color = '#27ae60';
 playSound('linha1');
 speak(`Linha 1 ganha por ${data.winnerNames}!`);
 checkAchievements('linha1', 0);
 showLineVictory(data.totalPrize, data.winnerNames);
 } else if (data.winners[0].winType === 'linha2') {
-title = '🎊 LINHAS COMPLETAS! 🎊';
-color = '#8e44ad';
 playSound('linha2');
 speak(`Linhas completas por ${data.winnerNames}!`);
 checkAchievements('linha2', 0);
 showLine2Victory(data.totalPrize, data.winnerNames);
 } else if (data.winners[0].winType === 'bingo') {
-title = '🏆 BINGO! 🏆';
-color = 'gold';
 playSound('bingo');
 speak(`Bingo feito por ${data.winnerNames}!`);
 checkAchievements('bingo', 0, data.ballsCount);
 showBingoVictory(data.totalPrize, data.winnerNames);
 }
-let winnersHtml = '';
-data.winners.forEach(winner => {
-winnersHtml += `<div>${winner.playerName}: R$ ${winner.prize.toLocaleString('pt-BR')} chips</div>`;
-});
-winContent.innerHTML = `
-<div class="win-animation" style="color: ${color};">
-<div class="win-title">${title}</div>
-<div class="win-player">Vencedores:</div>
-${winnersHtml}
-${data.jackpotWinners ? `
-<div class="win-prize" style="color: #ff6b6b; font-size: 1.8em; margin-top: 15px;">
-🎁 JACKPOT: R$ ${data.jackpotWinners.reduce((sum, w) => sum + w.prize, 0).toLocaleString('pt-BR')}!
-</div>
-` : ''}
-</div>
-`;
-winMsg.style.display = 'flex';
-createConfetti();
 if (data.newStage) updateControlButtons(data.newStage);
 if (data.winners[0].winType === 'bingo') gameEnded = true;
-setTimeout(() => winMsg.style.display = 'none', 6000);
 });
-function createConfetti() {
-const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ff9900'];
-const container = document.getElementById('win-message');
-for (let i = 0; i < 150; i++) {
-const confetti = document.createElement('div');
-confetti.className = 'confetti';
-confetti.style.left = Math.random() * 100 + 'vw';
-confetti.style.top = '-10px';
-confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-confetti.style.width = (Math.random() * 10 + 5) + 'px';
-confetti.style.height = confetti.style.width;
-confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
-container.appendChild(confetti);
-setTimeout(() => confetti.remove(), 5000);
-}
-}
 socket.on('jackpot-won', (data) => {
 showJackpotVictory(data.jackpotAmount, data.winnerNames, data.ballsCount);
 });
@@ -1782,7 +1608,7 @@ wrapper.title = 'Cartela inválida (≠15 números)';
 }
 });
 
-// ============ FUNÇÕES DAS ANIMAÇÕES ============
+// ============ FUNÇÕES DAS NOVAS ANIMAÇÕES ============
 
 // Linha 1
 function showLineVictory(amount, name) {
