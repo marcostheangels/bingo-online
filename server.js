@@ -1,4 +1,4 @@
-// server.js — Bingo Multiplayer com IA no chat, moderação e lógica justa
+// server.js — Bingo Multiplayer com limite de 10 cartelas, IA, moderação e lógica justa
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -64,11 +64,7 @@ const WIN_MESSAGES = {
 };
 
 let pendingBotsToAdd = [];
-
-// ✅ Sistema de mute
-const mutedPlayers = new Map(); // socketId => unmuteTime
-
-// ✅ Palavras proibidas (xingamentos)
+const mutedPlayers = new Map();
 const BAD_WORDS = [
   'merda', 'caralho', 'puta', 'filho da puta', 'fdp', 'bosta', 'idiota', 'burro', 'otário',
   'cuzão', 'vai se foder', 'se foder', 'arrombado', 'desgraça', 'porra', 'cacete'
@@ -224,9 +220,9 @@ function aiRespond(message, senderSocketId, room) {
   if (msgLower.includes('quem') && (msgLower.includes('lider') || msgLower.includes('primeiro') || msgLower.includes('top'))) {
     response = `🏆 O líder do ranking é ${topPlayer} com R$ ${topChips} em chips!`;
   } else if (msgLower.includes('como') && (msgLower.includes('jogar') || msgLower.includes('bingo'))) {
-    response = `🎲 Compre cartelas, inicie o sorteio e marque os números! Complete Linha 1, Linha 2 ou BINGO para ganhar prêmios!`;
+    response = `🎲 Compre até 10 cartelas, inicie o sorteio e marque os números! Complete Linha 1, Linha 2 ou BINGO para ganhar prêmios!`;
   } else if (msgLower.includes('dica') || msgLower.includes('conselho')) {
-    response = `💡 Dica: compre mais cartelas para aumentar suas chances! Mas cuidado com os bots — eles são espertos!`;
+    response = `💡 Dica: compre até 10 cartelas para maximizar suas chances! Mas cuidado com os bots — eles também compram até 10!`;
   } else if (msgLower.includes('bot') || msgLower.includes('quem tá jogando')) {
     const bots = Object.values(room.players).filter(p => p.isBot).map(p => p.name);
     const humans = Object.values(room.players).filter(p => !p.isBot).map(p => p.name);
@@ -238,11 +234,10 @@ function aiRespond(message, senderSocketId, room) {
   } else if (msgLower.includes('olá') || msgLower.includes('oi') || msgLower.includes('opa')) {
     response = `👋 Olá, ${room.players[senderSocketId]?.name || 'amigo'}! Vamos jogar Bingo? 🎰`;
   } else if (msgLower.includes('sorte') || msgLower.includes('ganhar')) {
-    response = `🍀 A sorte está lançada! Compre cartelas e tente seu BINGO hoje!`;
+    response = `🍀 A sorte está lançada! Compre até 10 cartelas e tente seu BINGO hoje!`;
   } else {
-    // Incentivo aleatório
     const encouragements = [
-      `🌟 ${room.players[senderSocketId]?.name || 'Jogador'}, compre mais cartelas! Sua sorte pode estar a uma bola de distância!`,
+      `🌟 ${room.players[senderSocketId]?.name || 'Jogador'}, compre até 10 cartelas! Sua sorte pode estar a uma bola de distância!`,
       `🎯 O próximo número pode ser o seu! Não desista!`,
       `💥 Bots estão atentos... mas você é humano! Mostre quem manda!`,
       `🎰 Seu BINGO está quase lá! Continue jogando!`
@@ -257,7 +252,6 @@ function aiRespond(message, senderSocketId, room) {
 io.on('connection', (socket) => {
   console.log('🔌 Novo jogador conectado:', socket.id);
 
-  // Verificar mute
   socket.on('chat-message', ({ message, sender, isBot }) => {
     const now = Date.now();
     if (mutedPlayers.has(socket.id)) {
@@ -271,11 +265,10 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Verificar palavras proibidas
     const msgLower = message.toLowerCase();
     const hasBadWord = BAD_WORDS.some(word => msgLower.includes(word));
     if (hasBadWord) {
-      mutedPlayers.set(socket.id, now + 5 * 60 * 1000); // 5 minutos
+      mutedPlayers.set(socket.id, now + 5 * 60 * 1000);
       socket.emit('error', '⚠️ Mensagem bloqueada! Você foi silenciado por 5 minutos por uso de linguagem inadequada.');
       io.to('bingo90').emit('chat-message', {
         sender: "Sistema",
@@ -285,10 +278,8 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Enviar mensagem normal
     io.to('bingo90').emit('chat-message', { message, sender, isBot });
 
-    // IA responde se for pergunta (não é bot e não é sistema)
     if (!isBot && sender !== "Sistema") {
       const room = rooms.bingo90;
       const aiResponse = aiRespond(message, socket.id, room);
@@ -298,7 +289,7 @@ io.on('connection', (socket) => {
           message: aiResponse,
           isBot: true
         });
-      }, 1000 + Math.random() * 2000); // resposta com leve delay
+      }, 1000 + Math.random() * 2000);
     }
   });
 
@@ -317,6 +308,9 @@ io.on('connection', (socket) => {
       chips = savedChips;
       cards90 = savedCards90 || [];
     }
+
+    // Garantir limite de 10 cartelas ao carregar
+    if (cards90.length > 10) cards90 = cards90.slice(0, 10);
 
     room.players[socket.id] = {
       id: socket.id,
@@ -369,14 +363,27 @@ io.on('connection', (socket) => {
     const player = room.players[socket.id];
     if (!player || room.gameStarted) return;
 
-    const cost = count * 100;
+    // ✅ LIMITE DE 10 CARTELAS
+    if (player.cards90.length >= 10) {
+      socket.emit('error', 'Você já atingiu o limite de 10 cartelas!');
+      return;
+    }
+
+    const remaining = 10 - player.cards90.length;
+    const finalCount = Math.min(count, remaining);
+    if (finalCount <= 0) {
+      socket.emit('error', 'Você já tem 10 cartelas!');
+      return;
+    }
+
+    const cost = finalCount * 100;
     if (player.chips < cost) {
       socket.emit('error', 'Chips insuficientes!');
       return;
     }
 
     const newCards = [];
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < finalCount; i++) {
       newCards.push(generateValidBingo90Card());
     }
 
@@ -386,16 +393,21 @@ io.on('connection', (socket) => {
     db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
     saveDB(db);
 
+    // Bots também respeitam o limite de 10
     for (const id in room.players) {
       const p = room.players[id];
       if (p.isBot && !room.gameStarted) {
-        const botNewCards = [];
-        for (let i = 0; i < count; i++) {
-          botNewCards.push(generateValidBingo90Card());
+        const botRemaining = 10 - p.cards90.length;
+        const botFinalCount = Math.min(finalCount, botRemaining);
+        if (botFinalCount > 0) {
+          const botNewCards = [];
+          for (let i = 0; i < botFinalCount; i++) {
+            botNewCards.push(generateValidBingo90Card());
+          }
+          p.cards90 = p.cards90.concat(botNewCards);
+          p.chips -= botFinalCount * 100;
+          if (p.chips < 0) p.chips = 0;
         }
-        p.cards90 = p.cards90.concat(botNewCards);
-        p.chips -= cost;
-        if (p.chips < 0) p.chips = 0;
       }
     }
 
