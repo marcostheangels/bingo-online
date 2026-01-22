@@ -1,4 +1,4 @@
-// server.js — Bingo Multiplayer com todas as regras corrigidas e completas
+// server.js — Bingo Multiplayer com correções de áudio, ranking e visibilidade
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -167,24 +167,10 @@ function broadcastRoomState(roomId) {
   });
 }
 
-function broadcastPlayerList(roomId) {
-  const room = rooms[roomId];
-  const withChips = [];
-  const withoutChips = [];
+// 🔥 Função removida: broadcastPlayerList
+// A lógica de exibição de jogadores foi unificada com o ranking.
 
-  for (const name in room.players) {
-    const p = room.players[name];
-    if (p.chips <= 0) {
-      withoutChips.push({ name: p.name });
-    } else {
-      withChips.push({ name: p.name, chips: p.chips });
-    }
-  }
-
-  io.to(roomId).emit('player-list', { withChips, withoutChips });
-}
-
-function broadcastRanking(roomId) {
+function updateAndBroadcastRanking(roomId) {
   const room = rooms[roomId];
   const ranking = Object.values(room.players)
     .map(p => ({ name: p.name, chips: p.chips }))
@@ -222,9 +208,8 @@ function aiRespond(message, senderSocketId, room) {
     response = `☀️ Bom dia, ${getPlayerNameBySocket(senderSocketId, room) || 'amigo'}! Que comece a sorte! 🍀`;
   } else if (msgLower.includes('olá') || msgLower.includes('oi') || msgLower.includes('opa') || msgLower.includes('e aí')) {
     response = `👋 Olá, ${getPlayerNameBySocket(senderSocketId, room) || 'amigo'}! Vamos jogar Bingo? 🎰`;
-  }
-  else if (msgLower.includes('quem') && (msgLower.includes('lider') || msgLower.includes('primeiro') || msgLower.includes('top'))) {
-    response = `🏆 O líder do ranking é ${topPlayer} com R$ ${topChips} em chips!`;
+  } else if (msgLower.includes('quem') && (msgLower.includes('lider') || msgLower.includes('primeiro') || msgLower.includes('top'))) {
+    response = `🏆 O líder do ranking é ${topPlayer} com R$ ${topChips} em fichas!`;
   } else if (msgLower.includes('como') && (msgLower.includes('jogar') || msgLower.includes('bingo'))) {
     response = `🎲 Compre até 10 cartelas, inicie o sorteio e marque os números! Complete Linha 1, Linha 2 ou BINGO para ganhar prêmios!`;
   } else if (msgLower.includes('dica') || msgLower.includes('conselho')) {
@@ -240,7 +225,7 @@ function aiRespond(message, senderSocketId, room) {
   } else if (msgLower.includes('sorte') || msgLower.includes('ganhar')) {
     response = `🍀 A sorte está lançada! Compre até 10 cartelas e tente seu BINGO hoje!`;
   } else if (msgLower.includes('quantas') && (msgLower.includes('cartelas') || msgLower.includes('comprar'))) {
-    response = `🛒 Você pode comprar até 10 cartelas! Cada uma custa 100 chips.`;
+    response = `🛒 Você pode comprar até 10 cartelas! Cada uma custa 100 fichas.`;
   } else if (msgLower.includes('quantas') && msgLower.includes('bolas')) {
     response = `🔢 Até agora foram sorteadas ${room.drawnNumbers.length} bolas. O próximo número pode ser o seu!`;
   } else if (msgLower.includes('jackpot') || msgLower.includes('jack pot')) {
@@ -252,11 +237,11 @@ function aiRespond(message, senderSocketId, room) {
   } else if (msgLower.includes('reiniciar') || msgLower.includes('reset')) {
     response = `🔄 Só é possível reiniciar após um Bingo completo. Clique no botão "Reiniciar".`;
   } else if (msgLower.includes('cartela') || msgLower.includes('cartelas')) {
-    response = `🎫 Cada cartela custa 100 chips. Você pode comprar até 10. Os bots também compram até 10!`;
+    response = `🎫 Cada cartela custa 100 fichas. Você pode comprar até 10. Os bots também compram até 10!`;
   } else if (msgLower.includes('ganhou') || msgLower.includes('vencedor') || msgLower.includes('quem ganhou')) {
     response = `🏅 O último vencedor foi anunciado no chat! Fique atento às mensagens do Sistema.`;
   } else if (msgLower.includes('chips') || msgLower.includes('fichas')) {
-    response = `🪙 Chips são usados para comprar cartelas. Ganhe ao completar Linha 1, Linha 2 ou BINGO!`;
+    response = `🪙 Fichas são usadas para comprar cartelas. Ganhe ao completar Linha 1, Linha 2 ou BINGO!`;
   } else if (msgLower.includes('sistema') || msgLower.includes('ai') || msgLower.includes('bot')) {
     response = `🤖 Eu sou o Sistema! Respondo perguntas sobre o jogo. Se quiser conversar com humanos, mande mensagem direta!`;
   } else {
@@ -371,8 +356,8 @@ io.on('connection', (socket) => {
           connected: true
         };
       }
-      broadcastPlayerList('bingo90');
-      broadcastRanking('bingo90');
+      // 🔁 Chamada unificada para garantir visibilidade total
+      updateAndBroadcastRanking('bingo90');
     }
 
     socket.join(roomId);
@@ -384,8 +369,8 @@ io.on('connection', (socket) => {
     });
 
     broadcastRoomState(roomId);
-    broadcastPlayerList(roomId);
-    broadcastRanking(roomId);
+    // 🔁 Chamada unificada para garantir visibilidade total
+    updateAndBroadcastRanking('bingo90');
     broadcastPot(roomId);
   });
 
@@ -409,7 +394,7 @@ io.on('connection', (socket) => {
 
     const cost = finalCount * 100;
     if (player.chips < cost) {
-      socket.emit('error', 'Chips insuficientes!');
+      socket.emit('error', 'Fichas insuficientes!');
       return;
     }
 
@@ -424,8 +409,8 @@ io.on('connection', (socket) => {
 
     socket.emit('cards-received', { cards: newCards.map(c => ({ card: c })), cardType: '90' });
     broadcastRoomState('bingo90');
-    broadcastPlayerList('bingo90');
-    broadcastRanking('bingo90');
+    // 🔁 Chamada unificada para garantir visibilidade total
+    updateAndBroadcastRanking('bingo90');
   });
 
   socket.on('start-draw', ({ playerName }) => {
@@ -449,8 +434,8 @@ io.on('connection', (socket) => {
         };
       }
       pendingBotsToAdd = [];
-      broadcastPlayerList('bingo90');
-      broadcastRanking('bingo90');
+      // 🔁 Chamada unificada para garantir visibilidade total
+      updateAndBroadcastRanking('bingo90');
     }
 
     const hasHumanWithCards = Object.values(room.players).some(p => !p.isBot && p.cards90.length > 0);
@@ -505,7 +490,8 @@ io.on('connection', (socket) => {
 
     broadcastPot('bingo90');
     broadcastRoomState('bingo90');
-    broadcastPlayerList('bingo90');
+    // 🔁 Chamada unificada para garantir visibilidade total
+    updateAndBroadcastRanking('bingo90');
 
     drawNextNumber('bingo90', 0);
   });
@@ -550,8 +536,8 @@ io.on('connection', (socket) => {
           }
         }
         delete room.players[name];
-        broadcastPlayerList('bingo90');
-        broadcastRanking('bingo90');
+        // 🔁 Chamada unificada para garantir visibilidade total após desconexão
+        updateAndBroadcastRanking('bingo90');
         break;
       }
     }
@@ -572,7 +558,6 @@ function processWin(winType, room, winners) {
 
   const prizePerWinner = Math.floor(prize / winners.length);
   const ballsUsed = room.drawnNumbers.length;
-  // 🔥 CORREÇÃO: jackpot só se <= 60 bolas
   const jackpotPerWinner = (winType === 'bingo' && ballsUsed <= 60) ? Math.floor(room.jackpot / winners.length) : 0;
 
   const winnerNames = winners.map(w => w.playerName);
@@ -601,10 +586,8 @@ function processWin(winType, room, winners) {
     room.gameStarted = false;
   }
 
-  // 🔊 Emitir som para todos
   io.to('bingo90').emit('play-sound', { type: winType });
 
-  // ✅ ANIMAÇÕES PARA TODOS OS JOGADORES
   const winnerData = {
     winners: winners.map(w => ({ playerName: w.playerName, prize: prizePerWinner })),
     winnerNames: winnerNames.join(', '),
@@ -653,8 +636,8 @@ function processWin(winType, room, winners) {
   }
 
   broadcastRoomState('bingo90');
-  broadcastPlayerList('bingo90');
-  broadcastRanking('bingo90');
+  // 🔁 Chamada unificada para garantir visibilidade total após vitória
+  updateAndBroadcastRanking('bingo90');
   broadcastPot('bingo90');
 }
 
@@ -674,7 +657,7 @@ function drawNextNumber(roomId, index) {
   room.drawnNumbers.push(number);
   room.lastNumber = number;
 
-  // 🔊 Som de sorteio para todos
+  // 🔊 Emitir som para todos os jogadores com o número sorteado
   io.to(roomId).emit('play-sound', { type: 'sorteio', number });
 
   io.to(roomId).emit('number-drawn', {
@@ -732,9 +715,9 @@ function resetRoom(roomId) {
 
   io.to(roomId).emit('room-reset');
   broadcastRoomState(roomId);
-  broadcastPlayerList(roomId);
-  broadcastRanking(roomId);
-  broadcastPot(roomId);
+  // 🔁 Chamada unificada para garantir visibilidade total após reinício
+  updateAndBroadcastRanking('bingo90');
+  broadcastPot('bingo90');
 }
 
 require('./backup');
