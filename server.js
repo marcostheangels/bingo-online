@@ -1,4 +1,4 @@
-// server.js — Bingo Multiplayer com todas as regras corrigidas
+// server.js — Bingo Multiplayer com IA corrigida, divisão justa de prêmios e tudo funcionando
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -205,7 +205,7 @@ function broadcastPot(roomId) {
   });
 }
 
-// ✅ IA Inteligente no Chat
+// ✅ IA Inteligente no Chat (agora chamada de SYSTEM)
 function aiRespond(message, senderSocketId, room) {
   const msgLower = message.toLowerCase().trim();
   const ranking = Object.values(room.players)
@@ -235,14 +235,13 @@ function aiRespond(message, senderSocketId, room) {
     response = `👋 Olá, ${room.players[senderSocketId]?.name || 'amigo'}! Vamos jogar Bingo? 🎰`;
   } else if (msgLower.includes('sorte') || msgLower.includes('ganhar')) {
     response = `🍀 A sorte está lançada! Compre até 10 cartelas e tente seu BINGO hoje!`;
+  } else if (msgLower.includes('quantas') && (msgLower.includes('cartelas') || msgLower.includes('comprar'))) {
+    response = `🛒 Você pode comprar até 10 cartelas! Cada uma custa 100 chips.`;
+  } else if (msgLower.includes('quantas') && msgLower.includes('bolas')) {
+    response = `🔢 Até agora foram sorteadas ${room.drawnNumbers.length} bolas. O próximo número pode ser o seu!`;
   } else {
-    const encouragements = [
-      `🌟 ${room.players[senderSocketId]?.name || 'Jogador'}, compre até 10 cartelas! Sua sorte pode estar a uma bola de distância!`,
-      `🎯 O próximo número pode ser o seu! Não desista!`,
-      `💥 Bots estão atentos... mas você é humano! Mostre quem manda!`,
-      `🎰 Seu BINGO está quase lá! Continue jogando!`
-    ];
-    response = encouragements[Math.floor(Math.random() * encouragements.length)];
+    // Resposta padrão
+    response = `🤖 Não entendi sua pergunta. Tente: "quem é o líder?", "como jogar?", "quantas cartelas posso comprar?" ou "qual é o pote?"`;
   }
 
   return response;
@@ -285,7 +284,7 @@ io.on('connection', (socket) => {
       const aiResponse = aiRespond(message, socket.id, room);
       setTimeout(() => {
         io.to('bingo90').emit('chat-message', {
-          sender: "IA do Bingo",
+          sender: "Sistema",
           message: aiResponse,
           isBot: true
         });
@@ -516,8 +515,21 @@ io.on('connection', (socket) => {
 function processWin(winType, room, winners) {
   if (winners.length === 0 || room.gameCompleted) return;
 
-  const prize = Math.floor(room.pot / winners.length);
-  const jackpotPrize = winType === 'bingo' ? Math.floor(room.jackpot / winners.length) : 0;
+  let prize = 0;
+  let jackpotPrize = 0;
+
+  // ✅ Dividir o pote conforme a conquista
+  if (winType === 'linha1') {
+    prize = Math.floor(room.pot * 0.2); // 20% do pote
+  } else if (winType === 'linha2') {
+    prize = Math.floor(room.pot * 0.3); // 30% do pote
+  } else if (winType === 'bingo') {
+    prize = Math.floor(room.pot * 0.5); // 50% do pote
+  }
+
+  // ✅ Dividir entre todos os vencedores
+  const prizePerWinner = Math.floor(prize / winners.length);
+  const jackpotPerWinner = winType === 'bingo' ? Math.floor(room.jackpot / winners.length) : 0;
 
   const winnerNames = winners.map(w => w.playerName);
   winnerNames.forEach(name => {
@@ -529,8 +541,8 @@ function processWin(winType, room, winners) {
   winners.forEach(w => {
     const player = room.players[w.id];
     if (player) {
-      player.chips += prize;
-      if (jackpotPrize) player.chips += jackpotPrize;
+      player.chips += prizePerWinner;
+      if (jackpotPerWinner) player.chips += jackpotPerWinner;
       db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
     }
   });
@@ -551,7 +563,7 @@ function processWin(winType, room, winners) {
       const msgType = winType === 'bingo' ? 'bingo' : winType;
       const messages = WIN_MESSAGES[msgType] || WIN_MESSAGES.linha1;
       const randomMsg = messages[Math.floor(Math.random() * messages.length)];
-      const totalPrize = prize + (jackpotPrize || 0);
+      const totalPrize = prizePerWinner + (jackpotPerWinner || 0);
       
       io.to('bingo90').emit('chat-message', {
         sender: "Sistema",
@@ -562,9 +574,9 @@ function processWin(winType, room, winners) {
   });
 
   io.to('bingo90').emit('player-won', {
-    winners: winners.map(w => ({ playerName: w.playerName, prize, winType })),
+    winners: winners.map(w => ({ playerName: w.playerName, prize: prizePerWinner, winType })),
     winnerNames: winnerNames.join(', '),
-    jackpotWinners: jackpotPrize ? winners.map(w => ({ playerName: w.playerName, prize: jackpotPrize })) : null,
+    jackpotWinners: jackpotPerWinner ? winners.map(w => ({ playerName: w.playerName, prize: jackpotPerWinner })) : null,
     newStage: room.currentStage
   });
 
@@ -631,11 +643,11 @@ function drawNextNumber(roomId, index) {
       }
       if (jackpotWinners.length > 0) {
         // Processar jackpot apenas se for até 60 bolas
-        const jackpotPrize = Math.floor(room.jackpot / jackpotWinners.length);
+        const jackpotPerWinner = Math.floor(room.jackpot / jackpotWinners.length);
         jackpotWinners.forEach(w => {
           const player = room.players[w.id];
           if (player) {
-            player.chips += jackpotPrize;
+            player.chips += jackpotPerWinner;
             db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
           }
         });
@@ -643,7 +655,7 @@ function drawNextNumber(roomId, index) {
         // Emitir mensagem especial de jackpot
         io.to('bingo90').emit('chat-message', {
           sender: "Sistema",
-          message: `🎁 JACKPOT! ${jackpotWinners.map(w => w.playerName).join(', ')} ganharam R$ ${jackpotPrize.toLocaleString('pt-BR')} cada por completar a cartela em ${ballsUsed} bolas!`,
+          message: `🎁 JACKPOT! ${jackpotWinners.map(w => w.playerName).join(', ')} ganharam R$ ${jackpotPerWinner.toLocaleString('pt-BR')} cada por completar a cartela em ${ballsUsed} bolas!`,
           isBot: false
         });
       }
