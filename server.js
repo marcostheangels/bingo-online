@@ -1,4 +1,4 @@
-// server.js — Bingo Multiplayer com todas as regras de Markim
+// server.js — Bingo Multiplayer com todas as regras de Markim (VERSÃO FINAL)
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -10,13 +10,10 @@ const io = socketIo(server, {
   cors: { origin: "*" }
 });
 
-// Servir frontend
 app.use(express.static('public'));
 
-// Carregar banco de dados
 let db = loadDB();
 
-// Estado da sala
 let rooms = {
   bingo90: {
     players: {},
@@ -32,7 +29,7 @@ let rooms = {
 
 const HUMAN_NAMES = ['Markim', 'Marília'];
 
-// === Funções de Cartela ===
+// === Geração de Cartela Corrigida ===
 function generateValidBingo90Card() {
   const columns = [
     [1, 9], [10, 19], [20, 29], [30, 39], [40, 49],
@@ -207,6 +204,25 @@ io.on('connection', (socket) => {
     db.players[playerName] = { chips, cards90 };
     saveDB(db);
 
+    // ✅ ADICIONAR 3 BOTS INICIAIS SE FOR MARKIM OU MARÍLIA E NÃO HOUVER BOTS
+    const currentBots = Object.values(room.players).filter(p => p.isBot);
+    if (currentBots.length === 0 && (playerName === 'Markim' || playerName === 'Marília')) {
+      console.log(`🤖 Adicionando 3 bots iniciais para ${playerName}...`);
+      for (let i = 1; i <= 3; i++) {
+        const botId = `bot_initial_${i}_${Date.now()}`;
+        room.players[botId] = {
+          id: botId,
+          name: `Bot ${i}`,
+          chips: 10000,
+          isBot: true,
+          cards90: [],
+          connected: true
+        };
+      }
+      broadcastPlayerList('bingo90');
+      broadcastRanking('bingo90');
+    }
+
     socket.join(roomId);
     socket.emit('room-welcome', {
       roomId,
@@ -241,7 +257,6 @@ io.on('connection', (socket) => {
     player.cards90 = player.cards90.concat(newCards);
     player.chips -= cost;
 
-    // Atualizar DB
     db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
     saveDB(db);
 
@@ -312,6 +327,17 @@ io.on('connection', (socket) => {
     processWin(winType, room, winners);
   });
 
+  // ✅ REINICIAR JOGO
+  socket.on('restart-game', () => {
+    const room = rooms.bingo90;
+    if (!room.gameCompleted) {
+      socket.emit('error', 'Só é possível reiniciar após o Bingo.');
+      return;
+    }
+    resetRoom('bingo90');
+    socket.emit('message', 'Jogo reiniciado!');
+  });
+
   socket.on('disconnect', () => {
     const room = rooms.bingo90;
     if (room.players[socket.id]) {
@@ -333,7 +359,7 @@ io.on('connection', (socket) => {
 
 // === Lógica de Jogo ===
 function processWin(winType, room, winners) {
-  if (winners.length === 0) return;
+  if (winners.length === 0 || room.gameCompleted) return;
 
   const prize = Math.floor(room.pot / winners.length);
   const jackpotPrize = winType === 'bingo' ? Math.floor(room.jackpot / winners.length) : 0;
@@ -350,15 +376,16 @@ function processWin(winType, room, winners) {
     if (player) {
       player.chips += prize;
       if (jackpotPrize) player.chips += jackpotPrize;
-
       db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
     }
   });
   saveDB(db);
 
-  if (winType === 'linha1') room.currentStage = 'linha2';
-  else if (winType === 'linha2') room.currentStage = 'bingo';
-  else if (winType === 'bingo') {
+  if (winType === 'linha1') {
+    room.currentStage = 'linha2';
+  } else if (winType === 'linha2') {
+    room.currentStage = 'bingo';
+  } else if (winType === 'bingo') {
     room.gameCompleted = true;
     room.gameStarted = false;
   }
@@ -369,6 +396,12 @@ function processWin(winType, room, winners) {
     jackpotWinners: jackpotPrize ? winners.map(w => ({ playerName: w.playerName, prize: jackpotPrize })) : null,
     newStage: room.currentStage
   });
+
+  if (winType !== 'bingo' && !room.gameCompleted) {
+    setTimeout(() => {
+      drawNextNumber('bingo90', room.drawnNumbers.length);
+    }, 3000);
+  }
 
   if (winType === 'bingo') {
     setTimeout(() => resetRoom('bingo90'), 6000);
@@ -401,26 +434,28 @@ function drawNextNumber(roomId, index) {
     drawnNumbers: [...room.drawnNumbers]
   });
 
-  // Verificar vitórias automáticas
-  let gameEnded = false;
-  for (const winType of ['linha1', 'linha2', 'bingo']) {
-    if (gameEnded) break;
-    const stageMatch = 
-      (winType === 'linha1' && room.currentStage === 'linha1') ||
-      (winType === 'linha2' && room.currentStage === 'linha2') ||
-      (winType === 'bingo');
-    
-    if (stageMatch) {
-      const winners = getWinningPlayers(room, winType);
-      if (winners.length > 0) {
-        processWin(winType, room, winners);
-        gameEnded = true;
-        break;
-      }
+  let shouldContinue = true;
+  if (room.currentStage === 'linha1') {
+    const winners = getWinningPlayers(room, 'linha1');
+    if (winners.length > 0) {
+      processWin('linha1', room, winners);
+      shouldContinue = false;
+    }
+  } else if (room.currentStage === 'linha2') {
+    const winners = getWinningPlayers(room, 'linha2');
+    if (winners.length > 0) {
+      processWin('linha2', room, winners);
+      shouldContinue = false;
+    }
+  } else if (room.currentStage === 'bingo') {
+    const winners = getWinningPlayers(room, 'bingo');
+    if (winners.length > 0) {
+      processWin('bingo', room, winners);
+      shouldContinue = false;
     }
   }
 
-  if (!gameEnded) {
+  if (shouldContinue && !room.gameCompleted) {
     setTimeout(() => drawNextNumber(roomId, index + 1), 3000);
   }
 }
