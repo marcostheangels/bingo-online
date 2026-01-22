@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Bingo Multiplayer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0c0c1a;
+      color: white;
+      padding: 15px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+
+    /* ✅ NOVA TELA DE LOGIN */
+    #login-screen {
+      text-align: center;
+      margin: 60px auto;
+      max-width: 500px;
+    }
+
+    /* ✅ ESTILO PROFISSIONAL PARA SALA DE BINGO 90 */
+    #game-area {
+      display: none;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
+      border: 1px solid #5d4037;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .header h2 {
+      font-size: 1.8em;
+      margin-bottom: 10px;
+      color: gold;
+      text-shadow: 0 0 8px rgba(255,215,0,0.6);
+    }
+    .player-info {
+      font-size: 1.1em;
+      margin: 8px 0;
+    }
+    #pot-display, #jackpot-display {
+      font-weight: bold;
+      margin-top: 6px;
+      font-size: 1.2em;
+    }
+    #pot-display { color: #4CAF50; }
+    #jackpot-display { color: #ff6b6b; }
+
+    .players-list {
+      margin: 20px 0;
+      padding: 12px;
+      background: rgba(30, 30, 50, 0.7);
+      border-radius: 10px;
+      border: 1px solid #3a3a5a;
+    }
+    .players-list ul {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 0;
+      justify-content: center;
+    }
+    .players-list li {
+      background: #1e3a8a;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.95em;
+      color: white;
+      transition: all 0.3s;
+      border: 1px solid #2c5282;
+    }
+    .players-list li.bot::after { content: " 🤖"; }
+    .players-list li.winner {
+      background: #2e7d32 !important;
+      border-color: #1b5e20;
+      box-shadow: 0 0 10px rgba(46, 125, 50, 0.7);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin: 20px 0;
+      padding: 15px;
+      background: rgba(25, 25, 45, 0.6);
+      border-radius: 12px;
+    }
+    .controls button {
+      padding: 10px 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-width: 100px;
+    }
+    .controls button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+    }
+    #buy-btn { background: #1976d2; }
+    #start-btn { background: #388e3c; }
+    #restart-btn { background: #d32f2f; }
+    #line1-btn { background: #2e7d32; color: white; }
+    #line2-btn { background: #7b1fa2; color: white; }
+    #bingo-btn { background: gold; color: #1a1a2e; font-weight: bold; }
+
+    .draw-area {
+      text-align: center;
+      margin: 20px 0;
+      padding: 15px;
+      background: rgba(20, 20, 35, 0.7);
+      border-radius: 12px;
+    }
+    .history {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      max-height: 100px;
+      overflow-y: auto;
+      margin-top: 15px;
+      padding: 10px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+    }
+    .ball {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #ffd700, #daa520);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      color: #1a1a2e;
+      font-size: 1.1em;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      animation: popIn 0.3s;
+    }
+    @keyframes popIn {
+      from { transform: scale(0); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* ✅ CARTÃO DE BINGO 90 PROFISSIONAL */
+    .cards-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 25px;
+      margin-top: 25px;
+    }
+    .card-wrapper {
+      background: #121826;
+      padding: 16px;
+      border-radius: 14px;
+      position: relative;
+      transition: all 0.3s;
+      border: 2px solid #2c3e50;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.5);
+    }
+    .card-wrapper:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+      border-color: #3498db;
+    }
+    .card-wrapper.bingo-complete {
+      background: gold !important;
+      color: #1a1a2e;
+      border-color: gold;
+      box-shadow: 0 0 25px gold, 0 10px 30px rgba(255,215,0,0.6) !important;
+      animation: pulseGold 1.5s infinite alternate;
+    }
+    .card-title {
+      text-align: center;
+      margin-bottom: 12px;
+      font-weight: bold;
+      font-size: 1.2em;
+      color: #ecf0f1;
+      letter-spacing: 1px;
+    }
+
+    /* ✅ GRID DO BINGO 90 - COLUNAS COM SEPARADORES SUAVES */
+    .grid-90 {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 2px;
+      background: #2c3e50;
+      padding: 4px;
+      border-radius: 8px;
+    }
+    .cell {
+      aspect-ratio: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #1e293b;
+      font-weight: bold;
+      font-family: 'Arial Black', 'Arial Bold', sans-serif;
+      font-size: 1.3em;
+      color: #f1f1f1;
+      border-radius: 6px;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .cell.empty {
+      background: transparent;
+      border: 1px dashed #3a3a5a;
+    }
+    .cell.marked {
+      background: linear-gradient(135deg, #ef4444, #b91c1c) !important;
+      color: white !important;
+      transform: scale(0.95);
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+    }
+    .cell.free {
+      background: gold;
+      color: #1a1a2e;
+    }
+
+    /* ✅ BOTÕES DINÂMICOS */
+    .stage-linha1 #line2-btn,
+    .stage-linha1 #bingo-btn,
+    .stage-linha2 #line1-btn,
+    .stage-linha2 #bingo-btn,
+    .stage-bingo #line1-btn,
+    .stage-bingo #line2-btn {
+      display: none !important;
+    }
+
+    /* ✅ MENSAGENS ADMIN / JACKPOT */
+    #admin-message {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #4CAF50;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      z-index: 2000;
+      display: none;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    /* ✅ TELA DE JACKPOT BONITA E RESPONSIVA */
+    #jackpot-fullscreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #8B0000, #FF4500, #FFD700);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      color: white;
+      font-family: 'Arial Black', 'Impact', sans-serif;
+      z-index: 2001;
+      text-align: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    #jackpot-fullscreen .jackpot-title {
+      font-size: 4.5em;
+      margin: 0;
+      text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+      animation: glow 1.5s infinite alternate;
+    }
+    #jackpot-fullscreen .jackpot-player {
+      font-size: 2.8em;
+      margin: 15px 0;
+      text-shadow: 0 0 10px white;
+    }
+    #jackpot-fullscreen .jackpot-amount {
+      font-size: 3.2em;
+      margin: 10px 0;
+      color: #ffd700;
+      text-shadow: 0 0 15px gold;
+    }
+    #jackpot-fullscreen .jackpot-balls {
+      font-size: 1.8em;
+      margin-top: 20px;
+      background: rgba(0,0,0,0.3);
+      padding: 10px 20px;
+      border-radius: 10px;
+    }
+    @keyframes glow {
+      from { text-shadow: 0 0 10px rgba(255, 215, 0, 0.8); }
+      to { text-shadow: 0 0 30px rgba(255, 215, 0, 1), 0 0 40px gold; }
+    }
+
+    /* ✅ RESPONSIVIDADE PARA CELULAR */
+    @media (max-width: 768px) {
+      #jackpot-fullscreen .jackpot-title { font-size: 3.5em; }
+      #jackpot-fullscreen .jackpot-player { font-size: 2.2em; }
+      #jackpot-fullscreen .jackpot-amount { font-size: 2.6em; }
+      #jackpot-fullscreen .jackpot-balls { font-size: 1.5em; }
+    }
+    @media (max-width: 480px) {
+      #jackpot-fullscreen .jackpot-title { font-size: 2.8em; }
+      #jackpot-fullscreen .jackpot-player { font-size: 1.9em; }
+      #jackpot-fullscreen .jackpot-amount { font-size: 2.2em; }
+      #jackpot-fullscreen .jackpot-balls { font-size: 1.3em; padding: 8px 16px; }
+    }
+
+    /* ✅ ANIMAÇÕES */
+    @keyframes pulseGold {
+      from { transform: scale(1); box-shadow: 0 0 25px gold; }
+      to { transform: scale(1.03); box-shadow: 0 0 35px gold, 0 10px 40px rgba(255,215,0,0.8); }
+    }
+
+    /* ✅ CONFETTI */
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      opacity: 0.8;
+      animation: fall linear forwards;
+    }
+    @keyframes fall {
+      to {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    /* ✅ TELA DE VITÓRIA */
+    #win-message {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle, #0d0d1a 0%, #000000 100%);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      overflow: hidden;
+    }
+    .win-animation {
+      position: relative;
+      text-align: center;
+      padding: 30px;
+      max-width: 90%;
+      z-index: 10;
+    }
+    .win-title {
+      font-size: 3.5em;
+      font-weight: bold;
+      margin-bottom: 20px;
+      text-shadow: 0 0 15px currentColor;
+      animation: bounce 1s infinite alternate;
+    }
+    .win-player {
+      font-size: 2.2em;
+      margin-bottom: 20px;
+      color: white;
+      text-shadow: 0 0 10px rgba(255,255,255,0.7);
+    }
+    .win-prize {
+      font-size: 1.8em;
+      margin-bottom: 20px;
+      color: gold;
+    }
+    @keyframes bounce {
+      from { transform: scale(1); }
+      to { transform: scale(1.05); }
+    }
+
+    .bingo-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: gold;
+      font-size: 2em;
+      font-weight: bold;
+      border-radius: 14px;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- ✅ NOVA TELA DE LOGIN -->
+    <div id="login-screen">
+      <div style="text-align: center; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); max-width: 500px; margin: 60px auto; animation: fadeInUp 0.8s;">
+        <h1 style="font-size: 2.4em; margin-bottom: 20px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+          🎰 <strong>BINGO</strong> MULTIPLAYER 🎰
+        </h1>
+        <p style="margin-bottom: 20px; color: #fff; font-size: 1.1em;">Entre com seu nome e comece a jogar!</p>
+        <input 
+          type="text" 
+          id="player-name" 
+          placeholder="Digite seu nome (2-15 letras)" 
+          maxlength="15" 
+          autocomplete="off"
+          style="padding: 14px; width: 80%; max-width: 300px; border: none; border-radius: 50px; font-size: 1.1em; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); outline: none;"
+        />
+        <div style="margin-top: 25px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
+          <button 
+            onclick="joinRoom('bingo75')" 
+            style="background: #ff9a00; color: white; padding: 12px 24px; border: none; border-radius: 50px; font-weight: bold; font-size: 1.1em; cursor: pointer; box-shadow: 0 4px 12px rgba(255,154,0,0.4); transition: all 0.3s; min-width: 140px;"
+            onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 16px rgba(255,154,0,0.6)';"
+            onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(255,154,0,0.4)';"
+          >
+            🇺🇸 Bingo 75
+          </button>
+          <button 
+            onclick="joinRoom('bingo90')" 
+            style="background: #e91e63; color: white; padding: 12px 24px; border: none; border-radius: 50px; font-weight: bold; font-size: 1.1em; cursor: pointer; box-shadow: 0 4px 12px rgba(233,30,99,0.4); transition: all 0.3s; min-width: 140px;"
+            onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 16px rgba(233,30,99,0.6)';"
+            onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(233,30,99,0.4)';"
+          >
+            🇧🇷 Bingo 90
+          </button>
+        </div>
+      </div>
+
+      <style>
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      </style>
+    </div>
+
+    <div id="admin-message"></div>
+    <!-- ✅ TELA CHEIA PARA JACKPOT -->
+    <div id="jackpot-fullscreen"></div>
+
+    <div id="admin-controls" style="display:none;margin:20px auto;max-width:500px;background:rgba(255,255,255,0.1);padding:15px;border-radius:8px;">
+      <h3>🔧 Controles Administrativos</h3>
+      <input type="text" id="admin-player-name" placeholder="Nome do Jogador" style="margin:5px;padding:8px;width:calc(33%-10px);">
+      <input type="number" id="admin-amount" placeholder="Quantidade" style="margin:5px;padding:8px;width:calc(33%-10px);">
+      <input type="password" id="admin-password" placeholder="Senha" style="margin:5px;padding:8px;width:calc(33%-10px);">
+      <button onclick="sendAdminCommand()" style="margin:5px;padding:8px;">Enviar</button>
+    </div>
+
+    <div id="game-area">
+      <div class="header">
+        <h2 id="room-title">Sala: ?</h2>
+        <div class="player-info">
+          <span>Jogador: <strong id="player-name-display"></strong></span>
+          <span>Chips: <strong id="chips-display">0</strong></span>
+        </div>
+        <div id="pot-display">Pote: R$ 0</div>
+        <div id="jackpot-display">Jackpot: R$ 0</div>
+      </div>
+
+      <div class="players-list">
+        <strong>Jogadores Online:</strong>
+        <ul id="players-list"></ul>
+      </div>
+
+      <div class="controls" id="main-controls">
+        <label>
+          Cartelas: 
+          <input type="number" id="card-count" min="1" max="1000" value="1" style="width: 80px; padding: 4px;" inputmode="numeric">
+        </label>
+        <button onclick="document.getElementById('card-count').value = 1000">1000</button>
+        <button id="buy-btn">Comprar (100/chip)</button>
+        <button id="start-btn">Iniciar Sorteio</button>
+        <button id="line1-btn">Linha 1</button>
+        <button id="line2-btn">Linha 2</button>
+        <button id="bingo-btn">BINGO!</button>
+        <button id="restart-btn">🔄 Reiniciar</button>
+      </div>
+
+      <div class="draw-area">
+        <div>Último número: <span id="last-number">-</span></div>
+        <div>Bolas sorteadas: <span id="balls-count">0</span></div>
+        <div class="history" id="history"></div>
+      </div>
+
+      <div class="cards-container" id="cards-container"></div>
+    </div>
+
+    <div id="win-message"><div id="win-content"></div></div>
+  </div>
+
+  <!-- ✅ Manter tela ativa -->
+  <script>
+    if ('wakeLock' in navigator) {
+      let wakeLock = null;
+      const requestWakeLock = async () => {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+        } catch (err) {
+          console.warn('Não foi possível ativar Wake Lock:', err);
+        }
+      };
+      document.addEventListener('DOMContentLoaded', requestWakeLock);
+    }
+  </script>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // ✅ ÁUDIO GLOBAL
+    let audioContext = null;
+
+    // ✅ SONS REALISTAS DE CASSINO
+    function playSound(type, number = null) {
+      try {
+        if (!audioContext) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+          audioContext = new AudioContext();
+        }
+        if (audioContext.state === 'suspended') {
+          audioContext.resume();
+        }
+
+        const ctx = audioContext;
+        const now = ctx.currentTime;
+
+        if (type === 'sorteio') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(300 + (number % 10) * 20, now);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.4);
+        } 
+        else if (type === 'linha1') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, now);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        } 
+        else if (type === 'linha2') {
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc1.type = 'sine';
+          osc2.type = 'triangle';
+          osc1.frequency.setValueAtTime(660, now);
+          osc2.frequency.setValueAtTime(1320, now);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+          osc1.start(now);
+          osc2.start(now);
+          osc1.stop(now + 0.5);
+          osc2.stop(now + 0.5);
+        } 
+        else if (type === 'bingo') {
+          const notes = [523, 659, 784, 1046];
+          notes.forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + i * 0.15);
+            gain.gain.setValueAtTime(0.2, now + i * 0.15);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.2);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + i * 0.15);
+            osc.stop(now + i * 0.15 + 0.2);
+          });
+        }
+      } catch (e) {
+        console.warn('Erro ao reproduzir som:', e);
+      }
+    }
+
+    function speak(text) {
+      if (!('speechSynthesis' in window)) return;
+      speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'pt-BR';
+      utterance.rate = 0.9;
+      speechSynthesis.speak(utterance);
+    }
+
+    let socket = null;
+    let isAdminMode = false;
+    let currentRoom = '';
+    let cardType = '';
+    let playerCards = [];
+    let roomsDrawnNumbers = [];
+    let gameEnded = false;
+    let playerName = '';
+    let currentStage = 'linha1';
+
+    function toggleAdminMode() {
+      const controls = document.getElementById('admin-controls');
+      controls.style.display = isAdminMode ? 'none' : 'block';
+      isAdminMode = !isAdminMode;
+    }
+
+    function showAdminMessage(message, type = 'info') {
+      const msgElement = document.getElementById('admin-message');
+      msgElement.textContent = message;
+      msgElement.style.display = 'block';
+      msgElement.style.background = type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3';
+      setTimeout(() => msgElement.style.display = 'none', 5000);
+    }
+
+    function sendAdminCommand() {
+      const playerName = document.getElementById('admin-player-name').value;
+      const amount = parseInt(document.getElementById('admin-amount').value);
+      const password = document.getElementById('admin-password').value;
+
+      if (!playerName || isNaN(amount) || !password) {
+        alert('Preencha todos os campos.');
+        return;
+      }
+
+      socket.emit('admin-add-chips', { playerName, amount, adminPassword: password });
+      document.getElementById('admin-player-name').value = '';
+      document.getElementById('admin-amount').value = '';
+      document.getElementById('admin-password').value = '';
+    }
+
+    let clickCount = 0;
+    let clickTimer = null;
+    document.getElementById('player-name').addEventListener('click', function() {
+      clickCount++;
+      if (clickTimer) clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => clickCount = 0, 500);
+      if (clickCount === 5) {
+        toggleAdminMode();
+        clickCount = 0;
+        clearTimeout(clickTimer);
+      }
+    });
+
+    function loadGameState(name) {
+      try {
+        const saved = localStorage.getItem(`bingo_player_${name}`);
+        if (!saved) return null;
+        
+        const data = JSON.parse(saved);
+        if (typeof data.chips !== 'number' || data.chips < 0) data.chips = 10000;
+        if (!Array.isArray(data.cards90)) data.cards90 = [];
+        if (!Array.isArray(data.cards75)) data.cards75 = [];
+        return data;
+      } catch (e) {
+        console.warn('Erro ao carregar estado. Limpando.');
+        localStorage.removeItem(`bingo_player_${name}`);
+        return null;
+      }
+    }
+
+    function saveGameState(name, chips, cards75, cards90) {
+      try {
+        localStorage.setItem(`bingo_player_${name}`, JSON.stringify({ chips, cards75, cards90 }));
+      } catch (e) {
+        console.warn('Não foi possível salvar o estado do jogo:', e);
+      }
+    }
+
+    function calculateMinBallsToNextStage(card, drawnNumbers, stage) {
+      if (!card || card.length !== 3) return Infinity;
+      const markedInRow = [0, 0, 0];
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 9; c++) {
+          if (card[r][c] !== null && drawnNumbers.includes(card[r][c])) {
+            markedInRow[r]++;
+          }
+        }
+      }
+      const ballsForLine1 = Math.min(5 - markedInRow[0], 5 - markedInRow[1], 5 - markedInRow[2]);
+      const sortedLines = [...markedInRow].sort((a, b) => b - a);
+      const ballsForLine2 = (5 - sortedLines[0]) + (5 - sortedLines[1]);
+      const ballsForBingo = 15 - markedInRow.reduce((a,b) => a+b, 0);
+      if (stage === 'linha1') return Math.max(0, ballsForLine1);
+      if (stage === 'linha2') return Math.max(0, ballsForLine2);
+      if (stage === 'bingo') return Math.max(0, ballsForBingo);
+      return Infinity;
+    }
+
+    function updateControlButtons(stage) {
+      if (!stage) return;
+      currentStage = stage;
+      document.getElementById('main-controls').className = `controls stage-${stage}`;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      socket = io();
+
+      function initAudio() {
+        if (!audioContext) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            audioContext = new AudioContext();
+          }
+        }
+        document.body.removeEventListener('click', initAudio);
+        document.body.removeEventListener('touchstart', initAudio);
+      }
+      document.body.addEventListener('click', initAudio);
+      document.body.addEventListener('touchstart', initAudio);
+
+      const playerNameInput = document.getElementById('player-name');
+      const loginScreen = document.getElementById('login-screen');
+      const gameArea = document.getElementById('game-area');
+      const potDisplay = document.getElementById('pot-display');
+      const jackpotDisplay = document.getElementById('jackpot-display');
+      const ballsCountDisplay = document.getElementById('balls-count');
+
+      window.joinRoom = function(roomType) {
+        const name = playerNameInput.value.trim();
+        if (!name || name.length < 2) {
+          alert('Nome inválido.');
+          return;
+        }
+        playerName = name;
+        const savedState = loadGameState(name);
+        const savedCards75 = savedState ? savedState.cards75 : null;
+        const savedCards90 = savedState ? savedState.cards90 : null;
+        socket.emit('join-room', { playerName: name, roomType, savedCards75, savedCards90 });
+      };
+
+      socket.on('room-welcome', (data) => {
+        currentRoom = data.roomId;
+        cardType = currentRoom === 'bingo75' ? '75' : '90';
+        loginScreen.style.display = 'none';
+        gameArea.style.display = 'block';
+        document.getElementById('room-title').textContent = `Sala: ${data.roomName}`;
+        gameEnded = data.gameCompleted || false;
+        updateControlButtons(data.currentStage || 'linha1');
+      });
+
+      socket.on('room-state', (data) => {
+        document.getElementById('player-name-display').textContent = data.players[socket.id]?.name || '?';
+        const chips = data.players[socket.id]?.chips || 10000;
+        document.getElementById('chips-display').textContent = chips.toLocaleString('pt-BR');
+        roomsDrawnNumbers = data.drawnNumbers || [];
+        ballsCountDisplay.textContent = roomsDrawnNumbers.length;
+        updateHistory(data.drawnNumbers || []);
+        if (data.lastNumber) document.getElementById('last-number').textContent = data.lastNumber;
+        updateControlButtons(data.currentStage || 'linha1');
+        const player = data.players[socket.id];
+        if (player) saveGameState(playerName, player.chips, player.cards75, player.cards90);
+      });
+
+      socket.on('pot-update', (data) => {
+        potDisplay.textContent = `Pote: R$ ${data.pot.toLocaleString('pt-BR')}`;
+        jackpotDisplay.textContent = `Jackpot: R$ ${data.jackpot.toLocaleString('pt-BR')}`;
+      });
+
+      socket.on('player-list', (players) => {
+        const list = document.getElementById('players-list');
+        list.innerHTML = '';
+        players.forEach(p => {
+          const li = document.createElement('li');
+          let displayName = p.name;
+          if (p.winsCount > 0) displayName += ` (${p.winsCount})`;
+          li.textContent = displayName;
+          if (p.currentWins > 0) li.classList.add('winner');
+          if (p.isBot) li.classList.add('bot');
+          list.appendChild(li);
+        });
+        list.style.display = 'none';
+        setTimeout(() => list.style.display = 'flex', 10);
+      });
+
+      socket.on('update-player', (data) => {
+        document.getElementById('chips-display').textContent = data.chips.toLocaleString('pt-BR');
+        const currentState = loadGameState(playerName) || {};
+        saveGameState(playerName, data.chips, currentState.cards75 || [], currentState.cards90 || []);
+      });
+
+      socket.on('cards-received', (data) => {
+        const newCards = data.cards.map(cardObj => ({
+          card: cardObj.card,
+          originalIndex: playerCards.length
+        }));
+        playerCards = playerCards.concat(newCards);
+        const currentState = loadGameState(playerName) || {};
+        if (data.cardType === '75') {
+          currentState.cards75 = currentState.cards75 || [];
+          data.cards.forEach(c => currentState.cards75.push(c.card));
+        } else {
+          currentState.cards90 = currentState.cards90 || [];
+          data.cards.forEach(c => currentState.cards90.push(c.card));
+        }
+        saveGameState(playerName, currentState.chips || 10000, currentState.cards75, currentState.cards90);
+        // ✅ Forçar atualização com os números atuais
+        requestAnimationFrame(() => {
+          renderCards();
+        });
+      });
+
+      socket.on('number-drawn', (data) => {
+        document.getElementById('last-number').textContent = data.number;
+        roomsDrawnNumbers = data.drawnNumbers;
+        ballsCountDisplay.textContent = roomsDrawnNumbers.length;
+        updateHistory(data.drawnNumbers);
+        markDrawnNumbers(data.number);
+        renderCards(); // ✅ Atualizar imediatamente
+        playSound('sorteio', data.number);
+        speak(data.number.toString());
+      });
+
+      socket.on('player-won', (data) => {
+        const winMsg = document.getElementById('win-message');
+        const winContent = document.getElementById('win-content');
+        let title, color;
+        if (data.winType === 'linha1') {
+          title = '🎉 LINHA 1! 🎉';
+          color = '#27ae60';
+          playSound('linha1');
+          speak(`${data.playerName} ganhou a Linha 1!`);
+        } else if (data.winType === 'linha2') {
+          title = '🎊 LINHAS COMPLETAS! 🎊';
+          color = '#8e44ad';
+          playSound('linha2');
+          speak(`${data.playerName} ganhou a Linha 2!`);
+        } else if (data.winType === 'bingo') {
+          title = '🏆 BINGO! 🏆';
+          color = 'gold';
+          playSound('bingo');
+          speak(`${data.playerName} fez bingo!`);
+        }
+
+        winContent.innerHTML = `
+          <div class="win-animation" style="color: ${color};">
+            <div class="win-title">${title}</div>
+            <div class="win-player">${data.playerName}</div>
+            <div class="win-prize">Prêmio: R$ ${data.prize.toLocaleString('pt-BR')} chips!</div>
+            ${data.jackpot ? `<div class="win-prize" style="color: #ff6b6b; font-size: 2em; margin-top: 10px;">🎁 JACKPOT: R$ ${data.jackpot.toLocaleString('pt-BR')}!</div>` : ''}
+          </div>
+        `;
+        winMsg.style.display = 'flex';
+        createConfetti();
+
+        if (data.newStage) updateControlButtons(data.newStage);
+        if (data.winType === 'bingo') gameEnded = true;
+        setTimeout(() => winMsg.style.display = 'none', 6000);
+      });
+
+      function createConfetti() {
+        const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ff9900'];
+        const container = document.getElementById('win-message');
+        for (let i = 0; i < 150; i++) {
+          const confetti = document.createElement('div');
+          confetti.className = 'confetti';
+          confetti.style.left = Math.random() * 100 + 'vw';
+          confetti.style.top = '-10px';
+          confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+          confetti.style.width = (Math.random() * 10 + 5) + 'px';
+          confetti.style.height = confetti.style.width;
+          confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+          container.appendChild(confetti);
+          setTimeout(() => confetti.remove(), 5000);
+        }
+      }
+
+      // ✅ TELA DE JACKPOT BONITA E RESPONSIVA
+      socket.on('jackpot-won', (data) => {
+        const container = document.getElementById('jackpot-fullscreen');
+        container.innerHTML = `
+          <div class="jackpot-title">🏆 JACKPOT! 🏆</div>
+          <div class="jackpot-player">${data.playerName}</div>
+          <div class="jackpot-amount">R$ ${data.jackpotAmount.toLocaleString('pt-BR')}</div>
+          <div class="jackpot-balls">Com ${data.ballsCount} bolas sorteadas!</div>
+        `;
+        container.style.display = 'flex';
+        speak(`Jackpot! ${data.playerName} ganhou o Jackpot com ${data.ballsCount} bolas!`);
+        setTimeout(() => {
+          container.style.display = 'none';
+        }, 8000);
+      });
+
+      socket.on('show-restart-button', () => { gameEnded = true; });
+      socket.on('game-over', () => { gameEnded = true; });
+
+      socket.on('room-reset', () => {
+        roomsDrawnNumbers = [];
+        playerCards = [];
+        gameEnded = false;
+        document.getElementById('cards-container').innerHTML = '';
+        document.getElementById('last-number').textContent = '-';
+        document.getElementById('balls-count').textContent = '0';
+        document.getElementById('history').innerHTML = '';
+        localStorage.removeItem(`bingo_player_${playerName}`);
+        renderCards();
+        updateControlButtons('linha1');
+      });
+
+      socket.on('error', (msg) => showAdminMessage(msg, 'error'));
+      socket.on('message', (msg) => showAdminMessage(msg, 'success'));
+
+      document.getElementById('buy-btn').addEventListener('click', () => {
+        if (gameEnded) {
+          alert('O jogo terminou. Clique em "Reiniciar Jogo".');
+          return;
+        }
+        const count = parseInt(document.getElementById('card-count').value) || 1;
+        if (count < 1 || count > 1000) {
+          alert('Digite um valor entre 1 e 1000.');
+          return;
+        }
+        socket.emit('buy-cards', { count, cardType });
+      });
+
+      document.getElementById('start-btn').addEventListener('click', () => {
+        if (gameEnded) return;
+        socket.emit('start-draw');
+      });
+
+      document.getElementById('line1-btn').addEventListener('click', () => {
+        if (gameEnded) return;
+        socket.emit('claim-win', { winType: 'linha1' });
+      });
+
+      document.getElementById('line2-btn').addEventListener('click', () => {
+        if (gameEnded) return;
+        socket.emit('claim-win', { winType: 'linha2' });
+      });
+
+      document.getElementById('bingo-btn').addEventListener('click', () => {
+        if (gameEnded) return;
+        socket.emit('claim-win', { winType: 'bingo' });
+      });
+
+      document.getElementById('restart-btn').addEventListener('click', () => {
+        if (confirm('Deseja reiniciar o jogo?')) {
+          socket.emit('restart-game');
+        }
+      });
+
+      window.addEventListener('beforeunload', (e) => {
+        if (currentRoom && !gameEnded) {
+          e.preventDefault();
+          e.returnValue = '';
+          return '';
+        }
+      });
+
+      function updateHistory(numbers) {
+        const hist = document.getElementById('history');
+        hist.innerHTML = '';
+        [...numbers].reverse().forEach(num => {
+          const span = document.createElement('span');
+          span.className = 'ball';
+          span.textContent = num;
+          hist.appendChild(span);
+        });
+      }
+
+      function markDrawnNumbers(number) {
+        const numStr = String(number);
+        document.querySelectorAll(`.cell[data-num="${numStr}"]`).forEach(cell => {
+          cell.classList.add('marked');
+        });
+      }
+
+      function renderCards() {
+        const container = document.getElementById('cards-container');
+        container.innerHTML = '';
+
+        const validCards = playerCards.filter(item => 
+          item && item.card && 
+          ((cardType === '75' && item.card.length === 25) || 
+           (cardType === '90' && item.card.length === 3 && item.card.every(row => Array.isArray(row) && row.length === 9)))
+        );
+
+        const sortedCards = [...validCards].sort((a, b) => {
+          const ballsA = calculateMinBallsToNextStage(a.card, roomsDrawnNumbers, currentStage);
+          const ballsB = calculateMinBallsToNextStage(b.card, roomsDrawnNumbers, currentStage);
+          return ballsA - ballsB;
+        });
+
+        // ✅ NUMERAR EM ORDEM CRESCENTE: 1, 2, 3, ...
+        sortedCards.forEach((item, idx) => {
+          item.index = idx;
+        });
+
+        sortedCards.forEach(item => {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'card-wrapper';
+          wrapper.innerHTML = `<div class="card-title">Cartela ${item.index + 1}</div>`;
+          
+          const grid = document.createElement('div');
+          grid.className = cardType === '75' ? 'grid-75' : 'grid-90';
+
+          if (cardType === '90') {
+            // ✅ CONTAR NÚMEROS MARCADOS POR LINHA
+            const markedInRow = [0, 0, 0];
+            for (let r = 0; r < 3; r++) {
+              for (let c = 0; c < 9; c++) {
+                const num = item.card[r][c];
+                if (num !== null && roomsDrawnNumbers.includes(num)) {
+                  markedInRow[r]++;
+                }
+              }
+            }
+
+            // ✅ VERIFICAR LINHAS COMPLETAS
+            const line0Complete = markedInRow[0] >= 5;
+            const line1Complete = markedInRow[1] >= 5;
+            const line2Complete = markedInRow[2] >= 5;
+            const completedLines = [line0Complete, line1Complete, line2Complete];
+            const totalCompleted = completedLines.filter(Boolean).length;
+            const bingo = totalCompleted >= 3;
+
+            // ✅ RENDERIZAR CÉLULAS
+            for (let r = 0; r < 3; r++) {
+              for (let c = 0; c < 9; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                const val = item.card[r][c];
+                if (val !== null) {
+                  cell.textContent = val.toString();
+                  cell.dataset.num = val.toString();
+
+                  if (roomsDrawnNumbers.includes(val)) {
+                    cell.classList.add('marked');
+                  }
+
+                  // ✅ APLICAR CORES CORRETAS
+                  if (bingo) {
+                    // Será tratado no wrapper
+                  } else if (totalCompleted >= 2) {
+                    if (r === 0 && line0Complete) {
+                      cell.style.backgroundColor = '#27ae60'; // Verde
+                      cell.style.color = 'white';
+                    } else if ((r === 1 && line1Complete) || (r === 2 && line2Complete)) {
+                      cell.style.backgroundColor = '#8e44ad'; // Roxo
+                      cell.style.color = 'white';
+                    }
+                  } else if (totalCompleted >= 1) {
+                    if ((r === 0 && line0Complete) || (r === 1 && line1Complete) || (r === 2 && line2Complete)) {
+                      cell.style.backgroundColor = '#27ae60'; // Verde
+                      cell.style.color = 'white';
+                    }
+                  }
+                } else {
+                  cell.classList.add('empty');
+                }
+                grid.appendChild(cell);
+              }
+            }
+
+            // ✅ BINGO: cartela dourada + "BINGO!"
+            if (bingo) {
+              wrapper.className = 'card-wrapper bingo-complete';
+              const overlay = document.createElement('div');
+              overlay.className = 'bingo-overlay';
+              overlay.textContent = 'BINGO!';
+              wrapper.appendChild(overlay);
+            }
+          } else {
+            for (let i = 0; i < 25; i++) {
+              const cell = document.createElement('div');
+              cell.className = 'cell';
+              if (item.card[i] === 'FREE') {
+                cell.textContent = '★';
+                cell.classList.add('free');
+              } else {
+                cell.textContent = item.card[i].toString();
+                cell.dataset.num = item.card[i].toString();
+                if (roomsDrawnNumbers.includes(item.card[i])) {
+                  cell.classList.add('marked');
+                }
+              }
+              grid.appendChild(cell);
+            }
+          }
+          
+          wrapper.appendChild(grid);
+          container.appendChild(wrapper);
+        });
+      }
+    });
+  </script>
+</body>
+</html>

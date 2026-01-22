@@ -1,0 +1,19 @@
+{
+  "name": "bingo-multiplayer",
+  "version": "1.0.0",
+  "description": "Bingo multiplayer com salas Bingo 75 e Bingo 90",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.22.1",
+    "opener": "^1.5.2",
+    "redis": "^5.10.0",
+    "socket.io": "^4.8.3"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
