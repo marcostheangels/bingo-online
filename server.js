@@ -6,6 +6,12 @@ const fs = require('fs');
 const app = express();
 const server = http.createServer(app);
 
+// ✅ Função para obter a sala real do socket
+function getSocketRoom(socket) {
+  const rooms = Object.keys(socket.rooms);
+  return rooms.find(roomId => roomId !== socket.id);
+}
+
 // ✅ Rate limiting simples para feedback
 const feedbackLimiter = new Map(); // IP -> último timestamp
 const FEEDBACK_MIN_INTERVAL_MS = 5000; // 5 segundos entre envios
@@ -490,91 +496,11 @@ function resumeDraw(roomType) {
 function startAutoRestart(roomType) {
   const room = rooms[roomType];
   if (room.autoRestartTimeout) clearTimeout(room.autoRestartTimeout);
-  
-  let countdown = 25;
-  const countdownInterval = setInterval(() => {
-    if (countdown <= 5) {
-      io.to(roomType).emit('chat-message', {
-        message: `⏳ ${countdown}...`,
-        sender: "SYSTEM",
-        isBot: true,
-        type: "countdown"
-      });
-    }
-    countdown--;
-    if (countdown < 0) {
-      clearInterval(countdownInterval);
-      handleAutoRestart(roomType);
-    }
-  }, 1000);
-}
-
-// ✅ Nova função: handleAutoRestart SEM socket artificial
-function handleAutoRestart(roomType) {
-  const room = rooms[roomType];
-  if (!room) return;
-
-  if (room.autoRestartTimeout) clearTimeout(room.autoRestartTimeout);
-  room.autoRestartTimeout = null;
-
-  const playersToKeep = {};
-  let activeBots = 0;
-  for (const [id, player] of Object.entries(room.players)) {
-    if (player.isBot && player.chips <= 0) continue;
-    playersToKeep[id] = player;
-    if (player.isBot) activeBots++;
-  }
-
-  if (room.addBotOnNextRestart && room.maxBots < MAX_BOTS_ALLOWED) {
-    room.maxBots += 1;
-    room.addBotOnNextRestart = false;
-  }
-  room.maxBots = Math.min(room.maxBots, MAX_BOTS_ALLOWED);
-
-  room.players = playersToKeep;
-  let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
-  while (currentBots < room.maxBots) {
-    addBotToRoom(roomType, INITIAL_CHIPS);
-    currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
-  }
-
-  room.drawnNumbers = [];
-  room.lastNumber = null;
-  room.pot = 0;
-  room.currentStage = 'linha1';
-  room.stageCompleted = { linha1: false, linha2: false, bingo: false };
-  room.gameCompleted = false;
-  room.gameActive = false;
-  room.currentWinnerId = null;
-
-  for (const [id, player] of Object.entries(room.players)) {
-    if (player.isBot && hasHumanPlayers(roomType)) {
-      const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
-      const cardCount = Math.min(getBotCardCount(totalBotsNow), Math.floor(player.chips / PRICE_PER_CARD));
-      if (cardCount > 0) {
-        const totalCost = cardCount * PRICE_PER_CARD;
-        player.chips -= totalCost;
-        room.pot += totalCost;
-        room.jackpot += Math.floor(totalCost * 0.5);
-        if (roomType === 'bingo90') {
-          player.cards90 = Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card()));
-          player.cards75 = [];
-        } else {
-          player.cards75 = Array(cardCount).fill().map(() => generateBingo75Card());
-          player.cards90 = [];
-        }
-      }
-    } else if (!player.isBot) {
-      player.cards75 = [];
-      player.cards90 = [];
-    }
-  }
-
-  io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
-  io.to(roomType).emit('room-reset');
-  broadcastPlayerList(roomType);
-  broadcastRanking(roomType);
-  console.log(`🔄 Jogo reiniciado automaticamente. Bots: ${currentBots} (máximo: ${room.maxBots})`);
+  io.to(roomType).emit('countdown-start', { seconds: 25 });
+  room.autoRestartTimeout = setTimeout(() => {
+    const fakeSocket = { data: { roomType }, id: 'system' };
+    handleAutoRestart(fakeSocket, roomType);
+  }, 25000);
 }
 
 function handleWin(roomType, allWinners) {
@@ -611,15 +537,18 @@ function handleWin(roomType, allWinners) {
   const winnerNames = results.map(r => r.playerName).join(', ');
   const totalPrize = results.reduce((sum, r) => sum + r.prize, 0);
   
+  // ✅ Destacar vencedor atual
   if (results.length > 0) {
     room.currentWinnerId = results[0].playerId;
   }
   
+  // ✅ Adiciona flag se Markim ou Marília vencerem
   if (shouldAddBotOnWin(winnerNames)) {
     room.addBotOnNextRestart = true;
     console.log(`✅ Vitória de Markim ou Marília! Bot será adicionado no próximo restart.`);
   }
   
+  // ✅ Mensagem com valor e marcadores
   let formattedMessage = "";
   if (currentStage === 'linha1') {
     formattedMessage = `[L1]🎉 Parabéns, ${winnerNames}! Você ganhou R$ ${totalPrize.toLocaleString('pt-BR')} com a primeira linha![/L1]`;
@@ -631,11 +560,12 @@ function handleWin(roomType, allWinners) {
 
   io.to(roomType).emit('chat-message', {
     message: formattedMessage,
-    sender: "SYSTEM",
+    sender: "Sistema",
     isBot: false,
     type: currentStage
   });
   
+  // ✅ Verificar vitórias consecutivas
   const humanWinners = results.filter(r => !room.players[r.playerId].isBot);
   for (const hw of humanWinners) {
     const player = room.players[hw.playerId];
@@ -658,13 +588,14 @@ function handleWin(roomType, allWinners) {
     }
   }
 
+  // ✅ Mensagem especial para humanos que fazem bingo
   if (currentStage === 'bingo') {
     if (humanWinners.length > 0) {
       const humanNames = humanWinners.map(h => h.playerName).join(', ');
       setTimeout(() => {
         io.to(roomType).emit('chat-message', {
           message: `✨✨✨ CARTÃO DOURADO ATIVADO! ${humanNames} fez BINGO! ✨✨✨`,
-          sender: "SYSTEM",
+          sender: "Sistema",
           isBot: false,
           special: "golden-bingo"
         });
@@ -672,13 +603,14 @@ function handleWin(roomType, allWinners) {
     }
   }
   
+  // ✅ Jackpot
   if (wonJackpot) {
     const jackpotNames = jackpotWinners.map(w => w.playerName).join(', ');
-    const jackpotAmount = room.jackpot;
+    const jackpotAmount = room.jackpot; // valor ANTES do reset
     setTimeout(() => {
       io.to(roomType).emit('chat-message', {
         message: `[JACKPOT]💰💰💰 JACKPOT HISTÓRICO! ${jackpotNames} levaram R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        sender: "SYSTEM",
+        sender: "Sistema",
         isBot: false,
         type: "jackpot"
       });
@@ -703,9 +635,7 @@ function handleWin(roomType, allWinners) {
   if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
     startAutoRestart(roomType);
   } else {
-    setTimeout(() => {
-      resumeDraw(roomType);
-    }, 4000);
+    resumeDraw(roomType);
   }
 }
 
@@ -817,6 +747,71 @@ function findPlayerByName(roomType, playerName) {
   return Object.entries(room.players).find(([id, player]) => !player.isBot && player.name === playerName);
 }
 
+function handleAutoRestart(socket, roomType) {
+  const room = rooms[roomType];
+  if (!room) return;
+
+  const playersToKeep = {};
+  let activeBots = 0;
+  for (const [id, player] of Object.entries(room.players)) {
+    if (player.isBot && player.chips <= 0) continue;
+    playersToKeep[id] = player;
+    if (player.isBot) activeBots++;
+  }
+
+  if (room.addBotOnNextRestart && room.maxBots < MAX_BOTS_ALLOWED) {
+    room.maxBots += 1;
+    room.addBotOnNextRestart = false;
+  }
+  room.maxBots = Math.min(room.maxBots, MAX_BOTS_ALLOWED);
+
+  room.players = playersToKeep;
+  let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
+  while (currentBots < room.maxBots) {
+    addBotToRoom(roomType, INITIAL_CHIPS);
+    currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
+  }
+
+  room.drawnNumbers = [];
+  room.lastNumber = null;
+  room.pot = 0;
+  room.currentStage = 'linha1';
+  room.stageCompleted = { linha1: false, linha2: false, bingo: false };
+  room.gameCompleted = false;
+  room.gameActive = false;
+  room.autoRestartTimeout = null;
+  room.currentWinnerId = null;
+
+  for (const [id, player] of Object.entries(room.players)) {
+    if (player.isBot) {
+      const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
+      const cardCount = Math.min(getBotCardCount(totalBotsNow), Math.floor(player.chips / PRICE_PER_CARD));
+      if (cardCount > 0) {
+        const totalCost = cardCount * PRICE_PER_CARD;
+        player.chips -= totalCost;
+        room.pot += totalCost;
+        room.jackpot += Math.floor(totalCost * 0.5);
+        if (roomType === 'bingo90') {
+          player.cards90 = Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card()));
+          player.cards75 = [];
+        } else {
+          player.cards75 = Array(cardCount).fill().map(() => generateBingo75Card());
+          player.cards90 = [];
+        }
+      }
+    } else {
+      player.cards75 = [];
+      player.cards90 = [];
+    }
+  }
+
+  io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
+  io.to(roomType).emit('room-reset');
+  broadcastPlayerList(roomType);
+  broadcastRanking(roomType);
+  console.log(`🔄 Jogo reiniciado automaticamente. Bots: ${currentBots} (máximo: ${room.maxBots})`);
+}
+
 io.on('connection', (socket) => {
   console.log('🔌 Jogador conectado:', socket.id);
 
@@ -861,7 +856,7 @@ io.on('connection', (socket) => {
     }
     
     socket.join(roomType);
-    socket.data = { roomType };
+    // REMOVIDO: socket.data = { roomType }; // ❌ não confiável
     
     let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
     while (currentBots < room.maxBots) {
@@ -871,6 +866,7 @@ io.on('connection', (socket) => {
       currentBots = newBotCount;
     }
     
+    // ✅ Boas-vindas
     if (!room.players[playerId].isBot) {
       io.to(roomType).emit('chat-message', {
         message: `👋 Bem-vindo(a), ${playerName}! Preparado(a) para ganhar?`,
@@ -924,10 +920,12 @@ io.on('connection', (socket) => {
     broadcastPlayerList(roomType);
     broadcastRanking(roomType);
     
+    // ✅ Inicia mensagens automáticas
     if (!room.autoMessageInterval) {
       startAutoMessages(roomType);
     }
     
+    // ✅ Tenta iniciar jogo se houver humanos
     if (hasHumanPlayers(roomType) && !room.gameActive && !room.gameCompleted) {
       setTimeout(() => {
         if (hasHumanPlayers(roomType)) {
@@ -937,9 +935,10 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ✅ Corrigido: usar getSocketRoom()
   socket.on('buy-cards', ({ count, cardType }) => {
     try {
-      const roomType = socket.data?.roomType;
+      const roomType = getSocketRoom(socket);
       if (!roomType || !rooms[roomType]) return socket.emit('error', 'Sala inválida.');
       if (count < 1 || count > MAX_CARDS_PER_PLAYER) return socket.emit('error', `Compre entre 1 e ${MAX_CARDS_PER_PLAYER} cartelas.`);
       
@@ -988,8 +987,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('start-draw', () => {
-    const roomType = socket.data?.roomType;
-    if (roomType && !rooms[roomType].gameActive) {
+    const roomType = getSocketRoom(socket);
+    if (roomType && rooms[roomType] && !rooms[roomType].gameActive) {
       if (hasHumanPlayers(roomType)) {
         resumeDraw(roomType);
       } else {
@@ -1000,7 +999,7 @@ io.on('connection', (socket) => {
 
   socket.on('claim-win', ({ winType }) => {
     try {
-      const roomType = socket.data?.roomType;
+      const roomType = getSocketRoom(socket);
       if (!roomType || !rooms[roomType]) return socket.emit('error', 'Sala inválida.');
       const room = rooms[roomType];
       const playerId = socket.id;
@@ -1031,7 +1030,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('admin-add-chips', ({ playerName, amount, adminPassword }) => {
-    const roomType = socket.data?.roomType;
+    const roomType = getSocketRoom(socket);
     if (!roomType) return socket.emit('error', 'Sala inválida.');
     if (adminPassword !== ADMIN_PASSWORD) return socket.emit('error', 'Senha inválida.');
     const result = addChipsToPlayer(roomType, playerName, amount);
@@ -1039,13 +1038,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('restart-game', () => {
-    const roomType = socket.data?.roomType;
-    if (!roomType || !rooms[roomType]) return socket.emit('error', 'Sala inválida.');
-    handleAutoRestart(roomType);
+    const roomType = getSocketRoom(socket);
+    if (!roomType) return socket.emit('error', 'Sala inválida.');
+    const fakeSocket = { data: { roomType }, id: 'manual' };
+    handleAutoRestart(fakeSocket, roomType);
   });
 
   socket.on('chat-message', ({ message, sender, isBot }) => {
-    const roomType = socket.data?.roomType;
+    const roomType = getSocketRoom(socket);
     if (!roomType || !rooms[roomType]) return;
     
     if (!isBot) {
@@ -1069,11 +1069,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    const roomType = socket.data?.roomType;
+    const roomType = getSocketRoom(socket);
     if (roomType && rooms[roomType]) {
       const player = rooms[roomType].players[socket.id];
       if (player && !player.isBot) {
         console.log('👋 Jogador humano desconectado (mantido):', player.name);
+        // NÃO deleta humano
       } else {
         delete rooms[roomType].players[socket.id];
       }
