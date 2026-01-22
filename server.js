@@ -14,6 +14,8 @@ app.use(express.static('public'));
 
 let db = loadDB();
 
+const INITIAL_JACKPOT = 1500000;
+
 let rooms = {
   bingo90: {
     players: {},
@@ -22,7 +24,7 @@ let rooms = {
     gameCompleted: false,
     currentStage: 'linha1',
     pot: 0,
-    jackpot: 0,
+    jackpot: INITIAL_JACKPOT,
     lastNumber: null
   }
 };
@@ -382,13 +384,13 @@ io.on('connection', (socket) => {
     db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
     saveDB(db);
 
-    // Bots só compram cartelas quando humanos compram — mesma quantidade exata
+    // Bots compram EXATAMENTE a mesma quantidade que o humano comprou
     for (const id in room.players) {
       const p = room.players[id];
       if (p.isBot && !room.gameStarted) {
-        // Resetar cartelas dos bots antes de comprar novas
+        // Remover cartelas antigas dos bots
         p.cards90 = [];
-        // Comprar EXATAMENTE a mesma quantidade que o humano comprou
+        // Comprar a mesma quantidade
         const botNewCards = [];
         for (let i = 0; i < finalCount; i++) {
           botNewCards.push(generateValidBingo90Card());
@@ -399,10 +401,16 @@ io.on('connection', (socket) => {
       }
     }
 
+    // Adicionar valor gasto ao pote e ao jackpot
+    const totalSpent = (finalCount + (Object.values(room.players).filter(p => p.isBot).length * finalCount)) * 100;
+    room.pot += totalSpent;
+    room.jackpot += totalSpent;
+
     socket.emit('cards-received', { cards: newCards.map(c => ({ card: c })), cardType: '90' });
     broadcastRoomState('bingo90');
     broadcastPlayerList('bingo90');
     broadcastRanking('bingo90');
+    broadcastPot('bingo90');
   });
 
   socket.on('start-draw', () => {
@@ -436,15 +444,15 @@ io.on('connection', (socket) => {
     room.gameStarted = true;
     room.drawnNumbers = [];
     room.lastNumber = null;
+    // O pote é zerado ao iniciar, mas o jackpot permanece acumulado
     room.pot = 0;
-    room.jackpot = 0;
 
+    // Recalcular o pote com base nas cartelas atuais
     for (const id in room.players) {
       const p = room.players[id];
       const spent = p.cards90.length * 100;
       room.pot += spent;
     }
-    room.jackpot = room.pot;
 
     broadcastPot('bingo90');
     broadcastRoomState('bingo90');
@@ -657,9 +665,9 @@ function resetRoom(roomId) {
   room.currentStage = 'linha1';
   room.lastNumber = null;
   room.pot = 0;
-  room.jackpot = 0;
+  // Jackpot NÃO é resetado aqui — só é resetado ao ser ganho
 
-  // Limpa as cartelas APENAS dos humanos (bots mantêm as cartelas até o próximo join ou compra)
+  // Limpa as cartelas APENAS dos humanos
   for (const id in room.players) {
     const p = room.players[id];
     if (!p.isBot) {
@@ -668,6 +676,14 @@ function resetRoom(roomId) {
         db.players[p.name].cards90 = [];
         saveDB(db);
       }
+    }
+  }
+
+  // Bots mantêm seus chips, mas perdem cartelas
+  for (const id in room.players) {
+    const p = room.players[id];
+    if (p.isBot) {
+      p.cards90 = [];
     }
   }
 
