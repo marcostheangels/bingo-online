@@ -332,12 +332,22 @@ io.on('connection', (socket) => {
     let chips = 10000;
     let cards90 = [];
 
+    // 🔸 Correção: só restaurar cartelas se o jogo estiver em andamento
     if (db.players[playerName]) {
       chips = db.players[playerName].chips || 10000;
-      cards90 = db.players[playerName].cards90 || [];
+      if (room.gameStarted && !room.gameCompleted) {
+        cards90 = db.players[playerName].cards90 || [];
+      }
     } else if (savedChips) {
       chips = savedChips;
-      cards90 = savedCards90 || [];
+      if (room.gameStarted && !room.gameCompleted) {
+        cards90 = savedCards90 || [];
+      }
+    }
+
+    // 🔸 Se não há rodada ativa, descartar qualquer cartela carregada
+    if (!room.gameStarted && !room.gameCompleted) {
+      cards90 = [];
     }
 
     if (cards90.length > 10) cards90 = cards90.slice(0, 10);
@@ -494,7 +504,7 @@ io.on('connection', (socket) => {
     room.drawnNumbers = [];
     room.lastNumber = null;
     room.pot = 0;
-    // 🔸 CORREÇÃO: NÃO redefinir o jackpot aqui — ele persiste até ser ganho!
+    // 🔸 NÃO redefinir o jackpot aqui — ele persiste até ser ganho!
 
     for (const name in room.players) {
       const p = room.players[name];
@@ -592,7 +602,7 @@ function processWin(winType, room, winners) {
   });
   saveDB(db);
 
-  // 🔸 CORREÇÃO: Zerar jackpot APÓS pagamento
+  // 🔸 Zerar jackpot APÓS pagamento
   if (jackpotPerWinner > 0) {
     room.jackpot = 0;
   }
