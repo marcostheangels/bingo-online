@@ -1,4 +1,4 @@
-// server.js — Bingo Multiplayer com todas as regras de Markim (VERSÃO FINAL + MELHORIAS)
+// server.js — Bingo Multiplayer com IA no chat, moderação e lógica justa
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -29,7 +29,6 @@ let rooms = {
 
 const HUMAN_NAMES = ['Markim', 'Marília'];
 
-// ✅ Nomes engraçados para os bots
 const FUNNY_BOT_NAMES = [
   "Tio do Mução", "Zé do Caixão", "Seu Creysson", "Dona Biscoito",
   "Mané Treme-Treme", "Maria Espetinho", "Chico Furacão", "Tonhão da Lata",
@@ -37,7 +36,6 @@ const FUNNY_BOT_NAMES = [
   "Biscoito Amargo", "Tia Nastácia", "Seu Barriga"
 ];
 
-// ✅ Mensagens variadas de parabéns
 const WIN_MESSAGES = {
   linha1: [
     "🔥 Que rápido! Linha 1 garantida!",
@@ -65,8 +63,16 @@ const WIN_MESSAGES = {
   ]
 };
 
-// Fila de bots pendentes (só entram na próxima partida)
 let pendingBotsToAdd = [];
+
+// ✅ Sistema de mute
+const mutedPlayers = new Map(); // socketId => unmuteTime
+
+// ✅ Palavras proibidas (xingamentos)
+const BAD_WORDS = [
+  'merda', 'caralho', 'puta', 'filho da puta', 'fdp', 'bosta', 'idiota', 'burro', 'otário',
+  'cuzão', 'vai se foder', 'se foder', 'arrombado', 'desgraça', 'porra', 'cacete'
+];
 
 // === Geração de Cartela Corrigida ===
 function generateValidBingo90Card() {
@@ -148,7 +154,6 @@ function getWinningPlayers(room, winType) {
   return winners;
 }
 
-// ✅ Adicionar bot à fila (não entra agora!)
 function maybeAddBotAfterHumanWin(winnerName) {
   if (HUMAN_NAMES.includes(winnerName)) {
     pendingBotsToAdd.push(true);
@@ -193,6 +198,7 @@ function broadcastRanking(roomId) {
     .map((p, i) => ({ ...p, position: i + 1 }));
 
   io.to(roomId).emit('ranking-update', ranking);
+  return ranking;
 }
 
 function broadcastPot(roomId) {
@@ -203,9 +209,98 @@ function broadcastPot(roomId) {
   });
 }
 
+// ✅ IA Inteligente no Chat
+function aiRespond(message, senderSocketId, room) {
+  const msgLower = message.toLowerCase().trim();
+  const ranking = Object.values(room.players)
+    .map(p => ({ name: p.name, chips: p.chips }))
+    .sort((a, b) => b.chips - a.chips);
+
+  const topPlayer = ranking.length > 0 ? ranking[0].name : 'ninguém';
+  const topChips = ranking.length > 0 ? ranking[0].chips.toLocaleString('pt-BR') : '0';
+
+  let response = "";
+
+  if (msgLower.includes('quem') && (msgLower.includes('lider') || msgLower.includes('primeiro') || msgLower.includes('top'))) {
+    response = `🏆 O líder do ranking é ${topPlayer} com R$ ${topChips} em chips!`;
+  } else if (msgLower.includes('como') && (msgLower.includes('jogar') || msgLower.includes('bingo'))) {
+    response = `🎲 Compre cartelas, inicie o sorteio e marque os números! Complete Linha 1, Linha 2 ou BINGO para ganhar prêmios!`;
+  } else if (msgLower.includes('dica') || msgLower.includes('conselho')) {
+    response = `💡 Dica: compre mais cartelas para aumentar suas chances! Mas cuidado com os bots — eles são espertos!`;
+  } else if (msgLower.includes('bot') || msgLower.includes('quem tá jogando')) {
+    const bots = Object.values(room.players).filter(p => p.isBot).map(p => p.name);
+    const humans = Object.values(room.players).filter(p => !p.isBot).map(p => p.name);
+    response = `👥 Humanos: ${humans.length > 0 ? humans.join(', ') : 'nenhum'} | Bots: ${bots.length > 0 ? bots.join(', ') : 'nenhum'}`;
+  } else if (msgLower.includes('pote') || msgLower.includes('prêmio')) {
+    response = `💰 Pote atual: R$ ${room.pot.toLocaleString('pt-BR')} | Jackpot: R$ ${room.jackpot.toLocaleString('pt-BR')}`;
+  } else if (msgLower.includes('ajuda') || msgLower.includes('help')) {
+    response = `❓ Digite: "quem é o líder?", "como jogar?", "dica", "quem tá jogando?", "pote" ou "prêmio"!`;
+  } else if (msgLower.includes('olá') || msgLower.includes('oi') || msgLower.includes('opa')) {
+    response = `👋 Olá, ${room.players[senderSocketId]?.name || 'amigo'}! Vamos jogar Bingo? 🎰`;
+  } else if (msgLower.includes('sorte') || msgLower.includes('ganhar')) {
+    response = `🍀 A sorte está lançada! Compre cartelas e tente seu BINGO hoje!`;
+  } else {
+    // Incentivo aleatório
+    const encouragements = [
+      `🌟 ${room.players[senderSocketId]?.name || 'Jogador'}, compre mais cartelas! Sua sorte pode estar a uma bola de distância!`,
+      `🎯 O próximo número pode ser o seu! Não desista!`,
+      `💥 Bots estão atentos... mas você é humano! Mostre quem manda!`,
+      `🎰 Seu BINGO está quase lá! Continue jogando!`
+    ];
+    response = encouragements[Math.floor(Math.random() * encouragements.length)];
+  }
+
+  return response;
+}
+
 // === Socket.IO ===
 io.on('connection', (socket) => {
   console.log('🔌 Novo jogador conectado:', socket.id);
+
+  // Verificar mute
+  socket.on('chat-message', ({ message, sender, isBot }) => {
+    const now = Date.now();
+    if (mutedPlayers.has(socket.id)) {
+      const unmuteTime = mutedPlayers.get(socket.id);
+      if (now < unmuteTime) {
+        const remaining = Math.ceil((unmuteTime - now) / 60000);
+        socket.emit('error', `Você está silenciado por ${remaining} minuto(s).`);
+        return;
+      } else {
+        mutedPlayers.delete(socket.id);
+      }
+    }
+
+    // Verificar palavras proibidas
+    const msgLower = message.toLowerCase();
+    const hasBadWord = BAD_WORDS.some(word => msgLower.includes(word));
+    if (hasBadWord) {
+      mutedPlayers.set(socket.id, now + 5 * 60 * 1000); // 5 minutos
+      socket.emit('error', '⚠️ Mensagem bloqueada! Você foi silenciado por 5 minutos por uso de linguagem inadequada.');
+      io.to('bingo90').emit('chat-message', {
+        sender: "Sistema",
+        message: `🔇 ${sender} foi silenciado por 5 minutos.`,
+        isBot: false
+      });
+      return;
+    }
+
+    // Enviar mensagem normal
+    io.to('bingo90').emit('chat-message', { message, sender, isBot });
+
+    // IA responde se for pergunta (não é bot e não é sistema)
+    if (!isBot && sender !== "Sistema") {
+      const room = rooms.bingo90;
+      const aiResponse = aiRespond(message, socket.id, room);
+      setTimeout(() => {
+        io.to('bingo90').emit('chat-message', {
+          sender: "IA do Bingo",
+          message: aiResponse,
+          isBot: true
+        });
+      }, 1000 + Math.random() * 2000); // resposta com leve delay
+    }
+  });
 
   socket.on('join-room', ({ playerName, roomType, savedChips, savedCards90 }) => {
     if (roomType !== 'bingo90') return;
@@ -235,7 +330,6 @@ io.on('connection', (socket) => {
     db.players[playerName] = { chips, cards90 };
     saveDB(db);
 
-    // ✅ ADICIONAR 3 BOTS INICIAIS COM NOMES ENGRAÇADOS
     const currentBots = Object.values(room.players).filter(p => p.isBot);
     if (currentBots.length === 0 && (playerName === 'Markim' || playerName === 'Marília')) {
       console.log(`🤖 Adicionando 3 bots iniciais para ${playerName}...`);
@@ -292,7 +386,6 @@ io.on('connection', (socket) => {
     db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
     saveDB(db);
 
-    // Bots compram junto
     for (const id in room.players) {
       const p = room.players[id];
       if (p.isBot && !room.gameStarted) {
@@ -316,7 +409,6 @@ io.on('connection', (socket) => {
     const room = rooms.bingo90;
     if (room.gameStarted || room.gameCompleted) return;
 
-    // ✅ ADICIONAR BOTS PENDENTES NO INÍCIO DA PARTIDA
     if (pendingBotsToAdd.length > 0) {
       console.log(`🤖 Adicionando ${pendingBotsToAdd.length} bot(s) pendente(s)...`);
       for (let i = 0; i < pendingBotsToAdd.length; i++) {
@@ -379,7 +471,6 @@ io.on('connection', (socket) => {
     processWin(winType, room, winners);
   });
 
-  // ✅ REINICIAR JOGO
   socket.on('restart-game', () => {
     const room = rooms.bingo90;
     if (!room.gameCompleted) {
@@ -442,7 +533,6 @@ function processWin(winType, room, winners) {
     room.gameStarted = false;
   }
 
-  // ✅ MENSAGEM NO CHAT PARA CADA VENCEDOR
   winners.forEach(w => {
     const player = room.players[w.id];
     if (player) {
@@ -466,7 +556,6 @@ function processWin(winType, room, winners) {
     newStage: room.currentStage
   });
 
-  // ✅ ESPERAR 6 SEGUNDOS (tempo da animação) ANTES DE CONTINUAR
   if (winType !== 'bingo' && !room.gameCompleted) {
     setTimeout(() => {
       drawNextNumber('bingo90', room.drawnNumbers.length);
