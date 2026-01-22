@@ -70,7 +70,7 @@ const MAX_CARDS_PER_PLAYER = 10; // Limite máximo de 10 cartelas por jogador
 const JACKPOT_BALL_LIMIT = 60; // ✅ CORRIGIDO DE 40 PARA 60
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '0589';
 
-// ✅ Salas em memória - CORRIGIDO maxBots para 25
+// ✅ Salas em memória - INICIAM COM 3 BOTS
 const rooms = {
   'bingo75': { 
     name: 'Bingo 75 (Americano)', 
@@ -78,13 +78,14 @@ const rooms = {
     drawnNumbers: [], 
     gameActive: false, 
     lastNumber: null,
-    maxBots: 25,
+    maxBots: 3, // ✅ ALTERADO: começa com 3 bots
     pot: 0,
     drawInterval: null,
     currentStage: 'linha1',
     stageCompleted: { linha1: false, linha2: false, bingo: false },
     jackpot: 1000000,
-    gameCompleted: false
+    gameCompleted: false,
+    addBotOnNextRestart: false // ✅ nova flag
   },
   'bingo90': { 
     name: 'Bingo 90 (Brasileiro)', 
@@ -92,15 +93,22 @@ const rooms = {
     drawnNumbers: [], 
     gameActive: false, 
     lastNumber: null,
-    maxBots: 25,
+    maxBots: 3, // ✅ ALTERADO: começa com 3 bots
     pot: 0,
     drawInterval: null,
     currentStage: 'linha1',
     stageCompleted: { linha1: false, linha2: false, bingo: false },
     jackpot: 1000000,
-    gameCompleted: false
+    gameCompleted: false,
+    addBotOnNextRestart: false // ✅ nova flag
   }
 };
+
+// ✅ Função para verificar se vencedor é Markim ou Marília
+function shouldAddBotOnWin(winnerNames) {
+  const winners = winnerNames.split(', ').map(name => name.trim());
+  return winners.some(name => name === 'Markim' || name === 'Marília');
+}
 
 // ✅ MENSAGENS DE PARABENIZAÇÃO
 function getVictoryMessage(winType, winnerNames) {
@@ -441,6 +449,12 @@ function handleWin(roomType, allWinners) {
   const winnerNames = results.map(r => r.playerName).join(', ');
   const totalPrize = results.reduce((sum, r) => sum + r.prize, 0);
   
+  // ✅ Verifica se deve adicionar bot no próximo restart
+  if (shouldAddBotOnWin(winnerNames)) {
+    room.addBotOnNextRestart = true;
+    console.log(`✅ Vitória de Markim ou Marília detectada. Bot será adicionado no próximo restart.`);
+  }
+  
   const victoryMessage = getVictoryMessage(currentStage, winnerNames);
   io.to(roomType).emit('chat-message', {
     message: victoryMessage,
@@ -771,6 +785,13 @@ io.on('connection', (socket) => {
     if (!roomType) return socket.emit('error', 'Sala inválida.');
     pauseDraw(roomType);
     const room = rooms[roomType];
+    
+    // ✅ Se vitória foi de Markim ou Marília, aumenta maxBots temporariamente
+    if (room.addBotOnNextRestart) {
+      room.maxBots += 1;
+      room.addBotOnNextRestart = false;
+      console.log(`🔄 Reiniciando jogo com ${room.maxBots} bots (1 adicionado por vitória de Markim/Marília).`);
+    }
     
     const allPlayers = {};
     for (const [id, player] of Object.entries(room.players)) {
