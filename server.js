@@ -329,7 +329,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    let chips = 10000;
+    let chips = 10000; // Sempre começar com 10.000 chips
     let cards90 = [];
 
     // 🔸 Correção: só restaurar cartelas se o jogo estiver em andamento
@@ -429,6 +429,7 @@ io.on('connection', (socket) => {
     }
 
     player.cards90 = player.cards90.concat(newCards);
+    player.chips -= cost; // Deduzir chips imediatamente
     db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
     saveDB(db);
 
@@ -616,8 +617,8 @@ function processWin(winType, room, winners) {
     room.gameStarted = false;
   }
 
-  // 🔊 Emitir som para todos
-  io.to('bingo90').emit('play-sound', { type: winType });
+  // 🔊 Emitir som para todos — SEM o número, apenas tipo
+  io.to('bingo90').emit('play-sound', { type: 'sorteio' });
 
   // ✅ ANIMAÇÕES PARA TODOS OS JOGADORES
   const winnerData = {
@@ -689,8 +690,8 @@ function drawNextNumber(roomId, index) {
   room.drawnNumbers.push(number);
   room.lastNumber = number;
 
-  // 🔊 Som de sorteio para todos
-  io.to(roomId).emit('play-sound', { type: 'sorteio', number });
+  // 🔊 Som de sorteio para todos — SEM o número
+  io.to(roomId).emit('play-sound', { type: 'sorteio' });
 
   io.to(roomId).emit('number-drawn', {
     number,
