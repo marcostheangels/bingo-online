@@ -214,7 +214,19 @@ function aiRespond(message, senderSocketId, room) {
 
   let response = "";
 
-  if (msgLower.includes('quem') && (msgLower.includes('lider') || msgLower.includes('primeiro') || msgLower.includes('top'))) {
+  // Saudações
+  if (msgLower.includes('boa tarde') || msgLower.includes('boatarde')) {
+    response = `👋 Boa tarde, ${room.players[senderSocketId]?.name || 'amigo'}! Vamos jogar Bingo? 🎰`;
+  } else if (msgLower.includes('boa noite') || msgLower.includes('boanoite')) {
+    response = `🌙 Boa noite, ${room.players[senderSocketId]?.name || 'amigo'}! O Bingo não dorme!`;
+  } else if (msgLower.includes('bom dia') || msgLower.includes('bomdia')) {
+    response = `☀️ Bom dia, ${room.players[senderSocketId]?.name || 'amigo'}! Que comece a sorte! 🍀`;
+  } else if (msgLower.includes('olá') || msgLower.includes('oi') || msgLower.includes('opa') || msgLower.includes('e aí')) {
+    response = `👋 Olá, ${room.players[senderSocketId]?.name || 'amigo'}! Vamos jogar Bingo? 🎰`;
+  }
+
+  // Perguntas sobre jogo
+  else if (msgLower.includes('quem') && (msgLower.includes('lider') || msgLower.includes('primeiro') || msgLower.includes('top'))) {
     response = `🏆 O líder do ranking é ${topPlayer} com R$ ${topChips} em chips!`;
   } else if (msgLower.includes('como') && (msgLower.includes('jogar') || msgLower.includes('bingo'))) {
     response = `🎲 Compre até 10 cartelas, inicie o sorteio e marque os números! Complete Linha 1, Linha 2 ou BINGO para ganhar prêmios!`;
@@ -228,16 +240,30 @@ function aiRespond(message, senderSocketId, room) {
     response = `💰 Pote atual: R$ ${room.pot.toLocaleString('pt-BR')} | Jackpot: R$ ${room.jackpot.toLocaleString('pt-BR')}`;
   } else if (msgLower.includes('ajuda') || msgLower.includes('help')) {
     response = `❓ Digite: "quem é o líder?", "como jogar?", "dica", "quem tá jogando?", "pote" ou "prêmio"!`;
-  } else if (msgLower.includes('olá') || msgLower.includes('oi') || msgLower.includes('opa')) {
-    response = `👋 Olá, ${room.players[senderSocketId]?.name || 'amigo'}! Vamos jogar Bingo? 🎰`;
   } else if (msgLower.includes('sorte') || msgLower.includes('ganhar')) {
     response = `🍀 A sorte está lançada! Compre até 10 cartelas e tente seu BINGO hoje!`;
   } else if (msgLower.includes('quantas') && (msgLower.includes('cartelas') || msgLower.includes('comprar'))) {
     response = `🛒 Você pode comprar até 10 cartelas! Cada uma custa 100 chips.`;
   } else if (msgLower.includes('quantas') && msgLower.includes('bolas')) {
     response = `🔢 Até agora foram sorteadas ${room.drawnNumbers.length} bolas. O próximo número pode ser o seu!`;
+  } else if (msgLower.includes('jackpot') || msgLower.includes('jack pot')) {
+    response = `💎 Jackpot atual: R$ ${room.jackpot.toLocaleString('pt-BR')}! Ganhe completando sua cartela em 60 bolas ou menos!`;
+  } else if (msgLower.includes('regra') || msgLower.includes('regras')) {
+    response = `📜 Regras: Compre cartelas, espere o sorteio, complete Linha 1, Linha 2 ou BINGO! Jackpot só se completar em 60 bolas ou menos.`;
+  } else if (msgLower.includes('iniciar') || msgLower.includes('começar') || msgLower.includes('sortear')) {
+    response = `🎲 Para iniciar, clique em "Iniciar Sorteio" depois de comprar cartelas!`;
+  } else if (msgLower.includes('reiniciar') || msgLower.includes('reset')) {
+    response = `🔄 Só é possível reiniciar após um Bingo completo. Clique no botão "Reiniciar".`;
+  } else if (msgLower.includes('cartela') || msgLower.includes('cartelas')) {
+    response = `🎫 Cada cartela custa 100 chips. Você pode comprar até 10. Os bots também compram até 10!`;
+  } else if (msgLower.includes('ganhou') || msgLower.includes('vencedor') || msgLower.includes('quem ganhou')) {
+    response = `🏅 O último vencedor foi anunciado no chat! Fique atento às mensagens do Sistema.`;
+  } else if (msgLower.includes('chips') || msgLower.includes('fichas')) {
+    response = `🪙 Chips são usados para comprar cartelas. Ganhe ao completar Linha 1, Linha 2 ou BINGO!`;
+  } else if (msgLower.includes('sistema') || msgLower.includes('ai') || msgLower.includes('bot')) {
+    response = `🤖 Eu sou o Sistema! Respondo perguntas sobre o jogo. Se quiser conversar com humanos, mande mensagem direta!`;
   } else {
-    response = `🤖 Não entendi sua pergunta. Tente: "quem é o líder?", "como jogar?", "quantas cartelas posso comprar?" ou "qual é o pote?"`;
+    response = `ℹ️ Não entendi sua pergunta. Tente: "bom dia", "como jogar?", "qual é o jackpot?", "quem é o líder?" ou "quantas cartelas posso comprar?".`;
   }
 
   return response;
@@ -274,6 +300,7 @@ io.on('connection', (socket) => {
 
     io.to('bingo90').emit('chat-message', { message, sender, isBot });
 
+    // Só responde se for humano e não for sistema
     if (!isBot && sender !== "Sistema") {
       const room = rooms.bingo90;
       const aiResponse = aiRespond(message, socket.id, room);
