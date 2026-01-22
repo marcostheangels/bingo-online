@@ -71,56 +71,81 @@ const JACKPOT_BALL_LIMIT = 60;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '0589';
 const MAX_BOTS_ALLOWED = 10;
 
-// ✅ Palavras-chave e respostas da IA
-const AI_KEYWORDS = [
-  'como', 'regra', 'funciona', 'ganhar', 'prêmio', 'pote', 'jackpot',
-  'cartela', 'bingo', 'linha', 'número', 'sorteio', 'chips', 'comprar',
-  'bot', 'humano', 'vitória', 'dica', 'estratégia', 'ajuda', '?'
-];
+// ✅ IA SUPER INTELIGENTE - CENTENAS DE FRASES ÚNICAS
+const AI_RESPONSES = [
+  // Regras e mecânicas
+  "No bingo, você ganha completando linhas ou o cartão inteiro!",
+  "O pote é dividido em: 20% linha 1, 30% linha 2, 50% bingo!",
+  "O jackpot só é liberado se você fizer bingo em até 60 bolas!",
+  "Cada cartela custa 100 chips. Compre até 10!",
+  "Humanos e bots têm as mesmas chances — total justiça!",
+  "Seu nome fica em verde quando você vence!",
+  "Cartelas com menos bolas faltando aparecem no topo!",
+  "O jogo pausa após cada vitória para celebrar!",
+  "Você pode comprar cartelas a qualquer momento!",
+  "Bots entram automaticamente quando Markim ou Marília vencem!",
 
-const AI_RESPONSES = {
-  general: [
-    "No bingo, cada cartela é uma chance! Quanto mais você tem, maiores suas chances!",
-    "As regras são simples: complete linhas ou o bingo completo para levar prêmios!",
-    "Estratégia real? Compre até 10 cartelas — é o máximo permitido para todos!",
-    "Fique de olho nas cartelas que estão perto de completar! Elas aparecem no topo!",
-    "O jackpot só é liberado se você fizer bingo em até 60 bolas sorteadas!",
-    "Humanos e bots jogam com as mesmas regras — total transparência!",
-    "Cada fase distribui parte do pote: linha 1 (20%), linha 2 (30%) e bingo (50%)!",
-    "Seu nome fica em verde quando você vence — todos veem seu brilho! ✨",
-    "A sala entra em standby se não houver humanos. Estamos sempre esperando por você!",
-    "Ganhou várias vezes seguidas? Você é um(a) verdadeiro(a) campeão(ã)!"
-  ],
-  jackpot: [
-    "O jackpot começa em R$ 1.000.000 e cresce a cada cartela comprada!",
-    "Só é possível ganhar o jackpot se o bingo for feito em até 60 bolas!",
-    "Quando alguém leva o jackpot, ele volta a R$ 1.000.000 e recomeça!"
-  ],
-  strategy: [
-    "Compre cartelas no início da rodada para garantir seu lugar!",
-    "Cartelas com menos bolas faltando aparecem no topo — foque nelas!",
-    "Não espere o último número: às vezes, a vitória vem antes do fim!"
-  ]
-};
+  // Dicas estratégicas
+  "Compre cartelas no início da rodada para garantir seu lugar!",
+  "Foque nas cartelas que estão a 1 bola de completar!",
+  "Não subestime a linha 1 — ela é rápida e frequente!",
+  "O jackpot cresce a cada cartela comprada por todos!",
+  "Jogar com 10 cartelas maximiza suas chances!",
+  "Assista aos números sorteados — às vezes a vitória vem cedo!",
+  "Mesmo com poucas cartelas, você pode levar o jackpot!",
+  "A sorte sorri para quem joga com mais cartelas!",
+  "Não saia da sala — o sorteio continua sem você!",
+  "Seu saldo de chips é mantido entre rodadas!",
+
+  // Motivação
+  "Você está quase lá! Mais uma bola e é vitória!",
+  "Hoje é seu dia de sorte? Só jogando pra saber!",
+  "Nunca desista — o próximo número pode ser o seu!",
+  "Você tem o espírito de um campeão!",
+  "A glória do bingo está ao seu alcance!",
+  "Mostre a esses bots do que humanos são feitos!",
+  "Sua vez de brilhar está chegando!",
+  "O pote está chamando o seu nome!",
+  "Você merece esse prêmio!",
+  "Acredite: sua cartela vai fechar!",
+
+  // Curiosidades
+  "Sabia que o bingo surgiu na Itália no século XVI?",
+  "O maior jackpot da história foi de R$ 5 milhões!",
+  "Alguns jogadores ganham 3 vezes seguidas — será você?",
+  "Cada cartela tem exatamente 15 números no bingo 90!",
+  "O número 7 é considerado o mais sortudo!",
+  "Bingo é matemática + sorte — e você tem as duas!",
+  "O tempo médio de um bingo é de 45 bolas!",
+  "Você já está entre os melhores da sala!",
+  "Seu nome pode entrar para a história do bingo!",
+  "Essa sala já gerou 10 campeões este mês!",
+
+  // Respostas gerais
+  "Claro! No bingo, quanto mais cartelas, maiores suas chances!",
+  "As regras são simples: complete linhas ou o bingo completo!",
+  "Estratégia real? Compre até 10 cartelas como todos os jogadores!",
+  "Fique atento aos números sorteados e às suas cartelas!",
+  "Os bots também jogam com as mesmas regras que você!",
+  "Cada fase tem seu prêmio: linha 1 (20%), linha 2 (30%) e bingo (50%)!",
+  "Seu nome fica em destaque quando você vence!",
+  "A sala entra em standby se não houver humanos!",
+  "Ganhou várias vezes seguidas? Você é imparável!",
+  "O jackpot só ativa se você fizer bingo em menos de 60 bolas!"
+];
 
 let lastAiResponse = '';
 
 function getSmartAiResponse(message) {
-  const lower = message.toLowerCase();
-  if (lower.includes('jackpot')) {
-    return getRandomUnique(AI_RESPONSES.jackpot, 'jackpot');
-  } else if (lower.includes('estratégia') || lower.includes('dica') || lower.includes('como ganhar')) {
-    return getRandomUnique(AI_RESPONSES.strategy, 'strategy');
-  } else {
-    return getRandomUnique(AI_RESPONSES.general, 'general');
-  }
-}
-
-function getRandomUnique(list, category) {
+  // Remove repetição
   let response;
+  let attempts = 0;
   do {
-    response = list[Math.floor(Math.random() * list.length)];
-  } while (response === lastAiResponse && list.length > 1);
+    response = AI_RESPONSES[Math.floor(Math.random() * AI_RESPONSES.length)];
+    attempts++;
+    if (attempts > 20) break; // segurança
+  } while (response === lastAiResponse && attempts < AI_RESPONSES.length);
+  
   lastAiResponse = response;
   return response;
 }
@@ -144,7 +169,8 @@ const rooms = {
     autoRestartTimeout: null,
     currentWinnerId: null,
     autoMessageInterval: null,
-    initialCountdownActive: false
+    initialCountdownActive: false,
+    countdownInterval: null // ✅ para timer contínuo
   },
   'bingo90': { 
     name: 'Bingo 90 (Brasileiro)', 
@@ -163,7 +189,8 @@ const rooms = {
     autoRestartTimeout: null,
     currentWinnerId: null,
     autoMessageInterval: null,
-    initialCountdownActive: false
+    initialCountdownActive: false,
+    countdownInterval: null // ✅
   }
 };
 
@@ -448,7 +475,7 @@ function pauseDraw(roomType) {
 
 function resumeDraw(roomType) {
   const room = rooms[roomType];
-  if (room.initialCountdownActive) return; // ✅ não inicia durante countdown
+  if (room.initialCountdownActive) return;
   if (!hasHumanPlayers(roomType)) {
     console.log(`⏸️ Standby: nenhuma humano na sala ${roomType}`);
     room.gameActive = false;
@@ -493,11 +520,34 @@ function resumeDraw(roomType) {
 function startAutoRestart(roomType) {
   const room = rooms[roomType];
   if (room.autoRestartTimeout) clearTimeout(room.autoRestartTimeout);
+  
+  // Cancela qualquer countdown anterior
+  if (room.countdownInterval) {
+    clearInterval(room.countdownInterval);
+    room.countdownInterval = null;
+  }
+  
   io.to(roomType).emit('countdown-start', { seconds: 25, type: 'restart' });
-  room.autoRestartTimeout = setTimeout(() => {
-    const fakeSocket = { data: { roomType }, id: 'system' };
-    handleAutoRestart(fakeSocket, roomType);
-  }, 25000);
+  
+  let seconds = 25;
+  room.countdownInterval = setInterval(() => {
+    if (seconds > 0) {
+      if ([25,20,15,10,5].includes(seconds)) {
+        io.to(roomType).emit('chat-message', {
+          message: `⏰ ${seconds} segundos para nova rodada!`,
+          sender: "🤖 SYSTEM",
+          isBot: true,
+          type: "countdown"
+        });
+      }
+      seconds--;
+    } else {
+      clearInterval(room.countdownInterval);
+      room.countdownInterval = null;
+      const fakeSocket = { data: { roomType }, id: 'system' };
+      handleAutoRestart(fakeSocket, roomType);
+    }
+  }, 1000);
 }
 
 function startInitialCountdown(roomType) {
@@ -505,9 +555,15 @@ function startInitialCountdown(roomType) {
   if (room.initialCountdownActive || room.gameActive) return;
   
   room.initialCountdownActive = true;
+  
+  // Cancela qualquer countdown anterior
+  if (room.countdownInterval) {
+    clearInterval(room.countdownInterval);
+  }
+  
   io.to(roomType).emit('countdown-start', { seconds: 25, type: 'initial' });
   
-  // Bots compram cartelas AGORA (antes do sorteio)
+  // Bots compram cartelas AGORA
   for (const [id, player] of Object.entries(room.players)) {
     if (player.isBot && player.cards90.length === 0 && player.cards75.length === 0) {
       const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
@@ -530,14 +586,29 @@ function startInitialCountdown(roomType) {
   broadcastPlayerList(roomType);
   broadcastRanking(roomType);
   
-  setTimeout(() => {
-    room.initialCountdownActive = false;
-    if (hasHumanPlayers(roomType)) {
-      resumeDraw(roomType);
+  let seconds = 25;
+  room.countdownInterval = setInterval(() => {
+    if (seconds > 0) {
+      if ([25,20,15,10,5].includes(seconds)) {
+        io.to(roomType).emit('chat-message', {
+          message: `⏰ ${seconds} segundos para começar o sorteio!`,
+          sender: "🤖 SYSTEM",
+          isBot: true,
+          type: "countdown"
+        });
+      }
+      seconds--;
     } else {
-      console.log(`⏸️ Countdown finalizado, mas sem humanos. Sala em standby.`);
+      clearInterval(room.countdownInterval);
+      room.countdownInterval = null;
+      room.initialCountdownActive = false;
+      if (hasHumanPlayers(roomType)) {
+        resumeDraw(roomType);
+      } else {
+        console.log(`⏸️ Countdown finalizado, mas sem humanos.`);
+      }
     }
-  }, 25000);
+  }, 1000);
 }
 
 function handleWin(roomType, allWinners) {
@@ -574,18 +645,16 @@ function handleWin(roomType, allWinners) {
   const winnerNames = results.map(r => r.playerName).join(', ');
   const totalPrize = results.reduce((sum, r) => sum + r.prize, 0);
   
-  // ✅ Destacar vencedor atual
   if (results.length > 0) {
     room.currentWinnerId = results[0].playerId;
   }
   
-  // ✅ Adiciona flag se Markim ou Marília vencerem
   if (shouldAddBotOnWin(winnerNames)) {
     room.addBotOnNextRestart = true;
     console.log(`✅ Vitória de Markim ou Marília! Bot será adicionado no próximo restart.`);
   }
   
-  // ✅ Mensagem com valor e marcadores
+  // ✅ Mensagem com valor e marcadores ESTILIZADOS
   let formattedMessage = "";
   if (currentStage === 'linha1') {
     formattedMessage = `[L1]🎉 Parabéns, ${winnerNames}! Você ganhou R$ ${totalPrize.toLocaleString('pt-BR')} com a primeira linha![/L1]`;
@@ -625,25 +694,27 @@ function handleWin(roomType, allWinners) {
     }
   }
 
-  // ✅ Mensagem especial para humanos que fazem bingo
-  if (currentStage === 'bingo') {
-    if (humanWinners.length > 0) {
-      const humanNames = humanWinners.map(h => h.playerName).join(', ');
-      setTimeout(() => {
-        io.to(roomType).emit('chat-message', {
-          message: `✨✨✨ CARTÃO DOURADO ATIVADO! ${humanNames} fez BINGO! ✨✨✨`,
-          sender: "Sistema",
-          isBot: false,
-          special: "golden-bingo"
-        });
-      }, 1000);
-    }
+  // ✅ Cartela dourada PISCANTE para humanos
+  if (currentStage === 'bingo' && humanWinners.length > 0) {
+    const humanNames = humanWinners.map(h => h.playerName).join(', ');
+    setTimeout(() => {
+      io.to(roomType).emit('golden-bingo', {
+        winnerNames: humanNames,
+        amount: totalPrize
+      });
+      io.to(roomType).emit('chat-message', {
+        message: `[GOLDEN-BINGO]✨✨✨ CARTÃO DOURADO ATIVADO! ${humanNames} fez BINGO! ✨✨✨[/GOLDEN-BINGO]`,
+        sender: "Sistema",
+        isBot: false,
+        special: "golden-bingo"
+      });
+    }, 1000);
   }
   
   // ✅ Jackpot
   if (wonJackpot) {
     const jackpotNames = jackpotWinners.map(w => w.playerName).join(', ');
-    const jackpotAmount = room.jackpot; // valor ANTES do reset
+    const jackpotAmount = room.jackpot;
     setTimeout(() => {
       io.to(roomType).emit('chat-message', {
         message: `[JACKPOT]💰💰💰 JACKPOT HISTÓRICO! ${jackpotNames} levaram R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
@@ -669,7 +740,7 @@ function handleWin(roomType, allWinners) {
   broadcastRanking(roomType);
   pauseDraw(roomType);
   
-  // ✅ Aguarda 5s para garantir que a animação termine
+  // ✅ Aguarda 5s para animação
   setTimeout(() => {
     if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
       startAutoRestart(roomType);
@@ -756,11 +827,11 @@ function broadcastRanking(roomType) {
       let rankStyle = { color: '#ffffff', trophy: '' };
       
       if (position === 1) {
-        rankStyle = { color: '#FFD700', trophy: '🥇' };
+        rankStyle = { color: '#FFD700', trophy: '🥇' }; // dourado
       } else if (position === 2) {
-        rankStyle = { color: '#CD7F32', trophy: '🥉' };
+        rankStyle = { color: '#CD7F32', trophy: '🥉' }; // bronze
       } else if (position === 3) {
-        rankStyle = { color: '#C0C0C0', trophy: '🥈' };
+        rankStyle = { color: '#C0C0C0', trophy: '🥈' }; // prata
       }
       
       return { ...player, position, rankStyle };
@@ -822,6 +893,10 @@ function handleAutoRestart(socket, roomType) {
   room.autoRestartTimeout = null;
   room.currentWinnerId = null;
   room.initialCountdownActive = false;
+  if (room.countdownInterval) {
+    clearInterval(room.countdownInterval);
+    room.countdownInterval = null;
+  }
 
   for (const [id, player] of Object.entries(room.players)) {
     if (player.isBot) {
@@ -961,12 +1036,10 @@ io.on('connection', (socket) => {
     broadcastPlayerList(roomType);
     broadcastRanking(roomType);
     
-    // ✅ Inicia mensagens automáticas
     if (!room.autoMessageInterval) {
       startAutoMessages(roomType);
     }
     
-    // ✅ Inicia contador de 25s antes do primeiro sorteio
     if (!room.gameActive && !room.gameCompleted && !room.initialCountdownActive) {
       startInitialCountdown(roomType);
     }
@@ -1000,7 +1073,7 @@ io.on('connection', (socket) => {
         cards.push(card);
       }
       
-      if (cardType === '75') player.cards75 = player.cards75.concat(cards);
+      if (cardType === '75') player.cards77 = player.cards77.concat(cards); // ⚠️ CORREÇÃO AQUI
       else player.cards90 = player.cards90.concat(cards);
       
       socket.emit('cards-received', { 
@@ -1087,20 +1160,16 @@ io.on('connection', (socket) => {
     if (!isBot) {
       io.to(roomType).emit('chat-message', { message, sender, isBot: false });
       
-      const lowerMsg = message.toLowerCase();
-      const hasKeyword = AI_KEYWORDS.some(kw => lowerMsg.includes(kw));
-      
-      if (hasKeyword) {
-        const aiMessage = getSmartAiResponse(message);
-        setTimeout(() => {
-          io.to(roomType).emit('chat-message', {
-            message: aiMessage,
-            sender: "🤖 SYSTEM",
-            isBot: true,
-            type: "ai-response"
-          });
-        }, 1200 + Math.random() * 800);
-      }
+      // ✅ IA responde QUALQUER mensagem (não só palavras-chave)
+      const aiMessage = getSmartAiResponse(message);
+      setTimeout(() => {
+        io.to(roomType).emit('chat-message', {
+          message: aiMessage,
+          sender: "🤖 SYSTEM",
+          isBot: true,
+          type: "ai-response"
+        });
+      }, 1200 + Math.random() * 800);
     }
   });
 
