@@ -1,4 +1,4 @@
-// server.js — Bingo Multiplayer com todas as regras de Markim (VERSÃO FINAL)
+// server.js — Bingo Multiplayer com todas as regras de Markim (VERSÃO FINAL + MELHORIAS)
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -28,6 +28,45 @@ let rooms = {
 };
 
 const HUMAN_NAMES = ['Markim', 'Marília'];
+
+// ✅ Nomes engraçados para os bots
+const FUNNY_BOT_NAMES = [
+  "Tio do Mução", "Zé do Caixão", "Seu Creysson", "Dona Biscoito",
+  "Mané Treme-Treme", "Maria Espetinho", "Chico Furacão", "Tonhão da Lata",
+  "Seu Madruga Rico", "Dona Cotinha", "Zé Gotinha", "Seu Lunga",
+  "Biscoito Amargo", "Tia Nastácia", "Seu Barriga"
+];
+
+// ✅ Mensagens variadas de parabéns
+const WIN_MESSAGES = {
+  linha1: [
+    "🔥 Que rápido! Linha 1 garantida!",
+    "🎯 Acertou em cheio! Linha 1 na lata!",
+    "✨ Sortudo(a)! Primeira linha completa!",
+    "🚀 Começou bem! Linha 1 conquistada!"
+  ],
+  linha2: [
+    "🎊 Dupla vitória! Duas linhas completas!",
+    "💥 Não para mais! Linhas 1 e 2 fechadas!",
+    "🌟 Quase lá! Só falta o Bingo agora!",
+    "🏆 Dominando o jogo! Duas linhas no bolso!"
+  ],
+  bingo: [
+    "🎉 BINGO! O(A) campeão(ã) chegou!",
+    "💎 INCRÍVEL! Cartela completa — BINGO!",
+    "👑 REI/RAINHA DO BINGO! Parabéns!",
+    "🎁 BINGO! A sorte está ao seu lado!"
+  ],
+  jackpot: [
+    "💰 JACKPOT! Você levou tudo!",
+    "🤑 MEGA PRÊMIO! O Jackpot é seu!",
+    "💫 FORTUNA! Jackpot garantido!",
+    "🏆 LENDÁRIO! Você acertou o Jackpot!"
+  ]
+};
+
+// Fila de bots pendentes (só entram na próxima partida)
+let pendingBotsToAdd = [];
 
 // === Geração de Cartela Corrigida ===
 function generateValidBingo90Card() {
@@ -109,19 +148,11 @@ function getWinningPlayers(room, winType) {
   return winners;
 }
 
+// ✅ Adicionar bot à fila (não entra agora!)
 function maybeAddBotAfterHumanWin(winnerName) {
   if (HUMAN_NAMES.includes(winnerName)) {
-    const room = rooms.bingo90;
-    const botId = `bot_auto_${Date.now()}`;
-    room.players[botId] = {
-      id: botId,
-      name: `Bot Auto`,
-      chips: 10000,
-      isBot: true,
-      cards90: [],
-      connected: true
-    };
-    console.log(`✅ Bot adicionado após vitória de ${winnerName}`);
+    pendingBotsToAdd.push(true);
+    console.log(`✅ Bot pendente adicionado após vitória de ${winnerName}`);
   }
 }
 
@@ -204,15 +235,16 @@ io.on('connection', (socket) => {
     db.players[playerName] = { chips, cards90 };
     saveDB(db);
 
-    // ✅ ADICIONAR 3 BOTS INICIAIS SE FOR MARKIM OU MARÍLIA E NÃO HOUVER BOTS
+    // ✅ ADICIONAR 3 BOTS INICIAIS COM NOMES ENGRAÇADOS
     const currentBots = Object.values(room.players).filter(p => p.isBot);
     if (currentBots.length === 0 && (playerName === 'Markim' || playerName === 'Marília')) {
       console.log(`🤖 Adicionando 3 bots iniciais para ${playerName}...`);
-      for (let i = 1; i <= 3; i++) {
+      for (let i = 0; i < 3; i++) {
+        const randomName = FUNNY_BOT_NAMES[Math.floor(Math.random() * FUNNY_BOT_NAMES.length)];
         const botId = `bot_initial_${i}_${Date.now()}`;
         room.players[botId] = {
           id: botId,
-          name: `Bot ${i}`,
+          name: randomName,
           chips: 10000,
           isBot: true,
           cards90: [],
@@ -283,6 +315,26 @@ io.on('connection', (socket) => {
   socket.on('start-draw', () => {
     const room = rooms.bingo90;
     if (room.gameStarted || room.gameCompleted) return;
+
+    // ✅ ADICIONAR BOTS PENDENTES NO INÍCIO DA PARTIDA
+    if (pendingBotsToAdd.length > 0) {
+      console.log(`🤖 Adicionando ${pendingBotsToAdd.length} bot(s) pendente(s)...`);
+      for (let i = 0; i < pendingBotsToAdd.length; i++) {
+        const randomName = FUNNY_BOT_NAMES[Math.floor(Math.random() * FUNNY_BOT_NAMES.length)];
+        const botId = `bot_auto_${Date.now()}_${i}`;
+        room.players[botId] = {
+          id: botId,
+          name: randomName,
+          chips: 10000,
+          isBot: true,
+          cards90: [],
+          connected: true
+        };
+      }
+      pendingBotsToAdd = [];
+      broadcastPlayerList('bingo90');
+      broadcastRanking('bingo90');
+    }
 
     const hasHumanWithCards = Object.values(room.players).some(p => !p.isBot && p.cards90.length > 0);
     if (!hasHumanWithCards) {
@@ -366,7 +418,7 @@ function processWin(winType, room, winners) {
 
   const winnerNames = winners.map(w => w.playerName);
   winnerNames.forEach(name => {
-    if (winType === 'bingo') {
+    if (HUMAN_NAMES.includes(name)) {
       maybeAddBotAfterHumanWin(name);
     }
   });
@@ -390,6 +442,23 @@ function processWin(winType, room, winners) {
     room.gameStarted = false;
   }
 
+  // ✅ MENSAGEM NO CHAT PARA CADA VENCEDOR
+  winners.forEach(w => {
+    const player = room.players[w.id];
+    if (player) {
+      const msgType = winType === 'bingo' ? 'bingo' : winType;
+      const messages = WIN_MESSAGES[msgType] || WIN_MESSAGES.linha1;
+      const randomMsg = messages[Math.floor(Math.random() * messages.length)];
+      const totalPrize = prize + (jackpotPrize || 0);
+      
+      io.to('bingo90').emit('chat-message', {
+        sender: "Sistema",
+        message: `🎉 ${player.name} ganhou R$ ${totalPrize.toLocaleString('pt-BR')} em ${winType === 'linha1' ? 'Linha 1' : winType === 'linha2' ? 'Linhas Completas' : 'BINGO'}! ${randomMsg}`,
+        isBot: false
+      });
+    }
+  });
+
   io.to('bingo90').emit('player-won', {
     winners: winners.map(w => ({ playerName: w.playerName, prize, winType })),
     winnerNames: winnerNames.join(', '),
@@ -397,10 +466,11 @@ function processWin(winType, room, winners) {
     newStage: room.currentStage
   });
 
+  // ✅ ESPERAR 6 SEGUNDOS (tempo da animação) ANTES DE CONTINUAR
   if (winType !== 'bingo' && !room.gameCompleted) {
     setTimeout(() => {
       drawNextNumber('bingo90', room.drawnNumbers.length);
-    }, 3000);
+    }, 6000);
   }
 
   if (winType === 'bingo') {
