@@ -926,19 +926,24 @@ async function handleAutoRestart(socket, roomType) {
   room.autoRestartTimeout = null;
   room.currentWinnerId = null;
 
+  // ✅ CORREÇÃO: Bots NÃO compram cartelas no restart
+  // Eles mantêm seus chips e só limpam as cartelas
   for (const [id, player] of Object.entries(room.players)) {
-    // ✅ Bots NÃO compram cartelas automaticamente no restart
-// Eles só compram quando humanos entram ou compram cartelas
-// ✅ LIMPAR CARTELAS, MAS NÃO COMPRAR NOVAMENTE
-for (const [id, player] of Object.entries(room.players)) {
-  if (player.isBot) {
-    // ✅ Mantém os chips, só limpa as cartelas
-    player.cards75 = [];
-    player.cards90 = [];
-  } else {
-    player.cards75 = [];
-    player.cards90 = [];
+    if (player.isBot) {
+      // ✅ Mantém os chips, só limpa as cartelas
+      player.cards75 = [];
+      player.cards90 = [];
+    } else {
+      player.cards75 = [];
+      player.cards90 = [];
+    }
   }
+
+  io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
+  io.to(roomType).emit('room-reset');
+  broadcastPlayerList(roomType);
+  broadcastRanking(roomType);
+  console.log(`🔄 Jogo reiniciado automaticamente. Bots: ${currentBots} (máximo: ${room.maxBots})`);
 }
 
   io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
