@@ -613,33 +613,50 @@ function resumeDraw(roomType) {
       currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
     }
 
-    // Fazer bots comprarem cartelas AGORA
-    for (const [id, player] of Object.entries(room.players)) {
-      if (player.isBot) {
-        // Verificar quantas cartelas o bot deve comprar
-        const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
-        const cardCount = Math.min(getBotCardCount(totalBotsNow), Math.floor(player.chips / PRICE_PER_CARD));
-        
-        if (cardCount > 0 && player.cards90.length === 0 && player.cards75.length === 0) {
-          const totalCost = cardCount * PRICE_PER_CARD;
-          player.chips -= totalCost;
-          room.pot += totalCost;
-          room.jackpot += Math.floor(totalCost * 0.5);
-          
-          if (roomType === 'bingo90') {
-            player.cards90 = Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card()));
-            player.cards75 = [];
-          } else {
-            player.cards75 = Array(cardCount).fill().map(() => generateBingo75Card());
-            player.cards90 = [];
-          }
-          console.log(`🤖 Bot ${player.name} comprou ${cardCount} cartelas. Chips restantes: ${player.chips}`);
-        }
+    // ✅ Função: Fazer bots comprarem cartelas AGORA
+for (const [id, player] of Object.entries(room.players)) {
+  if (player.isBot) {
+    const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
+    const cardCount = Math.min(getBotCardCount(totalBotsNow), Math.floor(player.chips / PRICE_PER_CARD));
+    
+    if (cardCount > 0 && player.cards90.length === 0 && player.cards75.length === 0) {
+      const totalCost = cardCount * PRICE_PER_CARD;
+      player.chips -= totalCost;
+      room.pot += totalCost;
+      room.jackpot += Math.floor(totalCost * 0.5);
+      
+      if (roomType === 'bingo90') {
+        player.cards90 = Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card()));
+        player.cards75 = [];
+      } else {
+        player.cards75 = Array(cardCount).fill().map(() => generateBingo75Card());
+        player.cards90 = [];
       }
+      console.log(`🤖 Bot ${player.name} comprou ${cardCount} cartelas. Chips restantes: ${player.chips}`);
     }
+  }
+}
 
-    // ✅ EMITIR ATUALIZAÇÃO DO POTE E JACKPOT PARA TODOS OS JOGADORES
-    io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
+// ✅ EMITIR ATUALIZAÇÃO DO POTE E JACKPOT PARA TODOS OS JOGADORES
+io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
+
+// ✅ FORÇAR ENVIO DO ESTADO COMPLETO PARA ATUALIZAR CHIPS DOS BOTS
+io.to(roomType).emit('room-state', {
+  drawnNumbers: room.drawnNumbers,
+  lastNumber: room.lastNumber,
+  gameActive: room.gameActive,
+  pot: room.pot,
+  currentStage: room.currentStage,
+  jackpot: room.jackpot,
+  gameCompleted: room.gameCompleted,
+  players: Object.fromEntries(
+    Object.entries(room.players).map(([id, p]) => [id, {
+      name: p.name, chips: p.chips, isBot: p.isBot,
+      winsCount: p.winsCount, currentWins: p.currentWins
+    }])
+  )
+});
+
   }
 
   if (!hasHumanWithCards(roomType)) {
