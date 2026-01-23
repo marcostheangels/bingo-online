@@ -47,18 +47,12 @@
           </button>
         </div>
       </div>
-      <style>
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      </style>
     </div>
 
     <!-- MENSAGEM ADMIN -->
     <div id="admin-message"></div>
 
-    <!-- CONTROLES ADMIN (invisível por padrão) -->
+    <!-- CONTROLES ADMIN -->
     <div id="admin-controls" style="display:none;margin:20px auto;max-width:500px;background:rgba(255,255,255,0.1);padding:15px;border-radius:8px;">
       <h3>🔧 Controles Administrativos</h3>
       <input type="text" id="admin-player-name" placeholder="Nome do Jogador" style="margin:5px;padding:8px;width:calc(33% - 10px);">
@@ -131,7 +125,6 @@
     </div>
 
     <!-- OVERLAYS DE VITÓRIA -->
-    <!-- Linha 1 -->
     <div id="line-victory-overlay">
       <div class="line-card">
         <h2 class="line-title">LINHA 1 COMPLETA!</h2>
@@ -144,7 +137,6 @@
       </div>
     </div>
 
-    <!-- Linha 2 -->
     <div id="line2-victory-overlay">
       <div class="rays-emerald"></div>
       <div class="line-frame">
@@ -158,7 +150,6 @@
       </div>
     </div>
 
-    <!-- Bingo -->
     <div id="bingo-victory-overlay">
       <div class="bingo-card">
         <h1 class="bingo-title">BINGO!</h1>
@@ -171,7 +162,6 @@
       </div>
     </div>
 
-    <!-- Jackpot -->
     <div id="jackpot-overlay">
       <div class="rays"></div>
       <div class="winner-frame">
@@ -186,7 +176,7 @@
     </div>
   </div>
 
-  <!-- SCRIPTS EXTERNOS (ordem importa!) -->
+  <!-- SCRIPTS EXTERNOS -->
   <script src="js/audio.js"></script>
   <script src="js/gameLogic.js"></script>
   <script src="js/ui.js"></script>
