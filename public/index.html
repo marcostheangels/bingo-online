@@ -62,7 +62,6 @@
     <!-- ÁREA DO JOGO -->
     <div id="game-area">
       <div class="header">
-       <div id="stage-indicator">
        <span id="stage-text">Linha 1</span>
        </div>
         <h2 id="room-title">Sala: ?</h2>
@@ -92,6 +91,13 @@
 
       <div class="controls" id="main-controls">
         <label>
+<!-- Barra de Fase (movida para perto das cartelas) -->
+<div id="stage-indicator">
+  <span id="stage-text">Linha 1</span>
+</div>
+
+<!-- ÁREA DAS CARTELAS -->
+<div class="cards-container" id="cards-container"></div>
           Cartelas:
           <input type="number" id="card-count" min="1" max="10" value="1" style="width: 80px; padding: 4px;" inputmode="numeric">
         </label>
