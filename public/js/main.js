@@ -162,15 +162,19 @@ function refreshAllChipDisplays() {
       // Troféu e cor baseado na posição
       let trophy = '';
       let bgColor = '';
+      let textColor = 'white';
       if (player.position === 1) {
         trophy = '🥇';
         bgColor = '#FFD700'; // Dourado
+        textColor = '#1a1a2e';
       } else if (player.position === 2) {
         trophy = '🥈';
         bgColor = '#C0C0C0'; // Prata
+        textColor = '#1a1a2e';
       } else if (player.position === 3) {
         trophy = '🥉';
         bgColor = '#CD7F32'; // Bronze
+        textColor = '#1a1a2e';
       }
       
       li.innerHTML = `
@@ -179,11 +183,11 @@ function refreshAllChipDisplays() {
         <div class="ranking-chips">R$ ${player.chips.toLocaleString('pt-BR')}</div>
       `;
       
-      // Aplica cor de fundo
+      // Aplica cor de fundo e cor do texto
       if (bgColor) {
         li.style.background = `${bgColor}20`; // 20% de opacidade
         li.style.borderLeft = `5px solid ${bgColor}`;
-        li.style.color = player.position <= 3 ? '#1a1a2e' : 'white';
+        li.style.color = textColor;
       }
       
       rankingList.appendChild(li);
@@ -199,6 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const potDisplay = document.getElementById('pot-display');
   const jackpotDisplay = document.getElementById('jackpot-display');
   const ballsCountDisplay = document.getElementById('balls-count');
+  const lastNumberDisplay = document.getElementById('last-number');
 
   // ✅ Função GLOBAL para joinRoom
   window.joinRoom = function(roomType) {
@@ -304,6 +309,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCards();
     playSound('sorteio', data.number);
     speak(data.number.toString());
+
+    // Atualiza bolas restantes para jackpot
+    const remainingForJackpot = Math.max(0, 60 - roomsDrawnNumbers.length);
+    document.getElementById('jackpot-remaining').textContent = `Bolas restantes para Jackpot: ${remainingForJackpot}`;
   });
 
   // ✅ CORREÇÃO: Trata todas as vitórias no mesmo evento
@@ -381,10 +390,11 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.emit('start-draw');
   });
 
-  document.getElementById('line1-btn').addEventListener('click', () => {
-    if (gameEnded) return;
-    socket.emit('claim-win', { winType: 'linha1' });
-  });
+  // ❌ REMOVIDO: Botão Linha 1
+  // document.getElementById('line1-btn').addEventListener('click', () => {
+  //   if (gameEnded) return;
+  //   socket.emit('claim-win', { winType: 'linha1' });
+  // });
 
   document.getElementById('line2-btn').addEventListener('click', () => {
     if (gameEnded) return;
