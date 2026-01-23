@@ -793,8 +793,7 @@ function handleWin(roomType, allWinners) {
          message:   `🥇🥇🥇 PRIMEIRO LUGAR! ${humanNames} é o dono da rodada! BINGO! 🥇🥇🥇`,
          message:   `🦁🦁🦁 FORÇA BRUTA! ${humanNames} rugiu alto no grito de BINGO! 🦁🦁🦁`,
          message:   `💎💎💎 DIAMANTE LAPIDADO! ${humanNames} fez o BINGO mais brilhante! 💎💎💎`,
-         message:   `✨✨✨ MAGIA PURA! ${humanNames} transformou números em BINGO! ✨✨✨`
-         io.to(roomType).emit('chat-message', {
+         message:   `✨✨✨ MAGIA PURA! ${humanNames} transformou números em BINGO! ✨✨✨];
          message: randomMsg,
          sender: "Sistema",
          isBot: false,
