@@ -516,7 +516,7 @@ function getLineStatusForCard(card, drawnNumbers) {
   };
 }
 
-function calculateBillsLeftForCard(card, drawnNumbers) {
+function calculateBallsLeftForCard(card, drawnNumbers) {
   const markedInRow = [0, 0, 0];
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 9; c++) {
