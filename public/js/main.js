@@ -232,30 +232,39 @@ document.addEventListener('DOMContentLoaded', () => {
     speak(data.number.toString());
   });
 
+  // ✅ CORREÇÃO: Trata todas as vitórias no mesmo evento
   socket.on('player-won', (data) => {
-    if (data.winners[0].winType === 'linha1') {
+    const winType = data.winners[0]?.winType;
+    const isJackpot = data.wonJackpot;
+
+    if (winType === 'linha1') {
       playSound('linha1');
       speak(`Linha 1 ganha por ${data.winnerNames}!`);
       checkAchievements('linha1', 0);
       showLineVictory(data.totalPrize, data.winnerNames);
-    } else if (data.winners[0].winType === 'linha2') {
+    } else if (winType === 'linha2') {
       playSound('linha2');
       speak(`Linhas completas por ${data.winnerNames}!`);
       checkAchievements('linha2', 0);
       showLine2Victory(data.totalPrize, data.winnerNames);
-    } else if (data.winners[0].winType === 'bingo') {
+    } else if (winType === 'bingo') {
       playSound('bingo');
       speak(`Bingo feito por ${data.winnerNames}!`);
       checkAchievements('bingo', 0, data.ballsCount);
-      showBingoVictory(data.totalPrize, data.winnerNames);
+
+      // ✅ Verifica se foi jackpot
+      if (isJackpot) {
+        showJackpotVictory(data.jackpotAmount || data.totalPrize, data.winnerNames, data.ballsCount);
+      } else {
+        showBingoVictory(data.totalPrize, data.winnerNames);
+      }
     }
+
     if (data.newStage) updateControlButtons(data.newStage);
-    if (data.winners[0].winType === 'bingo') gameEnded = true;
+    if (winType === 'bingo') gameEnded = true;
   });
 
-  socket.on('jackpot-won', (data) => {
-    showJackpotVictory(data.jackpotAmount, data.winnerNames, data.ballsCount);
-  });
+  // ❌ REMOVIDO: Não há evento separado 'jackpot-won'
 
   socket.on('show-restart-button', () => { gameEnded = true; });
   socket.on('game-over', () => { gameEnded = true; });
