@@ -90,7 +90,7 @@ const AI_RESPONSES = {
     "Cada fase distribui parte do pote: linha 1 (20%), linha 2 (30%) e bingo (50%)!",
     "Seu nome fica em verde quando você vence — todos veem seu brilho! ✨",
     "A sala entra em standby se não houver humanos. Estamos sempre esperando por você!",
-    "Ganhou várias vezes seguidas? Você é um(a) verdadeiro(a) campeão(ã)!"
+    "Ganhou várias vezes seguidas? Você é um(a) verdadeiro(a) campeão(ã)!",
     "O segredo do mestre: paciência e persistência. A próxima bola pode ser a sua! 🍀",
     "Sentindo falta de um número? O universo do bingo adora uma surpresa de última hora!",
     "Lembre-se: o Bingo Master Pro é pura adrenalina! Divirta-se acima de tudo. 🎡",
@@ -131,8 +131,7 @@ const AI_RESPONSES = {
     "Compre cartelas no início da rodada para garantir seu lugar!",
     "Cartelas com menos bolas faltando aparecem no topo — foque nelas!",
     "Não espere o último número: às vezes, a vitória vem antes do fim!"
-    Para elevar o nível de informação e o desejo dos jogadores no BINGO MASTER PRO, aqui estão mais 30 frases específicas para a categoria jackpot. Elas focam em como ganhar, no valor acumulado e na exclusividade do prêmio máximo:
-
+    
 JavaScript
 const jackpotResponses = [
     "O jackpot começa em R$ 1.000.000 e cresce a cada cartela comprada!",
