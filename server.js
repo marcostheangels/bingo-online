@@ -592,11 +592,59 @@ function pauseDraw(roomType) {
 
 function resumeDraw(roomType) {
   const room = rooms[roomType];
+  
+  // ✅ Verificar se há humanos com cartelas
+  let humanHasCards = false;
+  for (const player of Object.values(room.players)) {
+    if (!player.isBot && 
+        ((roomType === 'bingo90' && player.cards90.length > 0) ||
+         (roomType === 'bingo75' && player.cards75.length > 0))) {
+      humanHasCards = true;
+      break;
+    }
+  }
+
+  // ✅ Só adicionar bots e comprar cartelas se houver humanos com cartelas
+  if (humanHasCards && !room.gameActive && !room.gameCompleted) {
+    // Adicionar bots faltantes
+    let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
+    while (currentBots < room.maxBots) {
+      addBotToRoom(roomType);
+      currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
+    }
+
+    // Fazer bots comprarem cartelas AGORA
+    for (const [id, player] of Object.entries(room.players)) {
+      if (player.isBot) {
+        // Verificar quantas cartelas o bot deve comprar
+        const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
+        const cardCount = Math.min(getBotCardCount(totalBotsNow), Math.floor(player.chips / PRICE_PER_CARD));
+        
+        if (cardCount > 0 && player.cards90.length === 0 && player.cards75.length === 0) {
+          const totalCost = cardCount * PRICE_PER_CARD;
+          player.chips -= totalCost;
+          room.pot += totalCost;
+          room.jackpot += Math.floor(totalCost * 0.5);
+          
+          if (roomType === 'bingo90') {
+            player.cards90 = Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card()));
+            player.cards75 = [];
+          } else {
+            player.cards75 = Array(cardCount).fill().map(() => generateBingo75Card());
+            player.cards90 = [];
+          }
+          console.log(`🤖 Bot ${player.name} comprou ${cardCount} cartelas. Chips restantes: ${player.chips}`);
+        }
+      }
+    }
+  }
+
   if (!hasHumanWithCards(roomType)) {
     console.log(`⏸️ Standby: nenhum humano com cartela na sala ${roomType}`);
     room.gameActive = false;
     return;
   }
+  
   if (room.gameActive || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) return;
   room.gameActive = true;
   room.drawInterval = setInterval(() => {
