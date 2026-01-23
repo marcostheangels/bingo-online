@@ -8,7 +8,7 @@ const server = http.createServer(app);
 
 // ✅ Rate limiting simples para feedback
 const feedbackLimiter = new Map(); // IP -> último timestamp
-const FEEDBACK_MIN_INTERVAL_MS = 7000; // 5 segundos entre envios
+const FEEDBACK_MIN_INTERVAL_MS = 5000; // 5 segundos entre envios
 
 const io = require('socket.io')(server, {
   cors: {
