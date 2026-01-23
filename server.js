@@ -1302,3 +1302,4 @@ server.listen(PORT, async () => {
   await createTableIfNotExists();
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
 });
+}
