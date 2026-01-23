@@ -794,6 +794,7 @@ function handleWin(roomType, allWinners) {
          message:   `🦁🦁🦁 FORÇA BRUTA! ${humanNames} rugiu alto no grito de BINGO! 🦁🦁🦁`,
          message:   `💎💎💎 DIAMANTE LAPIDADO! ${humanNames} fez o BINGO mais brilhante! 💎💎💎`,
          message:   `✨✨✨ MAGIA PURA! ${humanNames} transformou números em BINGO! ✨✨✨`
+          message: randomMsg,
           sender: "Sistema",
           isBot: false,
           special: "golden-bingo"
