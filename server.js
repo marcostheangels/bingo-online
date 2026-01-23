@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+// server.js — Bingo Multiplayer com todas as regras de Markim (VERSÃO FINAL)
+>>>>>>> 788fc5f (Adiciona pg e corrige dependências)
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -15,6 +19,7 @@ const pool = new Pool({
   }
 });
 
+<<<<<<< HEAD
 // ✅ Cria tabela se não existir (executa uma vez ao iniciar)
 async function createTableIfNotExists() {
   const query = `
@@ -267,6 +272,14 @@ function getRandomUnique(list, category) {
 const rooms = {
   'bingo75': {
     name: 'Bingo 75 (Americano)',
+=======
+app.use(express.static('public'));
+
+let db = loadDB();
+
+let rooms = {
+  bingo90: {
+>>>>>>> 788fc5f (Adiciona pg e corrige dependências)
     players: {},
     drawnNumbers: [],
     gameActive: false,
@@ -309,6 +322,7 @@ function shouldAddBotOnWin(winnerNames) {
   return winners.some(name => name === 'Markim' || name === 'Marília');
 }
 
+<<<<<<< HEAD
 // ✅ Função adaptativa: quantas cartelas o bot deve comprar?
 function getBotCardCount(totalBots) {
   if (totalBots <= 6) return 3;
@@ -474,6 +488,13 @@ function generateBingo90Card() {
     [1,10,20,30,40,null,null,null,null],
     [null,11,21,31,41,50,60,70,80],
     [2,12,22,32,null,51,61,71,90]
+=======
+// === Geração de Cartela Corrigida ===
+function generateValidBingo90Card() {
+  const columns = [
+    [1, 9], [10, 19], [20, 29], [30, 39], [40, 49],
+    [50, 59], [60, 69], [70, 79], [80, 90]
+>>>>>>> 788fc5f (Adiciona pg e corrige dependências)
   ];
 }
 
@@ -1064,6 +1085,29 @@ io.on('connection', (socket) => {
       });
     }
 
+<<<<<<< HEAD
+=======
+    // ✅ ADICIONAR 3 BOTS INICIAIS SE FOR MARKIM OU MARÍLIA E NÃO HOUVER BOTS
+    const currentBots = Object.values(room.players).filter(p => p.isBot);
+    if (currentBots.length === 0 && (playerName === 'Markim' || playerName === 'Marília')) {
+      console.log(`🤖 Adicionando 3 bots iniciais para ${playerName}...`);
+      for (let i = 1; i <= 3; i++) {
+        const botId = `bot_initial_${i}_${Date.now()}`;
+        room.players[botId] = {
+          id: botId,
+          name: `Bot ${i}`,
+          chips: 10000,
+          isBot: true,
+          cards90: [],
+          connected: true
+        };
+      }
+      broadcastPlayerList('bingo90');
+      broadcastRanking('bingo90');
+    }
+
+    socket.join(roomId);
+>>>>>>> 788fc5f (Adiciona pg e corrige dependências)
     socket.emit('room-welcome', {
       roomName: room.name,
       roomId: roomType,
@@ -1134,9 +1178,40 @@ io.on('connection', (socket) => {
       const player = room.players[socket.id];
       if (!player || player.isBot) return;
 
+<<<<<<< HEAD
       const currentCardCount = cardType === '75' ? player.cards75.length : player.cards90.length;
       if (currentCardCount + count > MAX_CARDS_PER_PLAYER) {
         return socket.emit('error', `Você já tem ${currentCardCount} cartelas. Máximo permitido: ${MAX_CARDS_PER_PLAYER}.`);
+=======
+    const cost = count * 100;
+    if (player.chips < cost) {
+      socket.emit('error', 'Chips insuficientes!');
+      return;
+    }
+
+    const newCards = [];
+    for (let i = 0; i < count; i++) {
+      newCards.push(generateValidBingo90Card());
+    }
+
+    player.cards90 = player.cards90.concat(newCards);
+    player.chips -= cost;
+
+    db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
+    saveDB(db);
+
+    // Bots compram junto
+    for (const id in room.players) {
+      const p = room.players[id];
+      if (p.isBot && !room.gameStarted) {
+        const botNewCards = [];
+        for (let i = 0; i < count; i++) {
+          botNewCards.push(generateValidBingo90Card());
+        }
+        p.cards90 = p.cards90.concat(botNewCards);
+        p.chips -= cost;
+        if (p.chips < 0) p.chips = 0;
+>>>>>>> 788fc5f (Adiciona pg e corrige dependências)
       }
 
       const totalCost = count * PRICE_PER_CARD;
@@ -1253,6 +1328,17 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ✅ REINICIAR JOGO
+  socket.on('restart-game', () => {
+    const room = rooms.bingo90;
+    if (!room.gameCompleted) {
+      socket.emit('error', 'Só é possível reiniciar após o Bingo.');
+      return;
+    }
+    resetRoom('bingo90');
+    socket.emit('message', 'Jogo reiniciado!');
+  });
+
   socket.on('disconnect', () => {
     const roomType = socket.data?.roomType;
     if (roomType && rooms[roomType]) {
@@ -1277,6 +1363,7 @@ io.on('connection', (socket) => {
   });
 });
 
+<<<<<<< HEAD
 function validatePlayerState(player, roomType) {
   if (player.chips == null || typeof player.chips !== 'number' || player.chips < 0) player.chips = INITIAL_CHIPS;
   if (!Array.isArray(player.cards90)) player.cards90 = [];
@@ -1286,14 +1373,149 @@ function validatePlayerState(player, roomType) {
   }
   if (player.cards75.length > MAX_CARDS_PER_PLAYER) {
     player.cards75 = player.cards75.slice(0, MAX_CARDS_PER_PLAYER);
+=======
+// === Lógica de Jogo ===
+function processWin(winType, room, winners) {
+  if (winners.length === 0 || room.gameCompleted) return;
+
+  const prize = Math.floor(room.pot / winners.length);
+  const jackpotPrize = winType === 'bingo' ? Math.floor(room.jackpot / winners.length) : 0;
+
+  const winnerNames = winners.map(w => w.playerName);
+  winnerNames.forEach(name => {
+    if (winType === 'bingo') {
+      maybeAddBotAfterHumanWin(name);
+    }
+  });
+
+  winners.forEach(w => {
+    const player = room.players[w.id];
+    if (player) {
+      player.chips += prize;
+      if (jackpotPrize) player.chips += jackpotPrize;
+      db.players[player.name] = { chips: player.chips, cards90: player.cards90 };
+    }
+  });
+  saveDB(db);
+
+  if (winType === 'linha1') {
+    room.currentStage = 'linha2';
+  } else if (winType === 'linha2') {
+    room.currentStage = 'bingo';
+  } else if (winType === 'bingo') {
+    room.gameCompleted = true;
+    room.gameStarted = false;
+  }
+
+  io.to('bingo90').emit('player-won', {
+    winners: winners.map(w => ({ playerName: w.playerName, prize, winType })),
+    winnerNames: winnerNames.join(', '),
+    jackpotWinners: jackpotPrize ? winners.map(w => ({ playerName: w.playerName, prize: jackpotPrize })) : null,
+    newStage: room.currentStage
+  });
+
+  if (winType !== 'bingo' && !room.gameCompleted) {
+    setTimeout(() => {
+      drawNextNumber('bingo90', room.drawnNumbers.length);
+    }, 3000);
+  }
+
+  if (winType === 'bingo') {
+    setTimeout(() => resetRoom('bingo90'), 6000);
+>>>>>>> 788fc5f (Adiciona pg e corrige dependências)
   }
   if (roomType === 'bingo90') player.cards90 = player.cards90.map(card => validateAndFixBingo90Card(card));
   return player;
 }
 
+<<<<<<< HEAD
 // ✅ Iniciar servidor
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, async () => {
   await createTableIfNotExists();
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
+=======
+function drawNextNumber(roomId, index) {
+  const room = rooms[roomId];
+  if (!room.gameStarted || room.gameCompleted) return;
+  if (index >= 90 || room.drawnNumbers.length >= 90) return;
+
+  const used = new Set(room.drawnNumbers);
+  let number;
+  do {
+    number = Math.floor(Math.random() * 90) + 1;
+  } while (used.has(number) && used.size < 90);
+
+  if (used.size >= 90) return;
+
+  room.drawnNumbers.push(number);
+  room.lastNumber = number;
+
+  io.to(roomId).emit('number-drawn', {
+    number,
+    drawnNumbers: [...room.drawnNumbers]
+  });
+
+  let shouldContinue = true;
+  if (room.currentStage === 'linha1') {
+    const winners = getWinningPlayers(room, 'linha1');
+    if (winners.length > 0) {
+      processWin('linha1', room, winners);
+      shouldContinue = false;
+    }
+  } else if (room.currentStage === 'linha2') {
+    const winners = getWinningPlayers(room, 'linha2');
+    if (winners.length > 0) {
+      processWin('linha2', room, winners);
+      shouldContinue = false;
+    }
+  } else if (room.currentStage === 'bingo') {
+    const winners = getWinningPlayers(room, 'bingo');
+    if (winners.length > 0) {
+      processWin('bingo', room, winners);
+      shouldContinue = false;
+    }
+  }
+
+  if (shouldContinue && !room.gameCompleted) {
+    setTimeout(() => drawNextNumber(roomId, index + 1), 3000);
+  }
+}
+
+function resetRoom(roomId) {
+  const room = rooms[roomId];
+  room.drawnNumbers = [];
+  room.gameStarted = false;
+  room.gameCompleted = false;
+  room.currentStage = 'linha1';
+  room.lastNumber = null;
+  room.pot = 0;
+  room.jackpot = 0;
+
+  for (const id in room.players) {
+    const p = room.players[id];
+    if (!p.isBot) {
+      p.cards90 = [];
+      if (db.players[p.name]) {
+        db.players[p.name].cards90 = [];
+        saveDB(db);
+      }
+    }
+  }
+
+  io.to(roomId).emit('room-reset');
+  broadcastRoomState(roomId);
+  broadcastPlayerList(roomId);
+  broadcastRanking(roomId);
+  broadcastPot(roomId);
+}
+
+// Iniciar backup
+require('./backup');
+
+// Iniciar servidor
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+>>>>>>> 788fc5f (Adiciona pg e corrige dependências)
 });
