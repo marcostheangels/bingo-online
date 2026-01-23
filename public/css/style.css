@@ -222,6 +222,11 @@ body {
   to { transform: scale(1); opacity: 1; }
 }
 
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .cards-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -829,8 +834,8 @@ body {
 
 @keyframes coinFall {
   0% { transform: translateY(-15vh) rotate(0deg) translateX(0); }
-  25% { transform: translateY(15vh) rotate(180deg) translateX(15px); }
-  50% { transform: translateY(45vh) rotate(360deg) translateX(-15px); }
+  25% { transform: translateY(15vh) rotate(180deg) translateX(12px); }
+  50% { transform: translateY(45vh) rotate(360deg) translateX(-12px); }
   100% { transform: translateY(115vh) rotate(720deg) translateX(0); }
 }
 
