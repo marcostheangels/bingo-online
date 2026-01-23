@@ -839,7 +839,7 @@ function handleWin(roomType, allWinners) {
         message: `[JACKPOT]🛸🛸🛸 PRÊMIO ESPACIAL! ${jackpotNames} decolou com R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
         message: `[JACKPOT]🔱🔱🔱 PODER SUPREMO! ${jackpotNames} conquistou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
         message: `[JACKPOT]🌋💰🌋 VULCÃO DE OURO! ${jackpotNames} levou a bolada de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🏅💎🏅 HONRA E GLÓRIA! ${jackpotNames} faturou o lendário Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`
+        message: `[JACKPOT]🏅💎🏅 HONRA E GLÓRIA! ${jackpotNames} faturou o lendário Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
         sender: "Sistema",
       isBot: false,
       type: "jackpot"
