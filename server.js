@@ -765,7 +765,7 @@ function handleWin(roomType, allWinners) {
       setTimeout(() => {
         io.to(roomType).emit('chat-message', {
           message:  `✨✨✨ CARTÃO DOURADO ATIVADO! ${humanNames} fez BINGO! ✨✨✨`,
-                    `👑👑👑 REALEZA DETECTADA! ${humanNames} dominou a sala e fez BINGO! 👑👑👑`,
+          message:  `👑👑👑 REALEZA DETECTADA! ${humanNames} dominou a sala e fez BINGO! 👑👑👑`,
                     `💎💎💎 BRILHO ETERNO! ${humanNames} acaba de conquistar o BINGO SUPREMO! 💎💎💎`,
                     `🚀🚀🚀 DECOLAGEM AUTORIZADA! ${humanNames} voou alto e fez BINGO! 🚀🚀🚀`,
                     `🔥 🔥 🔥 O MESTRE CHEGOU! ${humanNames} detonou tudo com esse BINGO! 🔥 🔥 🔥`,
