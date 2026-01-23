@@ -992,6 +992,56 @@ async function handleAutoRestart(socket, roomType) {
 }
 
 io.on('connection', (socket) => {
+  socket.on('start-draw', () => {
+    const roomType = socket.data?.roomType;
+    if (roomType && !rooms[roomType].gameActive) {
+      if (hasHumanWithCards(roomType)) {
+        resumeDraw(roomType);
+      } else {
+        socket.emit('error', 'Nenhum jogador humano com cartela na sala.');
+      }
+    }
+  });
+
+  // ✅ Novo evento: desenhar próxima bola (chamado pelo cliente em mobile)
+  socket.on('draw-next-number', () => {
+    const roomType = socket.data?.roomType;
+    if (!roomType || !rooms[roomType]) return;
+    
+    const room = rooms[roomType];
+    if (!room.gameActive) return;
+
+    const number = drawNumber(roomType);
+    if (number === null) {
+      io.to(roomType).emit('game-end', 'Todos os números foram sorteados!');
+      startAutoRestart(roomType);
+      return;
+    }
+
+    io.to(roomType).emit('number-drawn', {
+      number,
+      drawnNumbers: room.drawnNumbers,
+      lastNumber: number
+    });
+
+    // Atualiza cartelas dos humanos (só para Bingo 90)
+    if (roomType === 'bingo90') {
+      Object.keys(room.players).forEach(playerId => {
+        const player = room.players[playerId];
+        if (!player.isBot) {
+          const updatedCards = player.cards90.map(card => ({
+            card: validateAndFixBingo90Card(card),
+            ballsLeft: calculateBallsLeftForCard(card, room.drawnNumbers),
+            lineStatus: getLineStatusForCard(card, room.drawnNumbers)
+          }));
+          io.to(playerId).emit('cards-updated', { cards: updatedCards, cardType: '90' });
+        }
+      });
+    }
+
+    const winners = checkWinForAllPlayers(roomType);
+    if (winners) handleWin(roomType, winners);
+  });
   console.log('🔌 Jogador conectado:', socket.id);
 
   socket.on('join-room', async ({ playerName, roomType, savedChips, savedCards75, savedCards90 }) => {
