@@ -468,3 +468,78 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 });
+// ============ FUNÇÕES PARA MOBILE ============
+
+// 1. 🔌 Impedir que a tela apague (Wake Lock)
+let wakeLock = null;
+
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      console.log('✅ Wake Lock ativado — tela permanecerá ligada.');
+      
+      // Opcional: ouvir quando o lock é liberado
+      wakeLock.addEventListener('release', () => {
+        console.log('⚠️ Wake Lock liberado.');
+      });
+    } catch (err) {
+      console.warn('⚠️ Não foi possível ativar o Wake Lock:', err);
+    }
+  } else {
+    console.warn('⚠️ Wake Lock não suportado neste navegador.');
+  }
+}
+
+// 2. ▶️ Manter o sorteio funcionando mesmo em segundo plano
+let lastDrawTime = 0;
+const DRAW_INTERVAL_MS = 3000; // 3 segundos entre bolas
+
+function startBackgroundSafeDraw() {
+  // Cancela qualquer intervalo antigo
+  if (window.drawInterval) clearInterval(window.drawInterval);
+
+  // Usa timestamp para garantir precisão
+  function drawTick() {
+    const now = Date.now();
+    if (!lastDrawTime || now - lastDrawTime >= DRAW_INTERVAL_MS) {
+      lastDrawTime = now;
+      
+      // Só dispara se estiver em uma sala ativa
+      if (currentRoom && !gameEnded) {
+        socket.emit('draw-next-number'); // ← vamos criar este evento
+      }
+    }
+    
+    // Continua rodando mesmo em background
+    window.drawRAF = requestAnimationFrame(drawTick);
+  }
+
+  drawTick();
+}
+
+// 3. 🔄 Iniciar tudo quando entrar em uma sala
+document.addEventListener('DOMContentLoaded', () => {
+  // Ativa Wake Lock assim que o jogo começa
+  const gameArea = document.getElementById('game-area');
+  const observer = new MutationObserver(() => {
+    if (gameArea.style.display === 'block') {
+      requestWakeLock();
+      // Não inicia sorteio automático aqui — só quando o servidor mandar
+    }
+  });
+  observer.observe(gameArea, { attributes: true, attributeFilter: ['style'] });
+});
+
+// 4. 📱 Detectar foco/blur da aba (opcional: pausar UI, mas não o sorteio)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    console.log('📱 App em segundo plano — sorteio continua via servidor.');
+  } else {
+    console.log('📱 App em primeiro plano.');
+    // Opcional: atualizar UI imediatamente
+    if (currentRoom) {
+      socket.emit('sync-state');
+    }
+  }
+});
