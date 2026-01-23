@@ -593,6 +593,9 @@ function pauseDraw(roomType) {
 function resumeDraw(roomType) {
   const room = rooms[roomType];
   
+  function resumeDraw(roomType) {
+  const room = rooms[roomType];
+  
   // ✅ Verificar se há humanos com cartelas
   let humanHasCards = false;
   for (const player of Object.values(room.players)) {
@@ -637,6 +640,9 @@ function resumeDraw(roomType) {
         }
       }
     }
+
+    // ✅ EMITIR ATUALIZAÇÃO DO POTE E JACKPOT PARA TODOS OS JOGADORES
+    io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
   }
 
   if (!hasHumanWithCards(roomType)) {
