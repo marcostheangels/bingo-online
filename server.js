@@ -167,7 +167,7 @@ const jackpotResponses = [
     "🧩 O Jackpot é o quebra-cabeça mais valioso do mundo. Complete-o!",
     "🧿 Sorte ou destino? No Jackpot, os dois caminham juntos!",
     "🛸 Um prêmio de outro planeta: é assim que chamamos o nosso Jackpot!"
-   ]
+   ];
 };
 
 let lastAiResponse = '';
