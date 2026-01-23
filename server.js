@@ -238,10 +238,14 @@ function getBotCardCount(totalBots) {
   return 1;
 }
 
-// ✅ Verifica se há humanos na sala
-function hasHumanPlayers(roomType) {
+// ✅ Verifica se há humanos com cartelas na sala
+function hasHumanWithCards(roomType) {
   const room = rooms[roomType];
-  return Object.values(room.players).some(p => !p.isBot);
+  return Object.values(room.players).some(p => 
+    !p.isBot && 
+    ((roomType === 'bingo90' && p.cards90 && p.cards90.length > 0) ||
+     (roomType === 'bingo75' && p.cards75 && p.cards75.length > 0))
+  );
 }
 
 // ✅ Mensagens automáticas a cada 45s
@@ -531,8 +535,8 @@ function pauseDraw(roomType) {
 
 function resumeDraw(roomType) {
   const room = rooms[roomType];
-  if (!hasHumanPlayers(roomType)) {
-    console.log(`⏸️ Standby: nenhuma humano na sala ${roomType}`);
+  if (!hasHumanWithCards(roomType)) {
+    console.log(`⏸️ Standby: nenhum humano com cartela na sala ${roomType}`);
     room.gameActive = false;
     return;
   }
@@ -1132,16 +1136,17 @@ io.on('connection', (socket) => {
     broadcastRanking(roomType);
 
     if (!room.autoMessageInterval) {
-      startAutoMessages(roomType);
-    }
+  startAutoMessages(roomType);
+}
 
-    if (hasHumanPlayers(roomType) && !room.gameActive && !room.gameCompleted) {
-      setTimeout(() => {
-        if (hasHumanPlayers(roomType)) {
-          resumeDraw(roomType);
-        }
-      }, 1000);
+// ✅ Só inicia o sorteio se houver humanos COM CARTELAS
+if (hasHumanWithCards(roomType) && !room.gameActive && !room.gameCompleted) {
+  setTimeout(() => {
+    if (hasHumanWithCards(roomType)) {
+      resumeDraw(roomType);
     }
+  }, 1000);
+}
   });
 
   socket.on('buy-cards', ({ count, cardType }) => {
@@ -1194,15 +1199,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('start-draw', () => {
-    const roomType = socket.data?.roomType;
-    if (roomType && !rooms[roomType].gameActive) {
-      if (hasHumanPlayers(roomType)) {
-        resumeDraw(roomType);
-      } else {
-        socket.emit('error', 'Nenhum jogador humano na sala. Aguardando...');
-      }
+  const roomType = socket.data?.roomType;
+  if (roomType && !rooms[roomType].gameActive) {
+    if (hasHumanWithCards(roomType)) {
+      resumeDraw(roomType);
+    } else {
+      socket.emit('error', 'Nenhum jogador humano com cartela na sala.');
     }
-  });
+  }
+});
 
   socket.on('claim-win', ({ winType }) => {
     try {
