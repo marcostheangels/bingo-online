@@ -2,7 +2,6 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
-
 const app = express();
 const server = http.createServer(app);
 
@@ -18,6 +17,7 @@ const io = require('socket.io')(server, {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
 
 // ✅ Função de sanitização
 function sanitizeName(name) {
@@ -28,12 +28,10 @@ function sanitizeName(name) {
 }
 
 // ✅ Endpoint de feedback com rate limiting
-app.use(express.json());
 app.post('/api/feedback', (req, res) => {
   const ip = req.ip || req.connection.remoteAddress || 'unknown';
   const now = Date.now();
   const last = feedbackLimiter.get(ip);
-  
   if (last && (now - last) < FEEDBACK_MIN_INTERVAL_MS) {
     return res.status(429).json({ error: 'Aguarde antes de enviar outro feedback.' });
   }
@@ -46,18 +44,19 @@ app.post('/api/feedback', (req, res) => {
   feedbackLimiter.set(ip, now);
   setTimeout(() => feedbackLimiter.delete(ip), FEEDBACK_MIN_INTERVAL_MS);
 
-  const logEntry = `[${new Date().toISOString()}] [${roomType || 'unknown'}] ${playerName}: ${message}\n`;
+  const logEntry = `[${new Date().toISOString()}] [${roomType || 'unknown'}] ${sanitizeName(playerName)}: ${message}\n`;
   fs.appendFile('feedback.log', logEntry, (err) => {
     if (err) console.error('Erro ao salvar feedback:', err);
   });
+
   console.log('📩 Novo feedback recebido:', logEntry.trim());
   res.json({ success: true });
 });
 
 // ✅ Nomes de bots
 const BOT_NAMES = [
-  "Bibiu", "Casca de Ferida", "Cão Chupando Manga", "Karatê", "Chico Tripa", 
-  "Zé da Foice", "Venta de Ventoinha", "Sete de Ouro", "Galego do Zinho", "Totonho", 
+  "Bibiu", "Casca de Ferida", "Cão Chupando Manga", "Karatê", "Chico Tripa",
+  "Zé da Foice", "Venta de Ventoinha", "Sete de Ouro", "Galego do Zinho", "Totonho",
   "Peba", "Rabo de Peixe", "Zé Moleza", "Cara de Broa", "Furico de Rato",
   "Mão de Gancho", "Tico-Tico", "Pinta Roxa", "Galinha Morta", "Boca de Caçapa",
   "Saco de Estopa", "Meia-Noite", "Catuaba", "Pau de Virar Tripa", "Caneca furada"
@@ -125,16 +124,6 @@ const AI_RESPONSES = {
   jackpot: [
     "O jackpot começa em R$ 1.000.000 e cresce a cada cartela comprada!",
     "Só é possível ganhar o jackpot se o bingo for feito em até 60 bolas!",
-    "Quando alguém leva o jackpot, ele volta a R$ 1.000.000 e recomeça!"
-  ],
-  strategy: [
-    "Compre cartelas no início da rodada para garantir seu lugar!",
-    "Cartelas com menos bolas faltando aparecem no topo — foque nelas!",
-    "Não espere o último número: às vezes, a vitória vem antes do fim!"
-  ],
-    jackpot: [
-    "O jackpot começa em R$ 1.000.000 e cresce a cada cartela comprada!",
-    "Só é possível ganhar o jackpot se o bingo for feito em até 60 bolas!",
     "Quando alguém leva o jackpot, ele volta a R$ 1.000.000 e recomeça!",
     "💰 O Jackpot é o prêmio máximo! Ele acumula uma pequena parte de cada cartela vendida!",
     "💎 Já pensou em ser o próximo milionário? O Jackpot está esperando por um mestre!",
@@ -166,7 +155,12 @@ const AI_RESPONSES = {
     "🧩 O Jackpot é o quebra-cabeça mais valioso do mundo. Complete-o!",
     "🧿 Sorte ou destino? No Jackpot, os dois caminham juntos!",
     "🛸 Um prêmio de outro planeta: é assim que chamamos o nosso Jackpot!"
-   ],
+  ],
+  strategy: [
+    "Compre cartelas no início da rodada para garantir seu lugar!",
+    "Cartelas com menos bolas faltando aparecem no topo — foque nelas!",
+    "Não espere o último número: às vezes, a vitória vem antes do fim!"
+  ]
 };
 
 let lastAiResponse = '';
@@ -193,11 +187,11 @@ function getRandomUnique(list, category) {
 
 // ✅ Salas em memória
 const rooms = {
-  'bingo75': { 
-    name: 'Bingo 75 (Americano)', 
-    players: {}, 
-    drawnNumbers: [], 
-    gameActive: false, 
+  'bingo75': {
+    name: 'Bingo 75 (Americano)',
+    players: {},
+    drawnNumbers: [],
+    gameActive: false,
     lastNumber: null,
     maxBots: 3,
     pot: 0,
@@ -211,11 +205,11 @@ const rooms = {
     currentWinnerId: null,
     autoMessageInterval: null
   },
-  'bingo90': { 
-    name: 'Bingo 90 (Brasileiro)', 
-    players: {}, 
-    drawnNumbers: [], 
-    gameActive: false, 
+  'bingo90': {
+    name: 'Bingo 90 (Brasileiro)',
+    players: {},
+    drawnNumbers: [],
+    gameActive: false,
     lastNumber: null,
     maxBots: 3,
     pot: 0,
@@ -254,10 +248,8 @@ function hasHumanPlayers(roomType) {
 function startAutoMessages(roomType) {
   const room = rooms[roomType];
   if (room.autoMessageInterval) clearInterval(room.autoMessageInterval);
-  
   room.autoMessageInterval = setInterval(() => {
     if (!hasHumanPlayers(roomType)) return;
-    
     const messages = [
       "✨ Alguém está prestes a fazer BINGO! Fiquem atentos!",
       "💰 O pote está crescendo! Quem será o próximo vencedor?",
@@ -298,7 +290,6 @@ function startAutoMessages(roomType) {
       "🧩 Cada bola sorteada é uma peça do seu quebra-cabeça vitorioso!",
       "🛰️ Radar ligado: detectamos uma grande chance de Bingo na sua área!"
     ];
-    
     const msg = messages[Math.floor(Math.random() * messages.length)];
     io.to(roomType).emit('chat-message', {
       message: msg,
@@ -490,10 +481,8 @@ function calculateBallsLeftForCard(card, drawnNumbers) {
 
 function distributePrize(room, winners, prize) {
   if (winners.length === 0 || prize <= 0) return [];
-  
   const baseShare = Math.floor(prize / winners.length);
   const remainder = prize % winners.length;
-  
   return winners.map((winner, index) => {
     let finalShare = baseShare + (index < remainder ? 1 : 0);
     room.players[winner.playerId].chips += finalShare;
@@ -526,7 +515,7 @@ function checkWinForAllPlayers(roomType) {
     }
   }
   if (allWinners.length > 0) {
-    console.log(`[VITÓRIA] Sala: ${roomType}, Etapa: ${currentStage}, Vencedores:`, allWinners.map(w => room.players[w.playerId]?.name).join(', '));
+    console.log(`[VITÓRIA] Sala: ${roomType}, Etapa: ${currentStage}, Vencedores:`, allWinners.map(w => rooms[roomType].players[w.playerId]?.name).join(', '));
   }
   return allWinners.length > 0 ? allWinners : null;
 }
@@ -564,7 +553,6 @@ function resumeDraw(roomType) {
       drawnNumbers: room.drawnNumbers,
       lastNumber: number
     });
-    
     if (roomType === 'bingo90') {
       Object.keys(room.players).forEach(playerId => {
         const player = room.players[playerId];
@@ -616,6 +604,7 @@ function handleWin(roomType, allWinners) {
     player.winsCount = (player.winsCount || 0) + 1;
     player.currentWins = (player.currentWins || 0) + 1;
   });
+
   let jackpotWinners = [];
   let wonJackpot = false;
   if (currentStage === 'bingo' && room.drawnNumbers.length <= JACKPOT_BALL_LIMIT) {
@@ -624,78 +613,86 @@ function handleWin(roomType, allWinners) {
     room.jackpot = 1000000;
     jackpotWinners = distributePrize(room, allWinners, jackpotPrize);
   }
+
   const winnerNames = results.map(r => r.playerName).join(', ');
   const totalPrize = results.reduce((sum, r) => sum + r.prize, 0);
-  
-  // ✅ Destacar vencedor atual
+
   if (results.length > 0) {
     room.currentWinnerId = results[0].playerId;
   }
-  
-  // ✅ Adiciona flag se Markim ou Marília vencerem
+
   if (shouldAddBotOnWin(winnerNames)) {
     room.addBotOnNextRestart = true;
     console.log(`✅ Vitória de Markim ou Marília! Bot será adicionado no próximo restart.`);
   }
-  
-  // ✅ Mensagem com valor e marcadores
+
+  // ✅ Mensagem de vitória com seleção aleatória
   let formattedMessage = "";
   if (currentStage === 'linha1') {
-    formattedMessage = `[L1]🎉 Parabéns, ${winnerNames}! Você ganhou R$ ${totalPrize.toLocaleString('pt-BR')} com a primeira linha![/L1]`;
-                        `[L1]✨ Primeira etapa concluída! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
-                        `[L1]🎯 No alvo! ${winnerNames} completou a primeira linha e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
-                        `[L1]🍀 A sorte abriu os caminhos! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
-                        `[L1]🚀 Partida iniciada com sucesso! ${winnerNames} garantiu R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
-                        `[L1]🥇 O primeiro troféu é de ${winnerNames}! Prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
-                        `[L1]💎 Começou com brilho! ${winnerNames} marcou linha e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
-                        `[L1]⚡ Rapidez e sorte! ${winnerNames} fechou a linha 1: R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
-                        `[L1]🔔 Atenção: temos um ganhador! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
-                        `[L1]🌈 O pote começou a derramar! ${winnerNames} pegou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
-                        `[L1]🌟 Estrela da rodada! ${winnerNames} levou a primeira linha: R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
-                        `[L1]💥 Explosão de sorte! ${winnerNames} acaba de ganhar R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
-                        `[L1]🧤 Mão santa! ${winnerNames} completou a linha e faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
-                        `[L1]🎫 Cartela premiada! ${winnerNames} garantiu R$ ${totalPrize.toLocaleString('pt-BR')} na L1![/L1]`;
-                        `[L1]🔥 Esquentando o motor! ${winnerNames} levou a primeira linha por R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
-                        `[L1]👑 Pequena realeza! ${winnerNames} conquistou R$ ${totalPrize.toLocaleString('pt-BR')} na linha![/L1]`;
+    const messages = [
+      `[L1]🎉 Parabéns, ${winnerNames}! Você ganhou R$ ${totalPrize.toLocaleString('pt-BR')} com a primeira linha![/L1]`,
+      `[L1]✨ Primeira etapa concluída! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
+      `[L1]🎯 No alvo! ${winnerNames} completou a primeira linha e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
+      `[L1]🍀 A sorte abriu os caminhos! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
+      `[L1]🚀 Partida iniciada com sucesso! ${winnerNames} garantiu R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
+      `[L1]🥇 O primeiro troféu é de ${winnerNames}! Prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
+      `[L1]💎 Começou com brilho! ${winnerNames} marcou linha e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
+      `[L1]⚡ Rapidez e sorte! ${winnerNames} fechou a linha 1: R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
+      `[L1]🔔 Atenção: temos um ganhador! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
+      `[L1]🌈 O pote começou a derramar! ${winnerNames} pegou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
+      `[L1]🌟 Estrela da rodada! ${winnerNames} levou a primeira linha: R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
+      `[L1]💥 Explosão de sorte! ${winnerNames} acaba de ganhar R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
+      `[L1]🧤 Mão santa! ${winnerNames} completou a linha e faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
+      `[L1]🎫 Cartela premiada! ${winnerNames} garantiu R$ ${totalPrize.toLocaleString('pt-BR')} na L1![/L1]`,
+      `[L1]🔥 Esquentando o motor! ${winnerNames} levou a primeira linha por R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
+      `[L1]👑 Pequena realeza! ${winnerNames} conquistou R$ ${totalPrize.toLocaleString('pt-BR')} na linha![/L1]`
+    ];
+    formattedMessage = messages[Math.floor(Math.random() * messages.length)];
   } else if (currentStage === 'linha2') {
-    formattedMessage = `[L2]🎊 Dupla vitória! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')} pelas duas linhas![/L2]`;
-                       `[L2]🌓 Metade do caminho! ${winnerNames} levou a Linha Dupla: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
-                       `[L2]⚔️ Dobradinha de respeito! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
-                       `[L2]📈 O prêmio subiu! ${winnerNames} completou duas linhas: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
-                       `[L2]🔥 O clima está fervendo! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
-                       `[L2]🎭 Dois atos concluídos! ${winnerNames} levou o prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
-                       `[L2]🥈 Prata da casa! ${winnerNames} garantiu a linha dupla: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
-                       `[L2]🌊 Onda de sorte! ${winnerNames} faturou duas linhas por R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
-                       `[L2]🛰️ Radar da vitória! ${winnerNames} achou a segunda linha: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
-                       `[L2]🛠️ Construindo a vitória! ${winnerNames} já tem R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
-                       `[L2]🎁 Presentão em dobro! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
-                       `[L2]🧨 Quase lá! ${winnerNames} detonou na segunda linha: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
-                       `[L2]💪 Mostrou como se faz! ${winnerNames} garantiu R$ ${totalPrize.toLocaleString('pt-BR')} na L2![/L2]`;
-                       `[L2]🧩 Peças encaixadas! ${winnerNames} completou a dupla por R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
-                       `[L2]🔋 Carga total! ${winnerNames} faturou o prêmio intermediário de R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
-                       `[L2]🤜🤛 Parceria com a sorte! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
+    const messages = [
+      `[L2]🎊 Dupla vitória! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')} pelas duas linhas![/L2]`,
+      `[L2]🌓 Metade do caminho! ${winnerNames} levou a Linha Dupla: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
+      `[L2]⚔️ Dobradinha de respeito! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
+      `[L2]📈 O prêmio subiu! ${winnerNames} completou duas linhas: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
+      `[L2]🔥 O clima está fervendo! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
+      `[L2]🎭 Dois atos concluídos! ${winnerNames} levou o prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
+      `[L2]🥈 Prata da casa! ${winnerNames} garantiu a linha dupla: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
+      `[L2]🌊 Onda de sorte! ${winnerNames} faturou duas linhas por R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
+      `[L2]🛰️ Radar da vitória! ${winnerNames} achou a segunda linha: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
+      `[L2]🛠️ Construindo a vitória! ${winnerNames} já tem R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
+      `[L2]🎁 Presentão em dobro! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
+      `[L2]🧨 Quase lá! ${winnerNames} detonou na segunda linha: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
+      `[L2]💪 Mostrou como se faz! ${winnerNames} garantiu R$ ${totalPrize.toLocaleString('pt-BR')} na L2![/L2]`,
+      `[L2]🧩 Peças encaixadas! ${winnerNames} completou a dupla por R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
+      `[L2]🔋 Carga total! ${winnerNames} faturou o prêmio intermediário de R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
+      `[L2]🤜🤛 Parceria com a sorte! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`
+    ];
+    formattedMessage = messages[Math.floor(Math.random() * messages.length)];
   } else if (currentStage === 'bingo') {
-    formattedMessage = `[BINGO]🏆🏆🏆 BINGO ÉPICO! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]👑👑 O REI DO BINGO! ${winnerNames} limpou a banca com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]💰💰 JACKPOT! ${winnerNames} é o grande campeão e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]🚀🚀 DECOLOU! O prêmio máximo de R$ ${totalPrize.toLocaleString('pt-BR')} vai para ${winnerNames}![/BINGO]`;
-                       `[BINGO]🏦 O BANCO QUEBROU! ${winnerNames} faturou incríveis R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]💎💎 RIQUEZA PURA! ${winnerNames} deu o grito final e ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]🤩 VITÓRIA LENDÁRIA! ${winnerNames} acaba de levar R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]⛈️ TEMPESTADE DE DINHEIRO! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]🎸 SHOW COMPLETO! ${winnerNames} fez BINGO e faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]🥂 BRINDE À VITÓRIA! ${winnerNames} é o novo milionário com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]🕹️ GAME OVER PROS ADVERSÁRIOS! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]🌋 ERUPÇÃO DE PRÊMIOS! ${winnerNames} conquistou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]🥋 MESTRE DO BINGO! ${winnerNames} dominou a sala e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]🏆 HISTÓRICO! ${winnerNames} fechou a cartela e garantiu R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]🌠 DESEJO REALIZADO! ${winnerNames} faturou o prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]💸 CHUVA DE NOTAS! ${winnerNames} é o nome da vez com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]🥳 FESTA NO BINGO MASTER PRO! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]🦁 O LEÃO DA RODADA! ${winnerNames} devorou o prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]⚡ CHOQUE DE SORTE! ${winnerNames} fechou tudo e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]🏅 MEDALHA DE OURO! ${winnerNames} faturou o BINGO de R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
-                       `[BINGO]🏁 FIM DE JOGO! O mestre ${winnerNames} encerrou com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+    const messages = [
+      `[BINGO]🏆🏆🏆 BINGO ÉPICO! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]👑👑 O REI DO BINGO! ${winnerNames} limpou a banca com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]💰💰 JACKPOT! ${winnerNames} é o grande campeão e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]🚀🚀 DECOLOU! O prêmio máximo de R$ ${totalPrize.toLocaleString('pt-BR')} vai para ${winnerNames}![/BINGO]`,
+      `[BINGO]🏦 O BANCO QUEBROU! ${winnerNames} faturou incríveis R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]💎💎 RIQUEZA PURA! ${winnerNames} deu o grito final e ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]🤩 VITÓRIA LENDÁRIA! ${winnerNames} acaba de levar R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]⛈️ TEMPESTADE DE DINHEIRO! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]🎸 SHOW COMPLETO! ${winnerNames} fez BINGO e faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]🥂 BRINDE À VITÓRIA! ${winnerNames} é o novo milionário com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]🕹️ GAME OVER PROS ADVERSÁRIOS! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]🌋 ERUPÇÃO DE PRÊMIOS! ${winnerNames} conquistou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]🥋 MESTRE DO BINGO! ${winnerNames} dominou a sala e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]🏆 HISTÓRICO! ${winnerNames} fechou a cartela e garantiu R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]🌠 DESEJO REALIZADO! ${winnerNames} faturou o prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]💸 CHUVA DE NOTAS! ${winnerNames} é o nome da vez com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]🥳 FESTA NO BINGO MASTER PRO! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]🦁 O LEÃO DA RODADA! ${winnerNames} devorou o prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]⚡ CHOQUE DE SORTE! ${winnerNames} fechou tudo e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]🏅 MEDALHA DE OURO! ${winnerNames} faturou o BINGO de R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+      `[BINGO]🏁 FIM DE JOGO! O mestre ${winnerNames} encerrou com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`
+    ];
+    formattedMessage = messages[Math.floor(Math.random() * messages.length)];
   }
 
   io.to(roomType).emit('chat-message', {
@@ -704,7 +701,7 @@ function handleWin(roomType, allWinners) {
     isBot: false,
     type: currentStage
   });
-  
+
   // ✅ Verificar vitórias consecutivas
   const humanWinners = results.filter(r => !room.players[r.playerId].isBot);
   for (const hw of humanWinners) {
@@ -714,7 +711,7 @@ function handleWin(roomType, allWinners) {
         `🔥 ${player.name} está ON FIRE! ${player.currentWins} vitórias seguidas!`,
         `🚀 ${player.name} não para de vencer! Já são ${player.currentWins} prêmios!`,
         `💎 ${player.name} é imparável! ${player.currentWins} conquistas em sequência!`,
-        `🎯 ${player.name} tem mira de águia! ${player.currentWins} vezes no topo!`
+        `🎯 ${player.name} tem mira de águia! ${player.currentWins} vezes no topo!`,
         `👑 O trono é de ${player.name}! São ${player.currentWins} vitórias consecutivas!`,
         `⚡ ${player.name} está eletrizante! Ninguém segura essas ${player.currentWins} vitórias!`,
         `💰 Alerta de Tubarão! ${player.name} abocanhou ${player.currentWins} prêmios seguidos!`,
@@ -745,7 +742,7 @@ function handleWin(roomType, allWinners) {
         `🧱 ${player.name} construiu um império de ${player.currentWins} vitórias seguidas!`,
         `🌊 Impossível conter essa onda! ${player.name} venceu ${player.currentWins} vezes!`,
         `🎁 O maior presente da rodada é a sequência de ${player.currentWins} de ${player.name}!`
-];
+      ];
       const streakMsg = streakMessages[Math.floor(Math.random() * streakMessages.length)];
       setTimeout(() => {
         io.to(roomType).emit('chat-message', {
@@ -759,94 +756,98 @@ function handleWin(roomType, allWinners) {
   }
 
   // ✅ Mensagem especial para humanos que fazem bingo
-  if (currentStage === 'bingo') {
-    if (humanWinners.length > 0) {
-      const humanNames = humanWinners.map(h => h.playerName).join(', ');
-      setTimeout(() => {
-        io.to(roomType).emit('chat-message', {
-          message:  `✨✨✨ CARTÃO DOURADO ATIVADO! ${humanNames} fez BINGO! ✨✨✨`,
-          message:  `👑👑👑 REALEZA DETECTADA! ${humanNames} dominou a sala e fez BINGO! 👑👑👑`,
-         message:   `💎💎💎 BRILHO ETERNO! ${humanNames} acaba de conquistar o BINGO SUPREMO! 💎💎💎`,
-         message:   `🚀🚀🚀 DECOLAGEM AUTORIZADA! ${humanNames} voou alto e fez BINGO! 🚀🚀🚀`,
-         message:   `🔥 🔥 🔥 O MESTRE CHEGOU! ${humanNames} detonou tudo com esse BINGO! 🔥 🔥 🔥`,
-         message:   `🌈🌈🌈 SORTE MÁXIMA! ${humanNames} encontrou o pote de ouro: BINGO! 🌈🌈🌈`,
-         message:   `🏆🏆🏆 GLÓRIA AO CAMPEÃO! ${humanNames} venceu a rodada com BINGO! 🏆🏆🏆`,
-         message:   `🏅🏅🏅 NÍVEL LENDÁRIO! ${humanNames} mostrou como se faz um BINGO! 🏅🏅🏅`,
-         message:   `🎊🎊🎊 FESTA NO BINGO MASTER PRO! ${humanNames} é o nome da vez! 🎊🎊🎊`,
-         message:   `⚡⚡⚡ CHOQUE DE VITÓRIA! ${humanNames} paralisou a sala com esse BINGO! ⚡⚡⚡`,
-         message:   `🛸🛸🛸 FORA DESTE MUNDO! ${humanNames} atingiu o BINGO intergaláctico! 🛸🛸🛸`,
-         message:   `🦾🦾🦾 MÃO DE FERRO! ${humanNames} não deu chance e gritou BINGO! 🦾🦾🦾`,
-         message:   `🏦🏦🏦 O COFRE ABRIU! ${humanNames} fez BINGO e limpou a banca! 🏦🏦🏦`,
-         message:   `🏹🏹🏹 ALVO ATINGIDO! ${humanNames} foi direto no BINGO! 🏹🏹🏹`,
-         message:   `🎇🎇🎇 FOGOS DE ARTIFÍCIO! ${humanNames} iluminou a tela com BINGO! 🎇🎇🎇`,
-         message:   `🍀🍀🍀 TREVO SUPREMO! A sorte escolheu ${humanNames} para o BINGO! 🍀🍀🍀`,
-         message:   `🤺🤺🤺 DUELO VENCIDO! ${humanNames} superou todos e fez BINGO! 🤺🤺🤺`,
-         message:   `🎈🎈🎈 CELEBRAÇÃO! O BINGO de ${humanNames} é motivo de festa! 🎈🎈🎈`,
-         message:   `🛡️🛡️🛡️ INVENCÍVEL! Ninguém parou o BINGO de ${humanNames}! 🛡️🛡️🛡️`,
-         message:   `🤩🤩🤩 ESPETÁCULO! ${humanNames} deu um show com esse BINGO! 🤩🤩🤩`,
-         message:   `🎹🎹🎹 NA BATIDA CERTA! ${humanNames} fechou a cartela e fez BINGO! 🎹🎹🎹`,
-         message:   `🌊🌊🌊 ONDA DE SORTE! ${humanNames} foi levado direto para o BINGO! 🌊🌊🌊`,
-         message:   `🧗🧗🧗 NO TOPO DA MONTANHA! ${humanNames} conquistou o BINGO! 🧗🧗🧗`,
-         message:   `🧿🧿🧿 PROTEGIDO PELA SORTE! ${humanNames} garantiu seu BINGO! 🧿🧿🧿`,
-         message:   `🎮🎮🎮 PRO PLAYER! ${humanNames} subiu de nível com esse BINGO! 🎮🎮🎮`,
-         message:   `💸💸💸 CHUVA DE PRÊMIOS! ${humanNames} molhou a conta com esse BINGO! 💸💸💸`,
-         message:   `🥇🥇🥇 PRIMEIRO LUGAR! ${humanNames} é o dono da rodada! BINGO! 🥇🥇🥇`,
-         message:   `🦁🦁🦁 FORÇA BRUTA! ${humanNames} rugiu alto no grito de BINGO! 🦁🦁🦁`,
-         message:   `💎💎💎 DIAMANTE LAPIDADO! ${humanNames} fez o BINGO mais brilhante! 💎💎💎`,
-         message:   `✨✨✨ MAGIA PURA! ${humanNames} transformou números em BINGO! ✨✨✨`,
-         message: randomMsg,
-         sender: "Sistema",
-         isBot: false,
-         special: "golden-bingo"
-        });
-      }, 1000);
-    }
+  if (currentStage === 'bingo' && humanWinners.length > 0) {
+    const humanNames = humanWinners.map(h => h.playerName).join(', ');
+    const goldenMessages = [
+      `✨✨✨ CARTÃO DOURADO ATIVADO! ${humanNames} fez BINGO! ✨✨✨`,
+      `👑👑👑 REALEZA DETECTADA! ${humanNames} dominou a sala e fez BINGO! 👑👑👑`,
+      `💎💎💎 BRILHO ETERNO! ${humanNames} acaba de conquistar o BINGO SUPREMO! 💎💎💎`,
+      `🚀🚀🚀 DECOLAGEM AUTORIZADA! ${humanNames} voou alto e fez BINGO! 🚀🚀🚀`,
+      `🔥 🔥 🔥 O MESTRE CHEGOU! ${humanNames} detonou tudo com esse BINGO! 🔥 🔥 🔥`,
+      `🌈🌈🌈 SORTE MÁXIMA! ${humanNames} encontrou o pote de ouro: BINGO! 🌈🌈🌈`,
+      `🏆🏆🏆 GLÓRIA AO CAMPEÃO! ${humanNames} venceu a rodada com BINGO! 🏆🏆🏆`,
+      `🏅🏅🏅 NÍVEL LENDÁRIO! ${humanNames} mostrou como se faz um BINGO! 🏅🏅🏅`,
+      `🎊🎊🎊 FESTA NO BINGO MASTER PRO! ${humanNames} é o nome da vez! 🎊🎊🎊`,
+      `⚡⚡⚡ CHOQUE DE VITÓRIA! ${humanNames} paralisou a sala com esse BINGO! ⚡⚡⚡`,
+      `🛸🛸🛸 FORA DESTE MUNDO! ${humanNames} atingiu o BINGO intergaláctico! 🛸🛸🛸`,
+      `🦾🦾🦾 MÃO DE FERRO! ${humanNames} não deu chance e gritou BINGO! 🦾🦾🦾`,
+      `🏦🏦🏦 O COFRE ABRIU! ${humanNames} fez BINGO e limpou a banca! 🏦🏦🏦`,
+      `🏹🏹🏹 ALVO ATINGIDO! ${humanNames} foi direto no BINGO! 🏹🏹🏹`,
+      `🎇🎇🎇 FOGOS DE ARTIFÍCIO! ${humanNames} iluminou a tela com BINGO! 🎇🎇🎇`,
+      `🍀🍀🍀 TREVO SUPREMO! A sorte escolheu ${humanNames} para o BINGO! 🍀🍀🍀`,
+      `🤺🤺🤺 DUELO VENCIDO! ${humanNames} superou todos e fez BINGO! 🤺🤺🤺`,
+      `🎈🎈🎈 CELEBRAÇÃO! O BINGO de ${humanNames} é motivo de festa! 🎈🎈🎈`,
+      `🛡️🛡️🛡️ INVENCÍVEL! Ninguém parou o BINGO de ${humanNames}! 🛡️🛡️🛡️`,
+      `🤩🤩🤩 ESPETÁCULO! ${humanNames} deu um show com esse BINGO! 🤩🤩🤩`,
+      `🎹🎹🎹 NA BATIDA CERTA! ${humanNames} fechou a cartela e fez BINGO! 🎹🎹🎹`,
+      `🌊🌊🌊 ONDA DE SORTE! ${humanNames} foi levado direto para o BINGO! 🌊🌊🌊`,
+      `🧗🧗🧗 NO TOPO DA MONTANHA! ${humanNames} conquistou o BINGO! 🧗🧗🧗`,
+      `🧿🧿🧿 PROTEGIDO PELA SORTE! ${humanNames} garantiu seu BINGO! 🧿🧿🧿`,
+      `🎮🎮🎮 PRO PLAYER! ${humanNames} subiu de nível com esse BINGO! 🎮🎮🎮`,
+      `💸💸💸 CHUVA DE PRÊMIOS! ${humanNames} molhou a conta com esse BINGO! 💸💸💸`,
+      `🥇🥇🥇 PRIMEIRO LUGAR! ${humanNames} é o dono da rodada! BINGO! 🥇🥇🥇`,
+      `🦁🦁🦁 FORÇA BRUTA! ${humanNames} rugiu alto no grito de BINGO! 🦁🦁🦁`,
+      `💎💎💎 DIAMANTE LAPIDADO! ${humanNames} fez o BINGO mais brilhante! 💎💎💎`,
+      `✨✨✨ MAGIA PURA! ${humanNames} transformou números em BINGO! ✨✨✨`
+    ];
+    const randomMsg = goldenMessages[Math.floor(Math.random() * goldenMessages.length)];
+    setTimeout(() => {
+      io.to(roomType).emit('chat-message', {
+        message: randomMsg,
+        sender: "Sistema",
+        isBot: false,
+        special: "golden-bingo"
+      });
+    }, 1000);
   }
-  
+
   // ✅ Jackpot
   if (wonJackpot) {
     const jackpotNames = jackpotWinners.map(w => w.playerName).join(', ');
     const jackpotAmount = room.jackpot; // valor ANTES do reset
-
+    const jackpotMessages = [
+      `[JACKPOT]💰💰💰 JACKPOT HISTÓRICO! ${jackpotNames} levaram R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]💎💎💎 FORTUNA ENCONTRADA! ${jackpotNames} acaba de faturar R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🌋🌋🌋 EXPLOSÃO DE DINHEIRO! O Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')} saiu para ${jackpotNames}![/JACKPOT]`,
+      `[JACKPOT]🏦🏦🏦 O BANCO QUEBROU! ${jackpotNames} levou a bolada de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]👑👑👑 REALEZA DO BINGO! ${jackpotNames} conquistou o prêmio máximo: R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🚀🚀🚀 RUMO À LUA! ${jackpotNames} faturou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🍀🍀🍀 SORTE LENDÁRIA! ${jackpotNames} ganhou o prêmio acumulado de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]⚡⚡⚡ IMPACTO TOTAL! O Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')} tem novos donos: ${jackpotNames}![/JACKPOT]`,
+      `[JACKPOT]🎇🎇🎇 ESPETÁCULO DE PRÊMIOS! ${jackpotNames} limpou o pote de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🤑🤑🤑 CHUVA DE NOTAS! ${jackpotNames} garantiu R$ ${jackpotAmount.toLocaleString('pt-BR')} no Jackpot![/JACKPOT]`,
+      `[JACKPOT]🏆🏆🏆 O TROFÉU DE OURO! ${jackpotNames} levou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🌈🌈🌈 FIM DO ARCO-ÍRIS! ${jackpotNames} encontrou R$ ${jackpotAmount.toLocaleString('pt-BR')} no pote![/JACKPOT]`,
+      `[JACKPOT]🔥 🔥 🔥 RODADA INCENDIÁRIA! ${jackpotNames} faturou o acumulado de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🌟🌟🌟 ESTRELA DO DIA! ${jackpotNames} brilhou com o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🥊🥊🥊 NOCAUTE NO ACUMULADO! ${jackpotNames} levou R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🗝️🗝️🗝️ O COFRE FOI ABERTO! ${jackpotNames} resgatou R$ ${jackpotAmount.toLocaleString('pt-BR')} do Jackpot![/JACKPOT]`,
+      `[JACKPOT]🎰🎰🎰 COMBINAÇÃO PERFEITA! ${jackpotNames} ganhou o prêmio de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🌍🌍🌍 O MUNDO É DELES! ${jackpotNames} conquistou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]💎💎💎 DIAMANTE BRUTO! ${jackpotNames} levou a raridade de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🎊🎊🎊 CARNAVAL DE VITÓRIA! ${jackpotNames} faturou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🛡️🛡️🛡️ CONQUISTA ÉPICA! ${jackpotNames} dominou o Jackpot: R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]💹💹💹 PATRIMÔNIO ATUALIZADO! ${jackpotNames} ganhou R$ ${jackpotAmount.toLocaleString('pt-BR')} no acumulado![/JACKPOT]`,
+      `[JACKPOT]🔔🔔🔔 ALERTA DE MILIONÁRIO! ${jackpotNames} levou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]✨✨✨ MOMENTO MÁGICO! ${jackpotNames} acaba de ganhar R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🦁🦁🦁 RUGIDO DO VENCEDOR! ${jackpotNames} abocanhou R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]💎🤑💎 RIQUEZA SEM LIMITES! ${jackpotNames} faturou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🛸🛸🛸 PRÊMIO ESPACIAL! ${jackpotNames} decolou com R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🔱🔱🔱 PODER SUPREMO! ${jackpotNames} conquistou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🌋💰🌋 VULCÃO DE OURO! ${jackpotNames} levou a bolada de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+      `[JACKPOT]🏅💎🏅 HONRA E GLÓRIA! ${jackpotNames} faturou o lendário Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`
+    ];
+    const jackpotMsg = jackpotMessages[Math.floor(Math.random() * jackpotMessages.length)];
     setTimeout(() => {
       io.to(roomType).emit('chat-message', {
-        message: `[JACKPOT]💰💰💰 JACKPOT HISTÓRICO! ${jackpotNames} levaram R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]💎💎💎 FORTUNA ENCONTRADA! ${jackpotNames} acaba de faturar R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🌋🌋🌋 EXPLOSÃO DE DINHEIRO! O Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')} saiu para ${jackpotNames}![/JACKPOT]`,
-        message: `[JACKPOT]🏦🏦🏦 O BANCO QUEBROU! ${jackpotNames} levou a bolada de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]👑👑👑 REALEZA DO BINGO! ${jackpotNames} conquistou o prêmio máximo: R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🚀🚀🚀 RUMO À LUA! ${jackpotNames} faturou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🍀🍀🍀 SORTE LENDÁRIA! ${jackpotNames} ganhou o prêmio acumulado de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]⚡⚡⚡ IMPACTO TOTAL! O Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')} tem novos donos: ${jackpotNames}![/JACKPOT]`,
-        message: `[JACKPOT]🎇🎇🎇 ESPETÁCULO DE PRÊMIOS! ${jackpotNames} limpou o pote de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🤑🤑🤑 CHUVA DE NOTAS! ${jackpotNames} garantiu R$ ${jackpotAmount.toLocaleString('pt-BR')} no Jackpot![/JACKPOT]`,
-        message: `[JACKPOT]🏆🏆🏆 O TROFÉU DE OURO! ${jackpotNames} levou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🌈🌈🌈 FIM DO ARCO-ÍRIS! ${jackpotNames} encontrou R$ ${jackpotAmount.toLocaleString('pt-BR')} no pote![/JACKPOT]`,
-        message: `[JACKPOT]🔥 🔥 🔥 RODADA INCENDIÁRIA! ${jackpotNames} faturou o acumulado de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🌟🌟🌟 ESTRELA DO DIA! ${jackpotNames} brilhou com o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🥊🥊🥊 NOCAUTE NO ACUMULADO! ${jackpotNames} levou R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🗝️🗝️🗝️ O COFRE FOI ABERTO! ${jackpotNames} resgatou R$ ${jackpotAmount.toLocaleString('pt-BR')} do Jackpot![/JACKPOT]`,
-        message: `[JACKPOT]🎰🎰🎰 COMBINAÇÃO PERFEITA! ${jackpotNames} ganhou o prêmio de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🌍🌍🌍 O MUNDO É DELES! ${jackpotNames} conquistou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]💎💎💎 DIAMANTE BRUTO! ${jackpotNames} levou a raridade de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🎊🎊🎊 CARNAVAL DE VITÓRIA! ${jackpotNames} faturou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🛡️🛡️🛡️ CONQUISTA ÉPICA! ${jackpotNames} dominou o Jackpot: R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]💹💹💹 PATRIMÔNIO ATUALIZADO! ${jackpotNames} ganhou R$ ${jackpotAmount.toLocaleString('pt-BR')} no acumulado![/JACKPOT]`,
-        message: `[JACKPOT]🔔🔔🔔 ALERTA DE MILIONÁRIO! ${jackpotNames} levou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]✨✨✨ MOMENTO MÁGICO! ${jackpotNames} acaba de ganhar R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🦁🦁🦁 RUGIDO DO VENCEDOR! ${jackpotNames} abocanhou R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]💎🤑💎 RIQUEZA SEM LIMITES! ${jackpotNames} faturou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🛸🛸🛸 PRÊMIO ESPACIAL! ${jackpotNames} decolou com R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🔱🔱🔱 PODER SUPREMO! ${jackpotNames} conquistou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🌋💰🌋 VULCÃO DE OURO! ${jackpotNames} levou a bolada de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-        message: `[JACKPOT]🏅💎🏅 HONRA E GLÓRIA! ${jackpotNames} faturou o lendário Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+        message: jackpotMsg,
         sender: "Sistema",
-      isBot: false,
-      type: "jackpot"
-    });
+        isBot: false,
+        type: "jackpot"
+      });
     }, 1500);
   }
-  
+
   io.to(roomType).emit('player-won', {
     winners: results,
     winnerNames,
@@ -857,11 +858,11 @@ function handleWin(roomType, allWinners) {
     wonJackpot: wonJackpot,
     currentWinnerId: room.currentWinnerId
   });
-  
+
   broadcastPlayerList(roomType);
   broadcastRanking(roomType);
   pauseDraw(roomType);
-  
+
   if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
     startAutoRestart(roomType);
   } else {
@@ -873,7 +874,6 @@ function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
   const room = rooms[roomType];
   const currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
   if (currentBots >= room.maxBots) return;
-  
   const usedNames = new Set();
   Object.values(room.players).forEach(p => { if (p.isBot) usedNames.add(p.name); });
   let name;
@@ -883,23 +883,18 @@ function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
     attempts++;
   } while (usedNames.has(name) && attempts < 100);
   if (usedNames.has(name)) name = `${name} ${Math.floor(Math.random() * 1000)}`;
-  
   const botId = `bot_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-  
   const cardCount = getBotCardCount(currentBots + 1);
   const totalCost = cardCount * PRICE_PER_CARD;
-  
   if (initialChips < totalCost) {
     return;
   }
-  
-  const cards90 = roomType === 'bingo90' 
-    ? Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card())) 
+  const cards90 = roomType === 'bingo90'
+    ? Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card()))
     : [];
-  const cards75 = roomType === 'bingo75' 
-    ? Array(cardCount).fill().map(() => generateBingo75Card()) 
+  const cards75 = roomType === 'bingo75'
+    ? Array(cardCount).fill().map(() => generateBingo75Card())
     : [];
-    
   room.players[botId] = {
     name: name,
     chips: initialChips - totalCost,
@@ -909,7 +904,6 @@ function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
     winsCount: 0,
     currentWins: 0
   };
-  
   room.pot += totalCost;
   room.jackpot += Math.floor(totalCost * 0.5);
   console.log(`🤖 Bot adicionado: ${name} comprou ${cardCount} cartelas. Pote atual: ${room.pot}`);
@@ -937,14 +931,12 @@ function broadcastPlayerList(roomType) {
 function broadcastRanking(roomType) {
   const room = rooms[roomType];
   if (!room) return;
-  
   const rankedPlayers = Object.entries(room.players)
     .map(([id, player]) => ({ id, name: player.name, chips: player.chips, isBot: player.isBot }))
     .sort((a, b) => b.chips - a.chips)
     .map((player, index) => {
       const position = index + 1;
       let rankStyle = { color: '#ffffff', trophy: '' };
-      
       if (position === 1) {
         rankStyle = { color: '#FFD700', trophy: '🥇' };
       } else if (position === 2) {
@@ -952,10 +944,8 @@ function broadcastRanking(roomType) {
       } else if (position === 3) {
         rankStyle = { color: '#C0C0C0', trophy: '🥈' };
       }
-      
       return { ...player, position, rankStyle };
     });
-    
   io.to(roomType).emit('ranking-update', rankedPlayers);
 }
 
@@ -978,9 +968,8 @@ function findPlayerByName(roomType, playerName) {
 }
 
 function handleAutoRestart(socket, roomType) {
+  if (!rooms[roomType]) return;
   const room = rooms[roomType];
-  if (!room) return;
-
   const playersToKeep = {};
   let activeBots = 0;
   for (const [id, player] of Object.entries(room.players)) {
@@ -988,20 +977,17 @@ function handleAutoRestart(socket, roomType) {
     playersToKeep[id] = player;
     if (player.isBot) activeBots++;
   }
-
   if (room.addBotOnNextRestart && room.maxBots < MAX_BOTS_ALLOWED) {
     room.maxBots += 1;
     room.addBotOnNextRestart = false;
   }
   room.maxBots = Math.min(room.maxBots, MAX_BOTS_ALLOWED);
-
   room.players = playersToKeep;
   let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
   while (currentBots < room.maxBots) {
     addBotToRoom(roomType, INITIAL_CHIPS);
     currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
   }
-
   room.drawnNumbers = [];
   room.lastNumber = null;
   room.pot = 0;
@@ -1011,7 +997,6 @@ function handleAutoRestart(socket, roomType) {
   room.gameActive = false;
   room.autoRestartTimeout = null;
   room.currentWinnerId = null;
-
   for (const [id, player] of Object.entries(room.players)) {
     if (player.isBot) {
       const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
@@ -1034,7 +1019,6 @@ function handleAutoRestart(socket, roomType) {
       player.cards90 = [];
     }
   }
-
   io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
   io.to(roomType).emit('room-reset');
   broadcastPlayerList(roomType);
@@ -1044,15 +1028,12 @@ function handleAutoRestart(socket, roomType) {
 
 io.on('connection', (socket) => {
   console.log('🔌 Jogador conectado:', socket.id);
-
   socket.on('join-room', ({ playerName, roomType, savedChips, savedCards75, savedCards90 }) => {
     if (!rooms[roomType]) {
       socket.emit('error', 'Sala inválida');
       return;
     }
-    
     playerName = sanitizeName(playerName);
-
     const room = rooms[roomType];
     const existingPlayer = findPlayerByName(roomType, playerName);
     let playerId, playerData;
@@ -1084,10 +1065,8 @@ io.on('connection', (socket) => {
         currentWins: 0
       }, roomType);
     }
-    
     socket.join(roomType);
     socket.data = { roomType };
-    
     let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
     while (currentBots < room.maxBots) {
       addBotToRoom(roomType);
@@ -1095,8 +1074,7 @@ io.on('connection', (socket) => {
       if (newBotCount === currentBots) break;
       currentBots = newBotCount;
     }
-    
-    // ✅ Boas-vindas
+
     if (!room.players[playerId].isBot) {
       io.to(roomType).emit('chat-message', {
         message: `👋 Bem-vindo(a), ${playerName}! Preparado(a) para ganhar?`,
@@ -1105,13 +1083,14 @@ io.on('connection', (socket) => {
         type: "welcome"
       });
     }
-    
+
     socket.emit('room-welcome', {
       roomName: room.name,
       roomId: roomType,
       currentStage: room.currentStage,
       gameCompleted: room.gameCompleted
     });
+
     socket.emit('room-state', {
       drawnNumbers: room.drawnNumbers,
       lastNumber: room.lastNumber,
@@ -1121,41 +1100,41 @@ io.on('connection', (socket) => {
       jackpot: room.jackpot,
       gameCompleted: room.gameCompleted,
       players: Object.fromEntries(
-        Object.entries(room.players).map(([id, p]) => [id, { 
+        Object.entries(room.players).map(([id, p]) => [id, {
           name: p.name, chips: p.chips, isBot: p.isBot,
           winsCount: p.winsCount, currentWins: p.currentWins
         }])
       )
     });
+
     const player = room.players[playerId];
     if (player.cards75.length > 0) {
-      socket.emit('cards-received', { 
-        cards: player.cards75.map(card => ({ 
-          card, 
+      socket.emit('cards-received', {
+        cards: player.cards75.map(card => ({
+          card,
           ballsLeft: calculateBallsLeftForCard(card, room.drawnNumbers)
-        })), 
-        cardType: '75' 
+        })),
+        cardType: '75'
       });
     }
     if (player.cards90.length > 0) {
-      socket.emit('cards-received', { 
-        cards: player.cards90.map(card => ({ 
-          card: validateAndFixBingo90Card(card), 
+      socket.emit('cards-received', {
+        cards: player.cards90.map(card => ({
+          card: validateAndFixBingo90Card(card),
           ballsLeft: calculateBallsLeftForCard(card, room.drawnNumbers),
           lineStatus: getLineStatusForCard(card, room.drawnNumbers)
-        })), 
-        cardType: '90' 
+        })),
+        cardType: '90'
       });
     }
+
     broadcastPlayerList(roomType);
     broadcastRanking(roomType);
-    
-    // ✅ Inicia mensagens automáticas
+
     if (!room.autoMessageInterval) {
       startAutoMessages(roomType);
     }
-    
-    // ✅ Tenta iniciar jogo se houver humanos
+
     if (hasHumanPlayers(roomType) && !room.gameActive && !room.gameCompleted) {
       setTimeout(() => {
         if (hasHumanPlayers(roomType)) {
@@ -1170,41 +1149,40 @@ io.on('connection', (socket) => {
       const roomType = socket.data?.roomType;
       if (!roomType || !rooms[roomType]) return socket.emit('error', 'Sala inválida.');
       if (count < 1 || count > MAX_CARDS_PER_PLAYER) return socket.emit('error', `Compre entre 1 e ${MAX_CARDS_PER_PLAYER} cartelas.`);
-      
       const room = rooms[roomType];
       const player = room.players[socket.id];
-      if (!player || player.isBot) return;
-      
+      if (!player || player.isBot) return socket.emit('error', 'Apenas humanos podem comprar cartelas.');
+
       const currentCardCount = cardType === '75' ? player.cards75.length : player.cards90.length;
       if (currentCardCount + count > MAX_CARDS_PER_PLAYER) {
         return socket.emit('error', `Você já tem ${currentCardCount} cartelas. Máximo permitido: ${MAX_CARDS_PER_PLAYER}.`);
       }
-      
+
       const totalCost = count * PRICE_PER_CARD;
       if (player.chips < totalCost) return socket.emit('error', 'Chips insuficientes');
-      
+
       player.chips -= totalCost;
       room.pot += totalCost;
       room.jackpot += Math.floor(totalCost * 0.5);
-      
+
       const cards = [];
       for (let i = 0; i < count; i++) {
         const card = cardType === '75' ? generateBingo75Card() : validateAndFixBingo90Card(generateBingo90Card());
         cards.push(card);
       }
-      
+
       if (cardType === '75') player.cards75 = player.cards75.concat(cards);
       else player.cards90 = player.cards90.concat(cards);
-      
-      socket.emit('cards-received', { 
-        cards: cards.map(card => ({ 
-          card, 
+
+      socket.emit('cards-received', {
+        cards: cards.map(card => ({
+          card,
           ballsLeft: calculateBallsLeftForCard(card, room.drawnNumbers),
           lineStatus: cardType === '90' ? getLineStatusForCard(card, room.drawnNumbers) : null
-        })), 
-        cardType 
+        })),
+        cardType
       });
-      
+
       io.to(socket.id).emit('update-player', { chips: player.chips });
       io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
       broadcastPlayerList(roomType);
@@ -1276,13 +1254,10 @@ io.on('connection', (socket) => {
   socket.on('chat-message', ({ message, sender, isBot }) => {
     const roomType = socket.data?.roomType;
     if (!roomType || !rooms[roomType]) return;
-    
     if (!isBot) {
       io.to(roomType).emit('chat-message', { message, sender, isBot: false });
-      
       const lowerMsg = message.toLowerCase();
       const hasKeyword = AI_KEYWORDS.some(kw => lowerMsg.includes(kw));
-      
       if (hasKeyword) {
         const aiMessage = getSmartAiResponse(message);
         setTimeout(() => {
@@ -1309,7 +1284,6 @@ io.on('connection', (socket) => {
       socket.leave(roomType);
       broadcastPlayerList(roomType);
       broadcastRanking(roomType);
-      
       if (!hasHumanPlayers(roomType)) {
         pauseDraw(roomType);
         if (rooms[roomType].autoMessageInterval) {
