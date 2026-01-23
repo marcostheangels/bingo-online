@@ -4,7 +4,6 @@ body {
   color: white;
   padding: 15px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  position: relative; /* ← ADICIONE ESTA LINHA */
 }
 .container { max-width: 1200px; margin: 0 auto; }
 
@@ -178,7 +177,6 @@ body {
 #buy-btn { background: #1976d2; }
 #start-btn { background: #388e3c; }
 #restart-btn { background: #d32f2f; }
-#line1-btn { background: #2e7d32; color: white; }
 #line2-btn { background: #7b1fa2; color: white; }
 #bingo-btn { background: gold; color: #1a1a2e; font-weight: bold; }
 
@@ -402,7 +400,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 100;
   opacity: 0;
   visibility: hidden;
   transition: all 0.5s ease;
@@ -531,9 +529,6 @@ body {
   background: conic-gradient(from 0deg, transparent 0%, rgba(0, 255, 135, 0.06) 15%, transparent 30%);
   animation: rotate 25s linear infinite;
   z-index: 1;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%); /* ← ADICIONE ESTA LINHA */
 }
 
 .line-frame {
@@ -603,7 +598,6 @@ body {
   z-index: 5;
   pointer-events: none;
 }
-
 .c-emerald { background: #00ff87; box-shadow: 0 0 12px #00ff87; }
 .c-turquoise { background: #00f2fe; box-shadow: 0 0 12px #00f2fe; }
 .c-gold { background: #ffeb3b; color: #000; border-color: #000; box-shadow: 0 0 12px #ffeb3b; }
@@ -612,12 +606,10 @@ body {
   from { transform: rotate(0deg); } 
   to { transform: rotate(360deg); } 
 }
-
 @keyframes popIn { 
   from { transform: scale(0.7); opacity: 0; } 
   to { transform: scale(1); opacity: 1; } 
 }
-
 @keyframes chipFall {
   0% { transform: translateY(-10vh) rotate(0deg); }
   100% { transform: translateY(110vh) rotate(720deg); }
@@ -713,7 +705,6 @@ body {
   z-index: 5;
   pointer-events: none;
 }
-
 .p-gold { background: #FFD700; box-shadow: 0 0 12px #FFD700; }
 .p-emerald { background: #00ff87; box-shadow: 0 0 12px #00ff87; }
 .p-blue { background: #00d2ff; box-shadow: 0 0 12px #00d2ff; }
@@ -853,6 +844,10 @@ body {
     line-height: 1.1;
   }
 }
+
+/* ============ NOVAS ADIÇÕES ============ */
+
+/* Barra de status da fase */
 #stage-indicator {
   text-align: center;
   padding: 8px;
@@ -871,3 +866,56 @@ body {
 .stage-linha1 #stage-text { color: #00d2ff; text-shadow: 0 0 6px rgba(0,210,255,0.5); }
 .stage-linha2 #stage-text { color: #00ff87; text-shadow: 0 0 6px rgba(0,255,135,0.5); }
 .stage-bingo #stage-text { color: #FFD700; text-shadow: 0 0 6px rgba(255,215,0,0.5); }
+
+/* Bolas restantes para jackpot */
+#jackpot-remaining {
+  font-size: 0.9rem;
+  color: #ff6b6b;
+  margin-top: 5px;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* Posicionamento da barra de status */
+.draw-area {
+  text-align: center;
+  margin: 20px 0;
+  padding: 15px;
+  background: rgba(20, 20, 35, 0.7);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.draw-area .status-row {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  width: 100%;
+}
+
+.draw-area .status-item {
+  text-align: center;
+}
+
+.draw-area .status-item label {
+  font-size: 0.9rem;
+  color: #aaa;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.draw-area .status-item value {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: white;
+}
+
+.draw-area .status-item .jackpot-remaining {
+  font-size: 0.9rem;
+  color: #ff6b6b;
+  margin-top: 5px;
+  font-weight: bold;
+}
