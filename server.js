@@ -138,8 +138,6 @@ const jackpotResponses = [
     "O jackpot começa em R$ 1.000.000 e cresce a cada cartela comprada!",
     "Só é possível ganhar o jackpot se o bingo for feito em até 60 bolas!",
     "Quando alguém leva o jackpot, ele volta a R$ 1.000.000 e recomeça!",
-    
-    // --- Novas Frases ---
     "💰 O Jackpot é o prêmio máximo! Ele acumula uma pequena parte de cada cartela vendida!",
     "💎 Já pensou em ser o próximo milionário? O Jackpot está esperando por um mestre!",
     "🎯 Fique de olho no contador de bolas: passou da 60ª, o Jackpot fica para a próxima!",
