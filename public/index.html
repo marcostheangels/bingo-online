@@ -4,14 +4,189 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Bingo Multiplayer</title>
+  <!-- Socket.IO -->
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <!-- Fontes -->
   <link href="https://fonts.googleapis.com/css2?family=Goldman:wght@400;700&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+  <!-- CSS Externo -->
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- TODO O HTML EXATAMENTE COMO ESTAVA -->
+  <div class="container">
+    <!-- TELA DE LOGIN -->
+    <div id="login-screen">
+      <div style="text-align: center; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); max-width: 500px; margin: 60px auto; animation: fadeInUp 0.8s;">
+        <h1 style="font-size: 2.4em; margin-bottom: 20px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+          🎰 <strong>BINGO</strong> MULTIPLAYER 🎰
+        </h1>
+        <p style="margin-bottom: 20px; color: #fff; font-size: 1.1em;">Entre com seu nome e comece a jogar!</p>
+        <input
+          type="text"
+          id="player-name"
+          placeholder="Digite seu nome (2-15 letras)"
+          maxlength="15"
+          autocomplete="off"
+          style="padding: 14px; width: 80%; max-width: 300px; border: none; border-radius: 50px; font-size: 1.1em; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); outline: none;"
+        />
+        <div style="margin-top: 25px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
+          <button
+            onclick="joinRoom('bingo75')"
+            style="background: #ff9a00; color: white; padding: 12px 24px; border: none; border-radius: 50px; font-weight: bold; font-size: 1.1em; cursor: pointer; box-shadow: 0 4px 12px rgba(255,154,0,0.4); transition: all 0.3s; min-width: 140px;"
+            onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 16px rgba(255,154,0,0.6)';"
+            onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(255,154,0,0.4)';"
+          >
+            🇺🇸 Bingo 75
+          </button>
+          <button
+            onclick="joinRoom('bingo90')"
+            style="background: #e91e63; color: white; padding: 12px 24px; border: none; border-radius: 50px; font-weight: bold; font-size: 1.1em; cursor: pointer; box-shadow: 0 4px 12px rgba(233,30,99,0.4); transition: all 0.3s; min-width: 140px;"
+            onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 16px rgba(233,30,99,0.6)';"
+            onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(233,30,99,0.4)';"
+          >
+            🇧🇷 Bingo 90
+          </button>
+        </div>
+      </div>
+      <style>
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      </style>
+    </div>
 
-  <!-- Carrega scripts na ordem correta -->
+    <!-- MENSAGEM ADMIN -->
+    <div id="admin-message"></div>
+
+    <!-- CONTROLES ADMIN (invisível por padrão) -->
+    <div id="admin-controls" style="display:none;margin:20px auto;max-width:500px;background:rgba(255,255,255,0.1);padding:15px;border-radius:8px;">
+      <h3>🔧 Controles Administrativos</h3>
+      <input type="text" id="admin-player-name" placeholder="Nome do Jogador" style="margin:5px;padding:8px;width:calc(33% - 10px);">
+      <input type="number" id="admin-amount" placeholder="Quantidade" style="margin:5px;padding:8px;width:calc(33% - 10px);">
+      <input type="password" id="admin-password" placeholder="Senha" style="margin:5px;padding:8px;width:calc(33% - 10px);">
+      <button onclick="sendAdminCommand()" style="margin:5px;padding:8px;">Enviar</button>
+    </div>
+
+    <!-- ÁREA DO JOGO -->
+    <div id="game-area">
+      <div class="header">
+        <h2 id="room-title">Sala: ?</h2>
+        <div class="player-info">
+          <span>Jogador: <strong id="player-name-display"></strong></span>
+          <span>Chips: <strong id="chips-display">0</strong></span>
+        </div>
+        <div id="pot-display">Pote: R$ 0</div>
+        <div id="jackpot-display">Jackpot: R$ 0</div>
+      </div>
+
+      <div class="players-section">
+        <div class="players-column">
+          <h3>Sem Chips (<span id="no-chips-count">0</span>)</h3>
+          <div class="players-list" id="without-chips-list"><ul></ul></div>
+        </div>
+        <div class="players-column">
+          <h3>Com Chips (<span id="with-chips-count">0</span>)</h3>
+          <div class="players-list" id="with-chips-list"><ul></ul></div>
+        </div>
+      </div>
+
+      <div class="ranking-section">
+        <h3>🏆 Ranking por Chips</h3>
+        <div class="ranking-list"><ul id="ranking-list"></ul></div>
+      </div>
+
+      <div class="controls" id="main-controls">
+        <label>
+          Cartelas:
+          <input type="number" id="card-count" min="1" max="10" value="1" style="width: 80px; padding: 4px;" inputmode="numeric">
+        </label>
+        <button onclick="document.getElementById('card-count').value = 10">10</button>
+        <button id="buy-btn">Comprar (100 chips/carta)</button>
+        <button id="start-btn">Iniciar Sorteio</button>
+        <button id="line1-btn">Linha 1</button>
+        <button id="line2-btn">Linha 2</button>
+        <button id="bingo-btn">BINGO!</button>
+        <button id="restart-btn">🔄 Reiniciar</button>
+      </div>
+
+      <!-- CHAT -->
+      <div id="chat-container">
+        <h3 style="text-align:center;margin-bottom:10px;color:gold;">💬 Chat da Sala</h3>
+        <div id="chat-messages"></div>
+        <div id="chat-input-container">
+          <input type="text" id="chat-input" placeholder="Converse com os bots...">
+          <button id="chat-send">Enviar</button>
+        </div>
+      </div>
+
+      <!-- SORTEIO -->
+      <div class="draw-area">
+        <div>Último número: <span id="last-number">-</span></div>
+        <div>Bolas sorteadas: <span id="balls-count">0</span></div>
+        <div class="history" id="history"></div>
+      </div>
+
+      <!-- CARTELAS -->
+      <div class="cards-container" id="cards-container"></div>
+    </div>
+
+    <!-- OVERLAYS DE VITÓRIA -->
+    <!-- Linha 1 -->
+    <div id="line-victory-overlay">
+      <div class="line-card">
+        <h2 class="line-title">LINHA 1 COMPLETA!</h2>
+        <span class="winner-name" id="winner-display">?</span>
+        <div class="chips-box">
+          <div class="prize-chips" id="chip-counter">0</div>
+          <p class="chip-label">CHIPS</p>
+        </div>
+        <p style="font-size: 0.7rem; color: #555; letter-spacing: 2px;">BINGO MASTER PRO</p>
+      </div>
+    </div>
+
+    <!-- Linha 2 -->
+    <div id="line2-victory-overlay">
+      <div class="rays-emerald"></div>
+      <div class="line-frame">
+        <h1 class="line-header">LINHA 2!</h1>
+        <p style="font-size: 0.7rem; color: #888; letter-spacing: 3px; margin-bottom: 5px;">VENCEDOR</p>
+        <span class="winner-name" id="line2-winner-name">?</span>
+        <div class="chips-box">
+          <span class="chips-amount" id="line2-chips-text">0</span>
+        </div>
+        <p class="sub-label">CHIPS GANHOS</p>
+      </div>
+    </div>
+
+    <!-- Bingo -->
+    <div id="bingo-victory-overlay">
+      <div class="bingo-card">
+        <h1 class="bingo-title">BINGO!</h1>
+        <p style="font-size: 0.7rem; color: #888; letter-spacing: 3px;">VENCEDOR</p>
+        <span class="winner-name" id="bingo-winner-name">?</span>
+        <div class="prize-container">
+          <div class="prize-amount" id="bingo-prize-amount">R$ 0</div>
+        </div>
+        <p class="sub-tag">✨ CARTELA CHEIA ✨</p>
+      </div>
+    </div>
+
+    <!-- Jackpot -->
+    <div id="jackpot-overlay">
+      <div class="rays"></div>
+      <div class="winner-frame">
+        <h1 class="jackpot-header">JACKPOT</h1>
+        <p style="font-size: 0.7rem; color: #888; letter-spacing: 3px;">VENCEDOR</p>
+        <span class="username" id="jackpot-winner-name">?</span>
+        <div class="prize-box">
+          <span class="prize-amount" id="jackpot-prize-amount">R$ 0</span>
+        </div>
+        <p class="badge-info" id="jackpot-balls-info">✨ BINGO EM ? BOLAS ✨</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS EXTERNOS (ordem importa!) -->
   <script src="js/audio.js"></script>
   <script src="js/gameLogic.js"></script>
   <script src="js/ui.js"></script>
