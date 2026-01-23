@@ -267,7 +267,6 @@ function getRandomUnique(list, category) {
 const rooms = {
   'bingo75': {
     name: 'Bingo 75 (Americano)',
-    
 app.use(express.static('public'));
 
 let db = loadDB();
