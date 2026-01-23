@@ -18,7 +18,6 @@ if (process.env.DATABASE_URL) {
   });
 } else {
   console.warn('⚠️ DATABASE_URL não definida. Persistência desativada.');
-  // Fallback para memória (apenas para testes locais)
   global.loadPersistedChips = async () => ({ specialPlayers: { 'Markim': 10000, 'Marília': 10000 }, bots: {} });
   global.savePersistedChips = async () => {};
 }
@@ -517,7 +516,7 @@ function getLineStatusForCard(card, drawnNumbers) {
   };
 }
 
-function calculateBallsLeftForCard(card, drawnNumbers) {
+function calculateBillsLeftForCard(card, drawnNumbers) {
   const markedInRow = [0, 0, 0];
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 9; c++) {
@@ -850,32 +849,19 @@ async function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
   if (usedNames.has(name)) name = `${name} ${Math.floor(Math.random() * 1000)}`;
 
   const botId = `bot_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-  const cardCount = getBotCardCount(currentBots + 1);
-  const totalCost = cardCount * PRICE_PER_CARD;
-  if (initialChips < totalCost) {
-    return;
-  }
 
-  const cards90 = roomType === 'bingo90'
-    ? Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card()))
-    : [];
-  const cards75 = roomType === 'bingo75'
-    ? Array(cardCount).fill().map(() => generateBingo75Card())
-    : [];
-
+  // ✅ Bots entram SEM cartelas e COM todos os chips
   room.players[botId] = {
     name: name,
-    chips: initialChips - totalCost,
+    chips: initialChips,
     isBot: true,
-    cards75,
-    cards90,
+    cards75: [],
+    cards90: [],
     winsCount: 0,
     currentWins: 0
   };
 
-  room.pot += totalCost;
-  room.jackpot += Math.floor(totalCost * 0.5);
-  console.log(`🤖 Bot adicionado: ${name} comprou ${cardCount} cartelas. Pote atual: ${room.pot}`);
+  console.log(`🤖 Bot adicionado: ${name} entrou com ${initialChips} chips.`);
 }
 
 function broadcastPlayerList(roomType) {
