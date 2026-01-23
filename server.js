@@ -1,5 +1,5 @@
 // server.js — Bingo Multiplayer com todas as regras de Markim (VERSÃO FINAL)
->>>>>>> 788fc5f (Adiciona pg e corrige dependências)
+788fc5f (Adiciona pg e corrige dependências)
 const express = require('express');
 const http = require('http');
 const path = require('path');
