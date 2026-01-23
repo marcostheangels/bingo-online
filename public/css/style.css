@@ -186,6 +186,41 @@ body {
   padding: 15px;
   background: rgba(20, 20, 35, 0.7);
   border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.draw-area .status-row {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  width: 100%;
+}
+
+.draw-area .status-item {
+  text-align: center;
+}
+
+.draw-area .status-item label {
+  font-size: 0.9rem;
+  color: #aaa;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.draw-area .status-item value {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: white;
+}
+
+.draw-area .status-item .jackpot-remaining {
+  font-size: 0.9rem;
+  color: #ff6b6b;
+  margin-top: 5px;
+  font-weight: bold;
 }
 
 .history {
