@@ -266,36 +266,36 @@ function startAutoMessages(roomType) {
       "💎 Já pensou em ganhar o JACKPOT? Está quase lá!",
       "🚀 Nova rodada, novas chances! Compre suas cartelas!",
       "👑 O trono está vazio... Quem vai conquistá-lo hoje?",
-      "🎉 Não desista! Às vezes, a vitória vem na última bola!"
-      "⚡ O coração bate mais forte a cada número! Falta pouco?"
-      "🥊 A arena está quente! Quem vai derrubar os bots desta vez?"
-      "🏁 Reta final! A última bola pode mudar o destino do prêmio!"
-      "⚔️ Desafio aceito! Mostre que você é o mestre das cartelas!"
-      "😤 Por um triz! A sorte está rondando a sua mesa!"
-      "🧨 Explosão de prêmios! A rodada está apenas começando!"
-      "🏟️ Sala cheia, pote gigante! É agora ou nunca!"
-      "🌪️ O furacão do Bingo passou por aqui! Quem sobreviveu?"
-      "🏃‍♂️ Corra para marcar! O tempo não espera por ninguém!"
-      "🥇 Lugar de campeão é no topo do ranking do Bingo Multiplayer!"
-      "💸 O cofre abriu! O Jackpot está pedindo para ser levado!"
-      "🏦 Sua conta bancária no jogo agradece por essa rodada!"
-      "🤑 Sentindo o cheiro de vitória (e de moedas) no ar!"
-      "💳 Saldo atualizado: a sorte depositou um prêmio para você!"
-      "💎 Pedras preciosas e bolas numeradas: a combinação do sucesso!"
-      "📈 O multiplicador subiu! Ganhe mais nesta rodada especial!"
-      "💰 O prêmio acumulado está de cair o queixo! Vai encarar?"
-      "👑 Realeza do Bingo: o trono vem acompanhado de um belo pote!"
-      "💹 Invista em mais cartelas e colha os frutos do Jackpot!"
-      "🗝️ Você encontrou a chave para a fortuna de hoje!"
-      "💡 Dica de mestre: cartelas extras aumentam sua probabilidade!"
-      "🧐 Olho vivo! A distração é o maior inimigo do jogador."
-      "📊 Analise o jogo: quais números estão saindo mais hoje?"
-      "🛡️ Mantenha sua conta segura e seu foco no marcador!"
-      "🧠 Bingo também é estratégia! Organize suas cartelas com sabedoria."
-      "🔋 Bateria carregada e sorte preparada? Vamos ao sorteio!"
-      "🧘 Mantenha a calma... o Bingo vem para quem sabe esperar."
-      "🔄 Rodada nova, estratégia nova! Tente algo diferente agora."
-      "🧩 Cada bola sorteada é uma peça do seu quebra-cabeça vitorioso!"
+      "🎉 Não desista! Às vezes, a vitória vem na última bola!",
+      "⚡ O coração bate mais forte a cada número! Falta pouco?",
+      "🥊 A arena está quente! Quem vai derrubar os bots desta vez?",
+      "🏁 Reta final! A última bola pode mudar o destino do prêmio!",
+      "⚔️ Desafio aceito! Mostre que você é o mestre das cartelas!",
+      "😤 Por um triz! A sorte está rondando a sua mesa!",
+      "🧨 Explosão de prêmios! A rodada está apenas começando!",
+      "🏟️ Sala cheia, pote gigante! É agora ou nunca!",
+      "🌪️ O furacão do Bingo passou por aqui! Quem sobreviveu?",
+      "🏃‍♂️ Corra para marcar! O tempo não espera por ninguém!",
+      "🥇 Lugar de campeão é no topo do ranking do Bingo Multiplayer!",
+      "💸 O cofre abriu! O Jackpot está pedindo para ser levado!",
+      "🏦 Sua conta bancária no jogo agradece por essa rodada!",
+      "🤑 Sentindo o cheiro de vitória (e de moedas) no ar!",
+      "💳 Saldo atualizado: a sorte depositou um prêmio para você!",
+      "💎 Pedras preciosas e bolas numeradas: a combinação do sucesso!",
+      "📈 O multiplicador subiu! Ganhe mais nesta rodada especial!",
+      "💰 O prêmio acumulado está de cair o queixo! Vai encarar?",
+      "👑 Realeza do Bingo: o trono vem acompanhado de um belo pote!",
+      "💹 Invista em mais cartelas e colha os frutos do Jackpot!",
+      "🗝️ Você encontrou a chave para a fortuna de hoje!",
+      "💡 Dica de mestre: cartelas extras aumentam sua probabilidade!",
+      "🧐 Olho vivo! A distração é o maior inimigo do jogador.",
+      "📊 Analise o jogo: quais números estão saindo mais hoje?",
+      "🛡️ Mantenha sua conta segura e seu foco no marcador!",
+      "🧠 Bingo também é estratégia! Organize suas cartelas com sabedoria.",
+      "🔋 Bateria carregada e sorte preparada? Vamos ao sorteio!",
+      "🧘 Mantenha a calma... o Bingo vem para quem sabe esperar.",
+      "🔄 Rodada nova, estratégia nova! Tente algo diferente agora.",
+      "🧩 Cada bola sorteada é uma peça do seu quebra-cabeça vitorioso!",
       "🛰️ Radar ligado: detectamos uma grande chance de Bingo na sua área!"
     ];
     
