@@ -853,3 +853,21 @@ body {
     line-height: 1.1;
   }
 }
+#stage-indicator {
+  text-align: center;
+  padding: 8px;
+  background: #1e3a8a;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+#stage-text {
+  color: gold;
+  text-shadow: 0 0 6px rgba(255,215,0,0.5);
+}
+
+.stage-linha1 #stage-text { color: #00d2ff; text-shadow: 0 0 6px rgba(0,210,255,0.5); }
+.stage-linha2 #stage-text { color: #00ff87; text-shadow: 0 0 6px rgba(0,255,135,0.5); }
+.stage-bingo #stage-text { color: #FFD700; text-shadow: 0 0 6px rgba(255,215,0,0.5); }
