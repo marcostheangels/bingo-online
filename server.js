@@ -746,7 +746,6 @@ function handleWin(roomType, allWinners) {
         `🌊 Impossível conter essa onda! ${player.name} venceu ${player.currentWins} vezes!`,
         `🎁 O maior presente da rodada é a sequência de ${player.currentWins} de ${player.name}!`
 ];
-      ];
       const streakMsg = streakMessages[Math.floor(Math.random() * streakMessages.length)];
       setTimeout(() => {
         io.to(roomType).emit('chat-message', {
