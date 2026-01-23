@@ -253,7 +253,7 @@ function startAutoMessages(roomType) {
   const room = rooms[roomType];
   if (room.autoMessageInterval) clearInterval(room.autoMessageInterval);
   room.autoMessageInterval = setInterval(() => {
-    if (!hasHumanPlayers(roomType)) return;
+    if (!hasHumanWithCards(roomType)) return;
     const messages = [
       "✨ Alguém está prestes a fazer BINGO! Fiquem atentos!",
       "💰 O pote está crescendo! Quem será o próximo vencedor?",
