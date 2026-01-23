@@ -2,21 +2,30 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
-const { Pool } = require('pg');
 
 const app = express();
 const server = http.createServer(app);
 
 // ✅ Conexão com PostgreSQL (Railway)
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
-});
+let pool;
+if (process.env.DATABASE_URL) {
+  const { Pool } = require('pg');
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false
+    }
+  });
+} else {
+  console.warn('⚠️ DATABASE_URL não definida. Persistência desativada.');
+  // Fallback para memória (apenas para testes locais)
+  global.loadPersistedChips = async () => ({ specialPlayers: { 'Markim': 10000, 'Marília': 10000 }, bots: {} });
+  global.savePersistedChips = async () => {};
+}
 
 // ✅ Cria tabela se não existir
 async function createTableIfNotExists() {
+  if (!pool) return;
   const query = `
     CREATE TABLE IF NOT EXISTS persistent_chips (
       id SERIAL PRIMARY KEY,
@@ -37,6 +46,7 @@ async function createTableIfNotExists() {
 
 // ✅ Carregar chips do banco
 async function loadPersistedChips() {
+  if (!pool) return { specialPlayers: { 'Markim': 10000, 'Marília': 10000 }, bots: {} };
   try {
     const result = await pool.query(
       'SELECT player_name, chips, is_bot FROM persistent_chips'
@@ -59,8 +69,8 @@ async function loadPersistedChips() {
 
 // ✅ Salvar chips no banco
 async function savePersistedChips(specialPlayers, bots) {
+  if (!pool) return;
   try {
-    // Inserir/atualizar Markim e Marília
     for (const [name, chips] of Object.entries(specialPlayers)) {
       await pool.query(
         `INSERT INTO persistent_chips (player_name, chips, is_bot)
@@ -69,7 +79,6 @@ async function savePersistedChips(specialPlayers, bots) {
         [name, chips]
       );
     }
-    // Inserir/atualizar bots
     for (const [name, chips] of Object.entries(bots)) {
       await pool.query(
         `INSERT INTO persistent_chips (player_name, chips, is_bot)
@@ -927,10 +936,8 @@ async function handleAutoRestart(socket, roomType) {
   room.currentWinnerId = null;
 
   // ✅ CORREÇÃO: Bots NÃO compram cartelas no restart
-  // Eles mantêm seus chips e só limpam as cartelas
   for (const [id, player] of Object.entries(room.players)) {
     if (player.isBot) {
-      // ✅ Mantém os chips, só limpa as cartelas
       player.cards75 = [];
       player.cards90 = [];
     } else {
@@ -938,13 +945,6 @@ async function handleAutoRestart(socket, roomType) {
       player.cards90 = [];
     }
   }
-
-  io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
-  io.to(roomType).emit('room-reset');
-  broadcastPlayerList(roomType);
-  broadcastRanking(roomType);
-  console.log(`🔄 Jogo reiniciado automaticamente. Bots: ${currentBots} (máximo: ${room.maxBots})`);
-}
 
   io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
   io.to(roomType).emit('room-reset');
@@ -965,7 +965,6 @@ io.on('connection', (socket) => {
     playerName = sanitizeName(playerName);
     const room = rooms[roomType];
 
-    // ✅ Carregar chips persistentes
     const persisted = await loadPersistedChips();
 
     const existingPlayer = findPlayerByName(roomType, playerName);
@@ -987,7 +986,6 @@ io.on('connection', (socket) => {
     } else {
       playerId = socket.id;
 
-      // ✅ Usar chips persistentes se for Markim/Marília
       let initialChips;
       if (savedChips != null && savedChips >= 0) {
         initialChips = savedChips;
@@ -1082,7 +1080,6 @@ io.on('connection', (socket) => {
       startAutoMessages(roomType);
     }
 
-    // ✅ Só inicia o sorteio se houver humanos COM CARTELAS
     if (hasHumanWithCards(roomType) && !room.gameActive && !room.gameCompleted) {
       setTimeout(() => {
         if (hasHumanWithCards(roomType)) {
