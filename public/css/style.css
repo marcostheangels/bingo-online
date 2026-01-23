@@ -105,6 +105,7 @@ body {
   box-shadow: 0 0 10px rgba(46, 125, 50, 0.7);
 }
 
+/* ============ RANKING COM CORES CORRETAS ============ */
 .ranking-section {
   margin: 20px 0;
   background: rgba(25, 25, 45, 0.8);
@@ -133,20 +134,52 @@ body {
 .ranking-list li {
   display: flex;
   justify-content: space-between;
-  padding: 10px;
+  padding: 12px;
   margin-bottom: 8px;
-  background: rgba(30, 30, 50, 0.7);
   border-radius: 8px;
-  border-left: 4px solid gold;
+  background: rgba(30, 30, 50, 0.7);
+  color: white;
 }
 
-.ranking-list li:nth-child(1) { border-left-color: gold; }
-.ranking-list li:nth-child(2) { border-left-color: silver; }
-.ranking-list li:nth-child(3) { border-left-color: #cd7f32; }
+/* 🥇 1º LUGAR - DOURADO */
+.ranking-list li:nth-child(1) {
+  background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%);
+  color: #1a1a2e;
+  font-weight: bold;
+}
+.ranking-list li:nth-child(1) .ranking-position,
+.ranking-list li:nth-child(1) .ranking-name,
+.ranking-list li:nth-child(1) .ranking-chips {
+  color: #1a1a2e !important;
+}
+
+/* 🥈 2º LUGAR - PRATA */
+.ranking-list li:nth-child(2) {
+  background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%);
+  color: #1a1a2e;
+  font-weight: bold;
+}
+.ranking-list li:nth-child(2) .ranking-position,
+.ranking-list li:nth-child(2) .ranking-name,
+.ranking-list li:nth-child(2) .ranking-chips {
+  color: #1a1a2e !important;
+}
+
+/* 🥉 3º LUGAR - BRONZE */
+.ranking-list li:nth-child(3) {
+  background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%);
+  color: #1a1a2e;
+  font-weight: bold;
+}
+.ranking-list li:nth-child(3) .ranking-position,
+.ranking-list li:nth-child(3) .ranking-name,
+.ranking-list li:nth-child(3) .ranking-chips {
+  color: #1a1a2e !important;
+}
 
 .ranking-position { font-weight: bold; min-width: 30px; }
 .ranking-name { flex: 1; margin: 0 10px; }
-.ranking-chips { font-weight: bold; color: #4CAF50; }
+.ranking-chips { font-weight: bold; }
 
 .controls {
   display: flex;
