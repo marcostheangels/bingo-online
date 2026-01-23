@@ -132,7 +132,6 @@ const AI_RESPONSES = {
     "Cartelas com menos bolas faltando aparecem no topo — foque nelas!",
     "Não espere o último número: às vezes, a vitória vem antes do fim!"
     
-const jackpotResponses = [
     "O jackpot começa em R$ 1.000.000 e cresce a cada cartela comprada!",
     "Só é possível ganhar o jackpot se o bingo for feito em até 60 bolas!",
     "Quando alguém leva o jackpot, ele volta a R$ 1.000.000 e recomeça!",
