@@ -15,7 +15,6 @@ const pool = new Pool({
   }
 });
 
-<<<<<<< HEAD
 // ✅ Cria tabela se não existir (executa uma vez ao iniciar)
 async function createTableIfNotExists() {
   const query = `
