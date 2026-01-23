@@ -15,7 +15,7 @@
   <div class="container">
     <!-- TELA DE LOGIN -->
     <div id="login-screen">
-      <div style="text-align: center; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); max-width: 500px; margin: 60px auto; animation: fadeInUp 0.8s;">
+      <div style="text-align: center; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); max-width: 500px; margin: 60px auto;">
         <h1 style="font-size: 2.4em; margin-bottom: 20px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
           🎰 <strong>BINGO</strong> MULTIPLAYER 🎰
         </h1>
@@ -29,16 +29,14 @@
           style="padding: 14px; width: 80%; max-width: 300px; border: none; border-radius: 50px; font-size: 1.1em; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); outline: none;"
         />
         <div style="margin-top: 25px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
-          <button
-            onclick="joinRoom('bingo75')"
+          <button id="join-bingo75"
             style="background: #ff9a00; color: white; padding: 12px 24px; border: none; border-radius: 50px; font-weight: bold; font-size: 1.1em; cursor: pointer; box-shadow: 0 4px 12px rgba(255,154,0,0.4); transition: all 0.3s; min-width: 140px;"
             onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 16px rgba(255,154,0,0.6)';"
             onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(255,154,0,0.4)';"
           >
             🇺🇸 Bingo 75
           </button>
-          <button
-            onclick="joinRoom('bingo90')"
+          <button id="join-bingo90"
             style="background: #e91e63; color: white; padding: 12px 24px; border: none; border-radius: 50px; font-weight: bold; font-size: 1.1em; cursor: pointer; box-shadow: 0 4px 12px rgba(233,30,99,0.4); transition: all 0.3s; min-width: 140px;"
             onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 16px rgba(233,30,99,0.6)';"
             onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(233,30,99,0.4)';"
@@ -58,7 +56,7 @@
       <input type="text" id="admin-player-name" placeholder="Nome do Jogador" style="margin:5px;padding:8px;width:calc(33% - 10px);">
       <input type="number" id="admin-amount" placeholder="Quantidade" style="margin:5px;padding:8px;width:calc(33% - 10px);">
       <input type="password" id="admin-password" placeholder="Senha" style="margin:5px;padding:8px;width:calc(33% - 10px);">
-      <button onclick="sendAdminCommand()" style="margin:5px;padding:8px;">Enviar</button>
+      <button id="send-admin-command" style="margin:5px;padding:8px;">Enviar</button>
     </div>
 
     <!-- ÁREA DO JOGO -->
@@ -94,7 +92,7 @@
           Cartelas:
           <input type="number" id="card-count" min="1" max="10" value="1" style="width: 80px; padding: 4px;" inputmode="numeric">
         </label>
-        <button onclick="document.getElementById('card-count').value = 10">10</button>
+        <button id="set-10-cards">10</button>
         <button id="buy-btn">Comprar (100 chips/carta)</button>
         <button id="start-btn">Iniciar Sorteio</button>
         <button id="line1-btn">Linha 1</button>
