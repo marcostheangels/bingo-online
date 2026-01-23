@@ -793,7 +793,7 @@ function handleWin(roomType, allWinners) {
          message:   `🥇🥇🥇 PRIMEIRO LUGAR! ${humanNames} é o dono da rodada! BINGO! 🥇🥇🥇`,
          message:   `🦁🦁🦁 FORÇA BRUTA! ${humanNames} rugiu alto no grito de BINGO! 🦁🦁🦁`,
          message:   `💎💎💎 DIAMANTE LAPIDADO! ${humanNames} fez o BINGO mais brilhante! 💎💎💎`,
-         message:   `✨✨✨ MAGIA PURA! ${humanNames} transformou números em BINGO! ✨✨✨];
+         message:   `✨✨✨ MAGIA PURA! ${humanNames} transformou números em BINGO! ✨✨✨`;
          message: randomMsg,
          sender: "Sistema",
          isBot: false,
@@ -807,6 +807,7 @@ function handleWin(roomType, allWinners) {
   if (wonJackpot) {
     const jackpotNames = jackpotWinners.map(w => w.playerName).join(', ');
     const jackpotAmount = room.jackpot; // valor ANTES do reset
+
     setTimeout(() => {
       io.to(roomType).emit('chat-message', {
         message: `[JACKPOT]💰💰💰 JACKPOT HISTÓRICO! ${jackpotNames} levaram R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
@@ -840,9 +841,9 @@ function handleWin(roomType, allWinners) {
                  `[JACKPOT]🌋💰🌋 VULCÃO DE OURO! ${jackpotNames} levou a bolada de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
                  `[JACKPOT]🏅💎🏅 HONRA E GLÓRIA! ${jackpotNames} faturou o lendário Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`
         sender: "Sistema",
-        isBot: false,
-        type: "jackpot"
-      });
+      isBot: false,
+      type: "jackpot"
+    });
     }, 1500);
   }
   
