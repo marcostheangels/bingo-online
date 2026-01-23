@@ -42,6 +42,7 @@ if (window.Worker) {
 const blob = new Blob([workerCode], { type: 'application/javascript' });
 validationWorker = new Worker(URL.createObjectURL(blob));
 }
+
 // ✅ Áudio
 let audioContext = null;
 function playSound(type, number = null) {
@@ -110,6 +111,7 @@ osc.stop(now + i * 0.15 + 0.2);
 }
 } catch (e) { console.warn('Erro ao reproduzir som:', e); }
 }
+
 function speak(text) {
 if (!('speechSynthesis' in window)) return;
 speechSynthesis.cancel();
