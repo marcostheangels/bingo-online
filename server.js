@@ -2,8 +2,86 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const { Pool } = require('pg');
+
 const app = express();
 const server = http.createServer(app);
+
+// ✅ Conexão com PostgreSQL (Railway)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+// ✅ Cria tabela se não existir (executa uma vez ao iniciar)
+async function createTableIfNotExists() {
+  const query = `
+    CREATE TABLE IF NOT EXISTS persistent_chips (
+      id SERIAL PRIMARY KEY,
+      player_name VARCHAR(50) UNIQUE NOT NULL,
+      chips INTEGER NOT NULL DEFAULT 10000,
+      is_bot BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+  `;
+  try {
+    await pool.query(query);
+    console.log('✅ Tabela persistent_chips verificada/criada.');
+  } catch (err) {
+    console.error('❌ Erro ao criar tabela:', err);
+  }
+}
+
+// ✅ Carregar chips do banco
+async function loadPersistedChips() {
+  try {
+    const result = await pool.query(
+      'SELECT player_name, chips, is_bot FROM persistent_chips'
+    );
+    const specialPlayers = {};
+    const bots = {};
+    result.rows.forEach(row => {
+      if (!row.is_bot && (row.player_name === 'Markim' || row.player_name === 'Marília')) {
+        specialPlayers[row.player_name] = parseInt(row.chips);
+      } else if (row.is_bot) {
+        bots[row.player_name] = parseInt(row.chips);
+      }
+    });
+    return { specialPlayers, bots };
+  } catch (err) {
+    console.error('Erro ao carregar chips do banco:', err);
+    return { specialPlayers: { 'Markim': 10000, 'Marília': 10000 }, bots: {} };
+  }
+}
+
+// ✅ Salvar chips no banco
+async function savePersistedChips(specialPlayers, bots) {
+  try {
+    // Inserir/atualizar Markim e Marília
+    for (const [name, chips] of Object.entries(specialPlayers)) {
+      await pool.query(
+        `INSERT INTO persistent_chips (player_name, chips, is_bot)
+         VALUES ($1, $2, false)
+         ON CONFLICT (player_name) DO UPDATE SET chips = $2, updated_at = NOW()`,
+        [name, chips]
+      );
+    }
+    // Inserir/atualizar bots
+    for (const [name, chips] of Object.entries(bots)) {
+      await pool.query(
+        `INSERT INTO persistent_chips (player_name, chips, is_bot)
+         VALUES ($1, $2, true)
+         ON CONFLICT (player_name) DO UPDATE SET chips = $2, updated_at = NOW()`,
+        [name, chips]
+      );
+    }
+  } catch (err) {
+    console.error('Erro ao salvar chips no banco:', err);
+  }
+}
 
 // ✅ Rate limiting simples para feedback
 const feedbackLimiter = new Map(); // IP -> último timestamp
@@ -44,7 +122,7 @@ app.post('/api/feedback', (req, res) => {
   feedbackLimiter.set(ip, now);
   setTimeout(() => feedbackLimiter.delete(ip), FEEDBACK_MIN_INTERVAL_MS);
 
-  const logEntry = `[${new Date().toISOString()}] [${roomType || 'unknown'}] ${sanitizeName(playerName)}: ${message}\n`;
+  const logEntry = `[${new Date().toISOString()}] [${roomType || 'unknown'}] ${playerName}: ${message}\n`;
   fs.appendFile('feedback.log', logEntry, (err) => {
     if (err) console.error('Erro ao salvar feedback:', err);
   });
@@ -238,7 +316,7 @@ function getBotCardCount(totalBots) {
   return 1;
 }
 
-// ✅ Verifica se há humanos com cartelas na sala
+// ✅ Verifica se há humanos COM CARTELAS na sala
 function hasHumanWithCards(roomType) {
   const room = rooms[roomType];
   return Object.values(room.players).some(p => 
@@ -585,7 +663,7 @@ function startAutoRestart(roomType) {
   }, 25000);
 }
 
-function handleWin(roomType, allWinners) {
+async function handleWin(roomType, allWinners) {
   const room = rooms[roomType];
   const currentStage = room.currentStage;
   if (room.stageCompleted[currentStage]) return;
@@ -630,73 +708,26 @@ function handleWin(roomType, allWinners) {
     console.log(`✅ Vitória de Markim ou Marília! Bot será adicionado no próximo restart.`);
   }
 
-  // ✅ Mensagem de vitória com seleção aleatória
+  // ✅ Mensagem de vitória
   let formattedMessage = "";
   if (currentStage === 'linha1') {
-    const messages = [
+    const msgs = [
       `[L1]🎉 Parabéns, ${winnerNames}! Você ganhou R$ ${totalPrize.toLocaleString('pt-BR')} com a primeira linha![/L1]`,
-      `[L1]✨ Primeira etapa concluída! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
-      `[L1]🎯 No alvo! ${winnerNames} completou a primeira linha e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
-      `[L1]🍀 A sorte abriu os caminhos! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
-      `[L1]🚀 Partida iniciada com sucesso! ${winnerNames} garantiu R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
-      `[L1]🥇 O primeiro troféu é de ${winnerNames}! Prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
-      `[L1]💎 Começou com brilho! ${winnerNames} marcou linha e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
-      `[L1]⚡ Rapidez e sorte! ${winnerNames} fechou a linha 1: R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
-      `[L1]🔔 Atenção: temos um ganhador! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
-      `[L1]🌈 O pote começou a derramar! ${winnerNames} pegou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
-      `[L1]🌟 Estrela da rodada! ${winnerNames} levou a primeira linha: R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
-      `[L1]💥 Explosão de sorte! ${winnerNames} acaba de ganhar R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
-      `[L1]🧤 Mão santa! ${winnerNames} completou a linha e faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
-      `[L1]🎫 Cartela premiada! ${winnerNames} garantiu R$ ${totalPrize.toLocaleString('pt-BR')} na L1![/L1]`,
-      `[L1]🔥 Esquentando o motor! ${winnerNames} levou a primeira linha por R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`,
-      `[L1]👑 Pequena realeza! ${winnerNames} conquistou R$ ${totalPrize.toLocaleString('pt-BR')} na linha![/L1]`
+      `[L1]✨ Primeira etapa concluída! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`
     ];
-    formattedMessage = messages[Math.floor(Math.random() * messages.length)];
+    formattedMessage = msgs[Math.floor(Math.random() * msgs.length)];
   } else if (currentStage === 'linha2') {
-    const messages = [
+    const msgs = [
       `[L2]🎊 Dupla vitória! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')} pelas duas linhas![/L2]`,
-      `[L2]🌓 Metade do caminho! ${winnerNames} levou a Linha Dupla: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
-      `[L2]⚔️ Dobradinha de respeito! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
-      `[L2]📈 O prêmio subiu! ${winnerNames} completou duas linhas: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
-      `[L2]🔥 O clima está fervendo! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
-      `[L2]🎭 Dois atos concluídos! ${winnerNames} levou o prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
-      `[L2]🥈 Prata da casa! ${winnerNames} garantiu a linha dupla: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
-      `[L2]🌊 Onda de sorte! ${winnerNames} faturou duas linhas por R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
-      `[L2]🛰️ Radar da vitória! ${winnerNames} achou a segunda linha: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
-      `[L2]🛠️ Construindo a vitória! ${winnerNames} já tem R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
-      `[L2]🎁 Presentão em dobro! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
-      `[L2]🧨 Quase lá! ${winnerNames} detonou na segunda linha: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
-      `[L2]💪 Mostrou como se faz! ${winnerNames} garantiu R$ ${totalPrize.toLocaleString('pt-BR')} na L2![/L2]`,
-      `[L2]🧩 Peças encaixadas! ${winnerNames} completou a dupla por R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
-      `[L2]🔋 Carga total! ${winnerNames} faturou o prêmio intermediário de R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`,
-      `[L2]🤜🤛 Parceria com a sorte! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`
+      `[L2]🌓 Metade do caminho! ${winnerNames} levou a Linha Dupla: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`
     ];
-    formattedMessage = messages[Math.floor(Math.random() * messages.length)];
+    formattedMessage = msgs[Math.floor(Math.random() * msgs.length)];
   } else if (currentStage === 'bingo') {
-    const messages = [
+    const msgs = [
       `[BINGO]🏆🏆🏆 BINGO ÉPICO! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]👑👑 O REI DO BINGO! ${winnerNames} limpou a banca com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]💰💰 JACKPOT! ${winnerNames} é o grande campeão e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]🚀🚀 DECOLOU! O prêmio máximo de R$ ${totalPrize.toLocaleString('pt-BR')} vai para ${winnerNames}![/BINGO]`,
-      `[BINGO]🏦 O BANCO QUEBROU! ${winnerNames} faturou incríveis R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]💎💎 RIQUEZA PURA! ${winnerNames} deu o grito final e ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]🤩 VITÓRIA LENDÁRIA! ${winnerNames} acaba de levar R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]⛈️ TEMPESTADE DE DINHEIRO! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]🎸 SHOW COMPLETO! ${winnerNames} fez BINGO e faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]🥂 BRINDE À VITÓRIA! ${winnerNames} é o novo milionário com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]🕹️ GAME OVER PROS ADVERSÁRIOS! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]🌋 ERUPÇÃO DE PRÊMIOS! ${winnerNames} conquistou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]🥋 MESTRE DO BINGO! ${winnerNames} dominou a sala e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]🏆 HISTÓRICO! ${winnerNames} fechou a cartela e garantiu R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]🌠 DESEJO REALIZADO! ${winnerNames} faturou o prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]💸 CHUVA DE NOTAS! ${winnerNames} é o nome da vez com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]🥳 FESTA NO BINGO MASTER PRO! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]🦁 O LEÃO DA RODADA! ${winnerNames} devorou o prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]⚡ CHOQUE DE SORTE! ${winnerNames} fechou tudo e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]🏅 MEDALHA DE OURO! ${winnerNames} faturou o BINGO de R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]🏁 FIM DE JOGO! O mestre ${winnerNames} encerrou com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`
+      `[BINGO]👑👑 O REI DO BINGO! ${winnerNames} limpou a banca com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`
     ];
-    formattedMessage = messages[Math.floor(Math.random() * messages.length)];
+    formattedMessage = msgs[Math.floor(Math.random() * msgs.length)];
   }
 
   io.to(roomType).emit('chat-message', {
@@ -706,48 +737,16 @@ function handleWin(roomType, allWinners) {
     type: currentStage
   });
 
-  // ✅ Verificar vitórias consecutivas
+  // ✅ Verificar vitórias consecutivas (apenas humanos)
   const humanWinners = results.filter(r => !room.players[r.playerId].isBot);
   for (const hw of humanWinners) {
     const player = room.players[hw.playerId];
     if (player.currentWins >= 2) {
-      const streakMessages = [
+      const streakMsgs = [
         `🔥 ${player.name} está ON FIRE! ${player.currentWins} vitórias seguidas!`,
-        `🚀 ${player.name} não para de vencer! Já são ${player.currentWins} prêmios!`,
-        `💎 ${player.name} é imparável! ${player.currentWins} conquistas em sequência!`,
-        `🎯 ${player.name} tem mira de águia! ${player.currentWins} vezes no topo!`,
-        `👑 O trono é de ${player.name}! São ${player.currentWins} vitórias consecutivas!`,
-        `⚡ ${player.name} está eletrizante! Ninguém segura essas ${player.currentWins} vitórias!`,
-        `💰 Alerta de Tubarão! ${player.name} abocanhou ${player.currentWins} prêmios seguidos!`,
-        `🎰 Sorte pura? Não, é talento! ${player.name} venceu ${player.currentWins} vezes!`,
-        `🥇 ${player.name} esqueceu como se perde! Já são ${player.currentWins} no placar!`,
-        `🌟 Uma nova lenda: ${player.name} atingiu a marca de ${player.currentWins} vitórias!`,
-        `🦾 Modo Deus ativado! ${player.name} conquistou ${player.currentWins} seguidas!`,
-        `🌪️ O furacão ${player.name} passou e levou ${player.currentWins} prêmios de uma vez!`,
-        `🌈 No fim do arco-íris de ${player.name} tem ${player.currentWins} vitórias!`,
-        `🌠 Alguém pare esse jogador! ${player.name} está com ${player.currentWins} vitórias!`,
-        `🎩 ${player.name} tirou ${player.currentWins} vitórias da cartola! É mágica!`,
-        `🐉 ${player.name} está dominando a sala com ${player.currentWins} vitórias épicas!`,
-        `🛡️ Invencível! ${player.name} defende sua sequência de ${player.currentWins} vitórias!`,
-        `💥 BUM! ${player.name} explodiu o placar com ${player.currentWins} conquistas!`,
-        `🛸 De outro mundo! ${player.name} chegou a ${player.currentWins} vitórias!`,
-        `📈 O gráfico de ${player.name} só sobe: ${player.currentWins} vitórias agora!`,
-        `🐆 Velocidade total! ${player.name} já garantiu ${player.currentWins} prêmios!`,
-        `🎇 Espetáculo! ${player.name} brilha com uma sequência de ${player.currentWins}!`,
-        `💎 Joia rara do Bingo! ${player.name} acumulou ${player.currentWins} vitórias!`,
-        `🍀 O trevo de 4 folhas é pouco para as ${player.currentWins} vitórias de ${player.name}!`,
-        `🌋 Erupção de sorte! ${player.name} não para nessas ${player.currentWins} vitórias!`,
-        `🏹 Flecha certeira! ${player.name} acertou a marca de ${player.currentWins} triunfos!`,
-        `🏆 Colecionador de troféus! ${player.name} já tem ${player.currentWins} na estante!`,
-        `⚓ Ancorado na vitória! ${player.name} mantém sua sequência de ${player.currentWins}!`,
-        `🎡 A roda da fortuna gira sempre para ${player.name}: ${player.currentWins} vezes!`,
-        `🕹️ Pro Player de Bingo! ${player.name} atingiu ${player.currentWins} vitórias!`,
-        `🎊 Não é apenas sorte, é ${player.name} vencendo pela ${player.currentWins}ª vez!`,
-        `🧱 ${player.name} construiu um império de ${player.currentWins} vitórias seguidas!`,
-        `🌊 Impossível conter essa onda! ${player.name} venceu ${player.currentWins} vezes!`,
-        `🎁 O maior presente da rodada é a sequência de ${player.currentWins} de ${player.name}!`
+        `🚀 ${player.name} não para de vencer! Já são ${player.currentWins} prêmios!`
       ];
-      const streakMsg = streakMessages[Math.floor(Math.random() * streakMessages.length)];
+      const streakMsg = streakMsgs[Math.floor(Math.random() * streakMsgs.length)];
       setTimeout(() => {
         io.to(roomType).emit('chat-message', {
           message: streakMsg,
@@ -762,42 +761,9 @@ function handleWin(roomType, allWinners) {
   // ✅ Mensagem especial para humanos que fazem bingo
   if (currentStage === 'bingo' && humanWinners.length > 0) {
     const humanNames = humanWinners.map(h => h.playerName).join(', ');
-    const goldenMessages = [
-      `✨✨✨ CARTÃO DOURADO ATIVADO! ${humanNames} fez BINGO! ✨✨✨`,
-      `👑👑👑 REALEZA DETECTADA! ${humanNames} dominou a sala e fez BINGO! 👑👑👑`,
-      `💎💎💎 BRILHO ETERNO! ${humanNames} acaba de conquistar o BINGO SUPREMO! 💎💎💎`,
-      `🚀🚀🚀 DECOLAGEM AUTORIZADA! ${humanNames} voou alto e fez BINGO! 🚀🚀🚀`,
-      `🔥 🔥 🔥 O MESTRE CHEGOU! ${humanNames} detonou tudo com esse BINGO! 🔥 🔥 🔥`,
-      `🌈🌈🌈 SORTE MÁXIMA! ${humanNames} encontrou o pote de ouro: BINGO! 🌈🌈🌈`,
-      `🏆🏆🏆 GLÓRIA AO CAMPEÃO! ${humanNames} venceu a rodada com BINGO! 🏆🏆🏆`,
-      `🏅🏅🏅 NÍVEL LENDÁRIO! ${humanNames} mostrou como se faz um BINGO! 🏅🏅🏅`,
-      `🎊🎊🎊 FESTA NO BINGO MASTER PRO! ${humanNames} é o nome da vez! 🎊🎊🎊`,
-      `⚡⚡⚡ CHOQUE DE VITÓRIA! ${humanNames} paralisou a sala com esse BINGO! ⚡⚡⚡`,
-      `🛸🛸🛸 FORA DESTE MUNDO! ${humanNames} atingiu o BINGO intergaláctico! 🛸🛸🛸`,
-      `🦾🦾🦾 MÃO DE FERRO! ${humanNames} não deu chance e gritou BINGO! 🦾🦾🦾`,
-      `🏦🏦🏦 O COFRE ABRIU! ${humanNames} fez BINGO e limpou a banca! 🏦🏦🏦`,
-      `🏹🏹🏹 ALVO ATINGIDO! ${humanNames} foi direto no BINGO! 🏹🏹🏹`,
-      `🎇🎇🎇 FOGOS DE ARTIFÍCIO! ${humanNames} iluminou a tela com BINGO! 🎇🎇🎇`,
-      `🍀🍀🍀 TREVO SUPREMO! A sorte escolheu ${humanNames} para o BINGO! 🍀🍀🍀`,
-      `🤺🤺🤺 DUELO VENCIDO! ${humanNames} superou todos e fez BINGO! 🤺🤺🤺`,
-      `🎈🎈🎈 CELEBRAÇÃO! O BINGO de ${humanNames} é motivo de festa! 🎈🎈🎈`,
-      `🛡️🛡️🛡️ INVENCÍVEL! Ninguém parou o BINGO de ${humanNames}! 🛡️🛡️🛡️`,
-      `🤩🤩🤩 ESPETÁCULO! ${humanNames} deu um show com esse BINGO! 🤩🤩🤩`,
-      `🎹🎹🎹 NA BATIDA CERTA! ${humanNames} fechou a cartela e fez BINGO! 🎹🎹🎹`,
-      `🌊🌊🌊 ONDA DE SORTE! ${humanNames} foi levado direto para o BINGO! 🌊🌊🌊`,
-      `🧗🧗🧗 NO TOPO DA MONTANHA! ${humanNames} conquistou o BINGO! 🧗🧗🧗`,
-      `🧿🧿🧿 PROTEGIDO PELA SORTE! ${humanNames} garantiu seu BINGO! 🧿🧿🧿`,
-      `🎮🎮🎮 PRO PLAYER! ${humanNames} subiu de nível com esse BINGO! 🎮🎮🎮`,
-      `💸💸💸 CHUVA DE PRÊMIOS! ${humanNames} molhou a conta com esse BINGO! 💸💸💸`,
-      `🥇🥇🥇 PRIMEIRO LUGAR! ${humanNames} é o dono da rodada! BINGO! 🥇🥇🥇`,
-      `🦁🦁🦁 FORÇA BRUTA! ${humanNames} rugiu alto no grito de BINGO! 🦁🦁🦁`,
-      `💎💎💎 DIAMANTE LAPIDADO! ${humanNames} fez o BINGO mais brilhante! 💎💎💎`,
-      `✨✨✨ MAGIA PURA! ${humanNames} transformou números em BINGO! ✨✨✨`
-    ];
-    const randomMsg = goldenMessages[Math.floor(Math.random() * goldenMessages.length)];
     setTimeout(() => {
       io.to(roomType).emit('chat-message', {
-        message: randomMsg,
+        message: `✨✨✨ CARTÃO DOURADO ATIVADO! ${humanNames} fez BINGO! ✨✨✨`,
         sender: "Sistema",
         isBot: false,
         special: "golden-bingo"
@@ -809,42 +775,9 @@ function handleWin(roomType, allWinners) {
   if (wonJackpot) {
     const jackpotNames = jackpotWinners.map(w => w.playerName).join(', ');
     const jackpotAmount = room.jackpot; // valor ANTES do reset
-    const jackpotMessages = [
-      `[JACKPOT]💰💰💰 JACKPOT HISTÓRICO! ${jackpotNames} levaram R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]💎💎💎 FORTUNA ENCONTRADA! ${jackpotNames} acaba de faturar R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🌋🌋🌋 EXPLOSÃO DE DINHEIRO! O Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')} saiu para ${jackpotNames}![/JACKPOT]`,
-      `[JACKPOT]🏦🏦🏦 O BANCO QUEBROU! ${jackpotNames} levou a bolada de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]👑👑👑 REALEZA DO BINGO! ${jackpotNames} conquistou o prêmio máximo: R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🚀🚀🚀 RUMO À LUA! ${jackpotNames} faturou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🍀🍀🍀 SORTE LENDÁRIA! ${jackpotNames} ganhou o prêmio acumulado de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]⚡⚡⚡ IMPACTO TOTAL! O Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')} tem novos donos: ${jackpotNames}![/JACKPOT]`,
-      `[JACKPOT]🎇🎇🎇 ESPETÁCULO DE PRÊMIOS! ${jackpotNames} limpou o pote de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🤑🤑🤑 CHUVA DE NOTAS! ${jackpotNames} garantiu R$ ${jackpotAmount.toLocaleString('pt-BR')} no Jackpot![/JACKPOT]`,
-      `[JACKPOT]🏆🏆🏆 O TROFÉU DE OURO! ${jackpotNames} levou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🌈🌈🌈 FIM DO ARCO-ÍRIS! ${jackpotNames} encontrou R$ ${jackpotAmount.toLocaleString('pt-BR')} no pote![/JACKPOT]`,
-      `[JACKPOT]🔥 🔥 🔥 RODADA INCENDIÁRIA! ${jackpotNames} faturou o acumulado de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🌟🌟🌟 ESTRELA DO DIA! ${jackpotNames} brilhou com o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🥊🥊🥊 NOCAUTE NO ACUMULADO! ${jackpotNames} levou R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🗝️🗝️🗝️ O COFRE FOI ABERTO! ${jackpotNames} resgatou R$ ${jackpotAmount.toLocaleString('pt-BR')} do Jackpot![/JACKPOT]`,
-      `[JACKPOT]🎰🎰🎰 COMBINAÇÃO PERFEITA! ${jackpotNames} ganhou o prêmio de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🌍🌍🌍 O MUNDO É DELES! ${jackpotNames} conquistou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]💎💎💎 DIAMANTE BRUTO! ${jackpotNames} levou a raridade de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🎊🎊🎊 CARNAVAL DE VITÓRIA! ${jackpotNames} faturou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🛡️🛡️🛡️ CONQUISTA ÉPICA! ${jackpotNames} dominou o Jackpot: R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]💹💹💹 PATRIMÔNIO ATUALIZADO! ${jackpotNames} ganhou R$ ${jackpotAmount.toLocaleString('pt-BR')} no acumulado![/JACKPOT]`,
-      `[JACKPOT]🔔🔔🔔 ALERTA DE MILIONÁRIO! ${jackpotNames} levou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]✨✨✨ MOMENTO MÁGICO! ${jackpotNames} acaba de ganhar R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🦁🦁🦁 RUGIDO DO VENCEDOR! ${jackpotNames} abocanhou R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]💎🤑💎 RIQUEZA SEM LIMITES! ${jackpotNames} faturou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🛸🛸🛸 PRÊMIO ESPACIAL! ${jackpotNames} decolou com R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🔱🔱🔱 PODER SUPREMO! ${jackpotNames} conquistou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🌋💰🌋 VULCÃO DE OURO! ${jackpotNames} levou a bolada de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
-      `[JACKPOT]🏅💎🏅 HONRA E GLÓRIA! ${jackpotNames} faturou o lendário Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`
-    ];
-    const jackpotMsg = jackpotMessages[Math.floor(Math.random() * jackpotMessages.length)];
     setTimeout(() => {
       io.to(roomType).emit('chat-message', {
-        message: jackpotMsg,
+        message: `[JACKPOT]💰💰💰 JACKPOT HISTÓRICO! ${jackpotNames} levaram R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
         sender: "Sistema",
         isBot: false,
         type: "jackpot"
@@ -874,10 +807,11 @@ function handleWin(roomType, allWinners) {
   }
 }
 
-function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
+async function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
   const room = rooms[roomType];
   const currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
   if (currentBots >= room.maxBots) return;
+
   const usedNames = new Set();
   Object.values(room.players).forEach(p => { if (p.isBot) usedNames.add(p.name); });
   let name;
@@ -887,18 +821,21 @@ function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
     attempts++;
   } while (usedNames.has(name) && attempts < 100);
   if (usedNames.has(name)) name = `${name} ${Math.floor(Math.random() * 1000)}`;
+
   const botId = `bot_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
   const cardCount = getBotCardCount(currentBots + 1);
   const totalCost = cardCount * PRICE_PER_CARD;
   if (initialChips < totalCost) {
     return;
   }
+
   const cards90 = roomType === 'bingo90'
     ? Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card()))
     : [];
   const cards75 = roomType === 'bingo75'
     ? Array(cardCount).fill().map(() => generateBingo75Card())
     : [];
+
   room.players[botId] = {
     name: name,
     chips: initialChips - totalCost,
@@ -908,6 +845,7 @@ function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
     winsCount: 0,
     currentWins: 0
   };
+
   room.pot += totalCost;
   room.jackpot += Math.floor(totalCost * 0.5);
   console.log(`🤖 Bot adicionado: ${name} comprou ${cardCount} cartelas. Pote atual: ${room.pot}`);
@@ -971,9 +909,10 @@ function findPlayerByName(roomType, playerName) {
   return Object.entries(room.players).find(([id, player]) => !player.isBot && player.name === playerName);
 }
 
-function handleAutoRestart(socket, roomType) {
-  if (!rooms[roomType]) return;
+async function handleAutoRestart(socket, roomType) {
   const room = rooms[roomType];
+  if (!room) return;
+
   const playersToKeep = {};
   let activeBots = 0;
   for (const [id, player] of Object.entries(room.players)) {
@@ -981,17 +920,32 @@ function handleAutoRestart(socket, roomType) {
     playersToKeep[id] = player;
     if (player.isBot) activeBots++;
   }
+
   if (room.addBotOnNextRestart && room.maxBots < MAX_BOTS_ALLOWED) {
     room.maxBots += 1;
     room.addBotOnNextRestart = false;
   }
   room.maxBots = Math.min(room.maxBots, MAX_BOTS_ALLOWED);
   room.players = playersToKeep;
+
   let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
   while (currentBots < room.maxBots) {
-    addBotToRoom(roomType, INITIAL_CHIPS);
+    await addBotToRoom(roomType, INITIAL_CHIPS);
     currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
   }
+
+  // ✅ Salvar chips persistentes ANTES de reiniciar
+  const specialPlayers = {};
+  const bots = {};
+  for (const [id, player] of Object.entries(room.players)) {
+    if (!player.isBot && (player.name === 'Markim' || player.name === 'Marília')) {
+      specialPlayers[player.name] = player.chips;
+    } else if (player.isBot) {
+      bots[player.name] = player.chips;
+    }
+  }
+  await savePersistedChips(specialPlayers, bots);
+
   room.drawnNumbers = [];
   room.lastNumber = null;
   room.pot = 0;
@@ -1001,6 +955,7 @@ function handleAutoRestart(socket, roomType) {
   room.gameActive = false;
   room.autoRestartTimeout = null;
   room.currentWinnerId = null;
+
   for (const [id, player] of Object.entries(room.players)) {
     if (player.isBot) {
       const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
@@ -1023,6 +978,7 @@ function handleAutoRestart(socket, roomType) {
       player.cards90 = [];
     }
   }
+
   io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
   io.to(roomType).emit('room-reset');
   broadcastPlayerList(roomType);
@@ -1032,15 +988,22 @@ function handleAutoRestart(socket, roomType) {
 
 io.on('connection', (socket) => {
   console.log('🔌 Jogador conectado:', socket.id);
-  socket.on('join-room', ({ playerName, roomType, savedChips, savedCards75, savedCards90 }) => {
+
+  socket.on('join-room', async ({ playerName, roomType, savedChips, savedCards75, savedCards90 }) => {
     if (!rooms[roomType]) {
       socket.emit('error', 'Sala inválida');
       return;
     }
+
     playerName = sanitizeName(playerName);
     const room = rooms[roomType];
+
+    // ✅ Carregar chips persistentes
+    const persisted = await loadPersistedChips();
+
     const existingPlayer = findPlayerByName(roomType, playerName);
     let playerId, playerData;
+
     if (existingPlayer) {
       playerId = existingPlayer[0];
       playerData = existingPlayer[1];
@@ -1056,9 +1019,20 @@ io.on('connection', (socket) => {
       room.players[playerId] = validatePlayerState(playerData, roomType);
     } else {
       playerId = socket.id;
-      const initialChips = (savedChips != null && savedChips >= 0) ? savedChips : INITIAL_CHIPS;
+
+      // ✅ Usar chips persistentes se for Markim/Marília
+      let initialChips;
+      if (savedChips != null && savedChips >= 0) {
+        initialChips = savedChips;
+      } else if (playerName === 'Markim' || playerName === 'Marília') {
+        initialChips = persisted.specialPlayers[playerName] || INITIAL_CHIPS;
+      } else {
+        initialChips = INITIAL_CHIPS;
+      }
+
       const cards75 = (!room.gameCompleted && savedCards75) ? savedCards75 : [];
       const cards90 = (!room.gameCompleted && savedCards90) ? savedCards90.map(c => validateAndFixBingo90Card(c)) : [];
+
       room.players[playerId] = validatePlayerState({
         name: playerName,
         chips: initialChips,
@@ -1069,11 +1043,13 @@ io.on('connection', (socket) => {
         currentWins: 0
       }, roomType);
     }
+
     socket.join(roomType);
     socket.data = { roomType };
+
     let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
     while (currentBots < room.maxBots) {
-      addBotToRoom(roomType);
+      await addBotToRoom(roomType);
       const newBotCount = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
       if (newBotCount === currentBots) break;
       currentBots = newBotCount;
@@ -1136,17 +1112,17 @@ io.on('connection', (socket) => {
     broadcastRanking(roomType);
 
     if (!room.autoMessageInterval) {
-  startAutoMessages(roomType);
-}
-
-// ✅ Só inicia o sorteio se houver humanos COM CARTELAS
-if (hasHumanWithCards(roomType) && !room.gameActive && !room.gameCompleted) {
-  setTimeout(() => {
-    if (hasHumanWithCards(roomType)) {
-      resumeDraw(roomType);
+      startAutoMessages(roomType);
     }
-  }, 1000);
-}
+
+    // ✅ Só inicia o sorteio se houver humanos COM CARTELAS
+    if (hasHumanWithCards(roomType) && !room.gameActive && !room.gameCompleted) {
+      setTimeout(() => {
+        if (hasHumanWithCards(roomType)) {
+          resumeDraw(roomType);
+        }
+      }, 1000);
+    }
   });
 
   socket.on('buy-cards', ({ count, cardType }) => {
@@ -1156,7 +1132,7 @@ if (hasHumanWithCards(roomType) && !room.gameActive && !room.gameCompleted) {
       if (count < 1 || count > MAX_CARDS_PER_PLAYER) return socket.emit('error', `Compre entre 1 e ${MAX_CARDS_PER_PLAYER} cartelas.`);
       const room = rooms[roomType];
       const player = room.players[socket.id];
-      if (!player || player.isBot) return socket.emit('error', 'Apenas humanos podem comprar cartelas.');
+      if (!player || player.isBot) return;
 
       const currentCardCount = cardType === '75' ? player.cards75.length : player.cards90.length;
       if (currentCardCount + count > MAX_CARDS_PER_PLAYER) {
@@ -1199,15 +1175,15 @@ if (hasHumanWithCards(roomType) && !room.gameActive && !room.gameCompleted) {
   });
 
   socket.on('start-draw', () => {
-  const roomType = socket.data?.roomType;
-  if (roomType && !rooms[roomType].gameActive) {
-    if (hasHumanWithCards(roomType)) {
-      resumeDraw(roomType);
-    } else {
-      socket.emit('error', 'Nenhum jogador humano com cartela na sala.');
+    const roomType = socket.data?.roomType;
+    if (roomType && !rooms[roomType].gameActive) {
+      if (hasHumanWithCards(roomType)) {
+        resumeDraw(roomType);
+      } else {
+        socket.emit('error', 'Nenhum jogador humano com cartela na sala.');
+      }
     }
-  }
-});
+  });
 
   socket.on('claim-win', ({ winType }) => {
     try {
@@ -1289,13 +1265,13 @@ if (hasHumanWithCards(roomType) && !room.gameActive && !room.gameCompleted) {
       socket.leave(roomType);
       broadcastPlayerList(roomType);
       broadcastRanking(roomType);
-      if (!hasHumanPlayers(roomType)) {
+      if (!hasHumanWithCards(roomType)) {
         pauseDraw(roomType);
         if (rooms[roomType].autoMessageInterval) {
           clearInterval(rooms[roomType].autoMessageInterval);
           rooms[roomType].autoMessageInterval = null;
         }
-        console.log(`⏸️ Sala ${roomType} em standby: sem humanos.`);
+        console.log(`⏸️ Sala ${roomType} em standby: sem humanos com cartela.`);
       }
     }
   });
@@ -1315,7 +1291,9 @@ function validatePlayerState(player, roomType) {
   return player;
 }
 
+// ✅ Iniciar servidor
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
+  await createTableIfNotExists();
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
 });
