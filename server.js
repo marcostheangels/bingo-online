@@ -8,7 +8,7 @@ const server = http.createServer(app);
 
 // ✅ Rate limiting simples para feedback
 const feedbackLimiter = new Map(); // IP -> último timestamp
-const FEEDBACK_MIN_INTERVAL_MS = 5000; // 5 segundos entre envios
+const FEEDBACK_MIN_INTERVAL_MS = 7000; // 5 segundos entre envios
 
 const io = require('socket.io')(server, {
   cors: {
@@ -75,7 +75,8 @@ const MAX_BOTS_ALLOWED = 10;
 const AI_KEYWORDS = [
   'como', 'regra', 'funciona', 'ganhar', 'prêmio', 'pote', 'jackpot',
   'cartela', 'bingo', 'linha', 'número', 'sorteio', 'chips', 'comprar',
-  'bot', 'humano', 'vitória', 'dica', 'estratégia', 'ajuda', '?'
+  'bot', 'humano','pix','saque','retirar','depósito','pagar','saldo','dinheiro','moeda','bônus',
+  'grátis', 'vitória', 'dica', 'estratégia', 'ajuda', '?'
 ];
 
 const AI_RESPONSES = {
@@ -90,6 +91,36 @@ const AI_RESPONSES = {
     "Seu nome fica em verde quando você vence — todos veem seu brilho! ✨",
     "A sala entra em standby se não houver humanos. Estamos sempre esperando por você!",
     "Ganhou várias vezes seguidas? Você é um(a) verdadeiro(a) campeão(ã)!"
+    "O segredo do mestre: paciência e persistência. A próxima bola pode ser a sua! 🍀",
+    "Sentindo falta de um número? O universo do bingo adora uma surpresa de última hora!",
+    "Lembre-se: o Bingo Master Pro é pura adrenalina! Divirta-se acima de tudo. 🎡",
+    "As chances são iguais para todos. A sorte não escolhe lado, ela escolhe quem insiste!",
+    "Já reparou como o pote cresce rápido? Quanto mais gente, maior a festa! 💰",
+    "Dica: Suas melhores cartelas sobem sozinhas para o topo da tela! Fique atento! 📈",
+    "Sabia que você pode personalizar seu avatar no menu de Perfil? Mostre seu estilo! 😎",
+    "Problemas de conexão? Verifique seu Wi-Fi para não perder nenhum número importante! 📶",
+    "O chat é o coração do jogo. Comemore suas vitórias e faça novos amigos! 🗣️",
+    "O som do sorteio te ajuda a manter o foco. Não esqueça de ligar o áudio! 🔊",
+    "O prêmio acumulado (Jackpot) é o sonho de todos! Complete a cartela rápido para levar! 💎",
+    "Linha 1 é só o começo! O verdadeiro tesouro está no grito final de BINGO! 🏆",
+    "Nossos bots Markim e Marília são feras, mas nada supera o talento de um humano! 🦾",
+    "Se houver empate na linha, o prêmio é dividido igualmente entre os vencedores. Justo, né? ⚖️",
+    "Bônus diários de login ajudam você a manter suas fichas sempre carregadas! 🎁",
+    "Sua senha é pessoal e intransferível. Proteja sua conta do Bingo Master Pro! 🔐",
+    "Vi algum erro? Reporte ao suporte e ajude a melhorar nossa arena de diversão! 🛠️",
+    "Mantenha seu cadastro atualizado para receber notificações de eventos especiais! 📝",
+    "O sistema de login garante que seus prêmios e conquistas fiquem salvos para sempre! 💾",
+    "Jogar como convidado é legal, mas ter uma conta registrada te dá muito mais moral! 🏅",
+    "Dizem que quem grita 'BINGO' na frente da tela ganha mais rápido... quer testar? 🤣",
+    "O recorde de vitórias seguidas nesta sala é impressionante! Será que você bate? 🥇",
+    "Os bots não dormem, mas você tem a intuição humana a seu favor! 🧠",
+    "Cada número sorteado é gerado de forma 100% aleatória pelo nosso algoritmo. 🎰",
+    "O Bingo Master Pro é a casa dos grandes campeões. Bem-vindo à elite! 👑",
+    "Não desanime se a linha não veio. O Bingo completo ainda está em jogo! 🌈",
+    "A vitória de hoje pode ser o começo de uma sequência épica de conquistas! 🌠",
+    "O mestre do bingo nunca desiste na bola 89. O 90 pode ser o seu! 🎯",
+    "Obrigado por escolher o Bingo Master Pro! Você faz nossa comunidade brilhar! ✨",
+    "Prepare os dedos! A próxima rodada começa em poucos segundos... 🚀"
   ],
   jackpot: [
     "O jackpot começa em R$ 1.000.000 e cresce a cada cartela comprada!",
@@ -100,7 +131,46 @@ const AI_RESPONSES = {
     "Compre cartelas no início da rodada para garantir seu lugar!",
     "Cartelas com menos bolas faltando aparecem no topo — foque nelas!",
     "Não espere o último número: às vezes, a vitória vem antes do fim!"
-  ]
+    Para elevar o nível de informação e o desejo dos jogadores no BINGO MASTER PRO, aqui estão mais 30 frases específicas para a categoria jackpot. Elas focam em como ganhar, no valor acumulado e na exclusividade do prêmio máximo:
+
+JavaScript
+const jackpotResponses = [
+    "O jackpot começa em R$ 1.000.000 e cresce a cada cartela comprada!",
+    "Só é possível ganhar o jackpot se o bingo for feito em até 60 bolas!",
+    "Quando alguém leva o jackpot, ele volta a R$ 1.000.000 e recomeça!",
+    
+    // --- Novas Frases ---
+    "💰 O Jackpot é o prêmio máximo! Ele acumula uma pequena parte de cada cartela vendida!",
+    "💎 Já pensou em ser o próximo milionário? O Jackpot está esperando por um mestre!",
+    "🎯 Fique de olho no contador de bolas: passou da 60ª, o Jackpot fica para a próxima!",
+    "🚀 A velocidade é tudo! Complete a cartela rápido e capture o prêmio acumulado!",
+    "🌟 O Jackpot é dividido se mais de um humano fizer bingo na mesma bola premiada!",
+    "🏦 O valor do Jackpot é real e atualizado em tempo real no topo da sua tela!",
+    "⚡ Nada supera a emoção de ver a 60ª bola e gritar BINGO no Jackpot!",
+    "🏆 Entrar para o Hall da Fama do Bingo Master Pro exige levar um Jackpot!",
+    "🔔 O sino toca diferente quando o Jackpot sai! Você está pronto para esse som?",
+    "🍀 Dica: Jogar com mais cartelas aumenta suas chances matemáticas de bater o Jackpot!",
+    "📈 Ontem o Jackpot estava menor... ele não para de crescer! Aproveite agora!",
+    "👑 O Jackpot é o trono do bingo. Quem sentar nele hoje leva uma fortuna!",
+    "🌠 Um Jackpot não sai todo dia, por isso ele é o prêmio mais valioso da casa!",
+    "💸 Se o Jackpot sair para um bot, o valor acumula ainda mais para os humanos!",
+    "🛡️ Segurança total: o pagamento do Jackpot é garantido pelo sistema Master Pro!",
+    "🔥 A temperatura sobe quando faltam apenas 2 números para o Jackpot!",
+    "🌈 O pote de ouro no fim do arco-íris se chama Jackpot e ele está logo ali!",
+    "🧊 Mantenha a calma! O Jackpot exige foco total no sorteio das bolas!",
+    "🦾 Markim e Marília estão de olho no Jackpot, não deixe eles ganharem de você!",
+    "🎁 O Jackpot é o maior presente que uma rodada de bingo pode te dar!",
+    "🗝️ A chave da fortuna está na sua cartela. Será que os números batem com o Jackpot?",
+    "💥 BUM! Quando o Jackpot sai, a sala inteira comemora com você!",
+    "📊 Sabia que 1% de cada aposta vai direto para o montante do Jackpot?",
+    "⏳ O tempo está passando e o Jackpot só aumenta. Garanta suas cartelas!",
+    "🥇 Ser campeão é bom, mas levar o Jackpot é outro nível de vitória!",
+    "🧵 Cada número sorteado é um fio de esperança para o grande prêmio acumulado!",
+    "🥂 Prepare o champanhe: o próximo ganhador do Jackpot pode ser você!",
+    "🧩 O Jackpot é o quebra-cabeça mais valioso do mundo. Complete-o!",
+    "🧿 Sorte ou destino? No Jackpot, os dois caminham juntos!",
+    "🛸 Um prêmio de outro planeta: é assim que chamamos o nosso Jackpot!"
+   ]
 };
 
 let lastAiResponse = '';
@@ -201,6 +271,36 @@ function startAutoMessages(roomType) {
       "🚀 Nova rodada, novas chances! Compre suas cartelas!",
       "👑 O trono está vazio... Quem vai conquistá-lo hoje?",
       "🎉 Não desista! Às vezes, a vitória vem na última bola!"
+      "⚡ O coração bate mais forte a cada número! Falta pouco?"
+      "🥊 A arena está quente! Quem vai derrubar os bots desta vez?"
+      "🏁 Reta final! A última bola pode mudar o destino do prêmio!"
+      "⚔️ Desafio aceito! Mostre que você é o mestre das cartelas!"
+      "😤 Por um triz! A sorte está rondando a sua mesa!"
+      "🧨 Explosão de prêmios! A rodada está apenas começando!"
+      "🏟️ Sala cheia, pote gigante! É agora ou nunca!"
+      "🌪️ O furacão do Bingo passou por aqui! Quem sobreviveu?"
+      "🏃‍♂️ Corra para marcar! O tempo não espera por ninguém!"
+      "🥇 Lugar de campeão é no topo do ranking do Bingo Multiplayer!"
+      "💸 O cofre abriu! O Jackpot está pedindo para ser levado!"
+      "🏦 Sua conta bancária no jogo agradece por essa rodada!"
+      "🤑 Sentindo o cheiro de vitória (e de moedas) no ar!"
+      "💳 Saldo atualizado: a sorte depositou um prêmio para você!"
+      "💎 Pedras preciosas e bolas numeradas: a combinação do sucesso!"
+      "📈 O multiplicador subiu! Ganhe mais nesta rodada especial!"
+      "💰 O prêmio acumulado está de cair o queixo! Vai encarar?"
+      "👑 Realeza do Bingo: o trono vem acompanhado de um belo pote!"
+      "💹 Invista em mais cartelas e colha os frutos do Jackpot!"
+      "🗝️ Você encontrou a chave para a fortuna de hoje!"
+      "💡 Dica de mestre: cartelas extras aumentam sua probabilidade!"
+      "🧐 Olho vivo! A distração é o maior inimigo do jogador."
+      "📊 Analise o jogo: quais números estão saindo mais hoje?"
+      "🛡️ Mantenha sua conta segura e seu foco no marcador!"
+      "🧠 Bingo também é estratégia! Organize suas cartelas com sabedoria."
+      "🔋 Bateria carregada e sorte preparada? Vamos ao sorteio!"
+      "🧘 Mantenha a calma... o Bingo vem para quem sabe esperar."
+      "🔄 Rodada nova, estratégia nova! Tente algo diferente agora."
+      "🧩 Cada bola sorteada é uma peça do seu quebra-cabeça vitorioso!"
+      "🛰️ Radar ligado: detectamos uma grande chance de Bingo na sua área!"
     ];
     
     const msg = messages[Math.floor(Math.random() * messages.length)];
@@ -546,10 +646,60 @@ function handleWin(roomType, allWinners) {
   let formattedMessage = "";
   if (currentStage === 'linha1') {
     formattedMessage = `[L1]🎉 Parabéns, ${winnerNames}! Você ganhou R$ ${totalPrize.toLocaleString('pt-BR')} com a primeira linha![/L1]`;
+                        `[L1]✨ Primeira etapa concluída! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
+                        `[L1]🎯 No alvo! ${winnerNames} completou a primeira linha e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
+                        `[L1]🍀 A sorte abriu os caminhos! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
+                        `[L1]🚀 Partida iniciada com sucesso! ${winnerNames} garantiu R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
+                        `[L1]🥇 O primeiro troféu é de ${winnerNames}! Prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
+                        `[L1]💎 Começou com brilho! ${winnerNames} marcou linha e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
+                        `[L1]⚡ Rapidez e sorte! ${winnerNames} fechou a linha 1: R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
+                        `[L1]🔔 Atenção: temos um ganhador! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
+                        `[L1]🌈 O pote começou a derramar! ${winnerNames} pegou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
+                        `[L1]🌟 Estrela da rodada! ${winnerNames} levou a primeira linha: R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
+                        `[L1]💥 Explosão de sorte! ${winnerNames} acaba de ganhar R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
+                        `[L1]🧤 Mão santa! ${winnerNames} completou a linha e faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
+                        `[L1]🎫 Cartela premiada! ${winnerNames} garantiu R$ ${totalPrize.toLocaleString('pt-BR')} na L1![/L1]`;
+                        `[L1]🔥 Esquentando o motor! ${winnerNames} levou a primeira linha por R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`;
+                        `[L1]👑 Pequena realeza! ${winnerNames} conquistou R$ ${totalPrize.toLocaleString('pt-BR')} na linha![/L1]`;
   } else if (currentStage === 'linha2') {
     formattedMessage = `[L2]🎊 Dupla vitória! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')} pelas duas linhas![/L2]`;
+                       `[L2]🌓 Metade do caminho! ${winnerNames} levou a Linha Dupla: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
+                       `[L2]⚔️ Dobradinha de respeito! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
+                       `[L2]📈 O prêmio subiu! ${winnerNames} completou duas linhas: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
+                       `[L2]🔥 O clima está fervendo! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
+                       `[L2]🎭 Dois atos concluídos! ${winnerNames} levou o prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
+                       `[L2]🥈 Prata da casa! ${winnerNames} garantiu a linha dupla: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
+                       `[L2]🌊 Onda de sorte! ${winnerNames} faturou duas linhas por R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
+                       `[L2]🛰️ Radar da vitória! ${winnerNames} achou a segunda linha: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
+                       `[L2]🛠️ Construindo a vitória! ${winnerNames} já tem R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
+                       `[L2]🎁 Presentão em dobro! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
+                       `[L2]🧨 Quase lá! ${winnerNames} detonou na segunda linha: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
+                       `[L2]💪 Mostrou como se faz! ${winnerNames} garantiu R$ ${totalPrize.toLocaleString('pt-BR')} na L2![/L2]`;
+                       `[L2]🧩 Peças encaixadas! ${winnerNames} completou a dupla por R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
+                       `[L2]🔋 Carga total! ${winnerNames} faturou o prêmio intermediário de R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
+                       `[L2]🤜🤛 Parceria com a sorte! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`;
   } else if (currentStage === 'bingo') {
     formattedMessage = `[BINGO]🏆🏆🏆 BINGO ÉPICO! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]👑👑 O REI DO BINGO! ${winnerNames} limpou a banca com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]💰💰 JACKPOT! ${winnerNames} é o grande campeão e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]🚀🚀 DECOLOU! O prêmio máximo de R$ ${totalPrize.toLocaleString('pt-BR')} vai para ${winnerNames}![/BINGO]`;
+                       `[BINGO]🏦 O BANCO QUEBROU! ${winnerNames} faturou incríveis R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]💎💎 RIQUEZA PURA! ${winnerNames} deu o grito final e ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]🤩 VITÓRIA LENDÁRIA! ${winnerNames} acaba de levar R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]⛈️ TEMPESTADE DE DINHEIRO! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]🎸 SHOW COMPLETO! ${winnerNames} fez BINGO e faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]🥂 BRINDE À VITÓRIA! ${winnerNames} é o novo milionário com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]🕹️ GAME OVER PROS ADVERSÁRIOS! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]🌋 ERUPÇÃO DE PRÊMIOS! ${winnerNames} conquistou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]🥋 MESTRE DO BINGO! ${winnerNames} dominou a sala e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]🏆 HISTÓRICO! ${winnerNames} fechou a cartela e garantiu R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]🌠 DESEJO REALIZADO! ${winnerNames} faturou o prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]💸 CHUVA DE NOTAS! ${winnerNames} é o nome da vez com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]🥳 FESTA NO BINGO MASTER PRO! ${winnerNames} ganhou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]🦁 O LEÃO DA RODADA! ${winnerNames} devorou o prêmio de R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]⚡ CHOQUE DE SORTE! ${winnerNames} fechou tudo e levou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]🏅 MEDALHA DE OURO! ${winnerNames} faturou o BINGO de R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
+                       `[BINGO]🏁 FIM DE JOGO! O mestre ${winnerNames} encerrou com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`;
   }
 
   io.to(roomType).emit('chat-message', {
@@ -569,6 +719,37 @@ function handleWin(roomType, allWinners) {
         `🚀 ${player.name} não para de vencer! Já são ${player.currentWins} prêmios!`,
         `💎 ${player.name} é imparável! ${player.currentWins} conquistas em sequência!`,
         `🎯 ${player.name} tem mira de águia! ${player.currentWins} vezes no topo!`
+        `👑 O trono é de ${player.name}! São ${player.currentWins} vitórias consecutivas!`,
+        `⚡ ${player.name} está eletrizante! Ninguém segura essas ${player.currentWins} vitórias!`,
+        `💰 Alerta de Tubarão! ${player.name} abocanhou ${player.currentWins} prêmios seguidos!`,
+        `🎰 Sorte pura? Não, é talento! ${player.name} venceu ${player.currentWins} vezes!`,
+        `🥇 ${player.name} esqueceu como se perde! Já são ${player.currentWins} no placar!`,
+        `🌟 Uma nova lenda: ${player.name} atingiu a marca de ${player.currentWins} vitórias!`,
+        `🦾 Modo Deus ativado! ${player.name} conquistou ${player.currentWins} seguidas!`,
+        `🌪️ O furacão ${player.name} passou e levou ${player.currentWins} prêmios de uma vez!`,
+        `🌈 No fim do arco-íris de ${player.name} tem ${player.currentWins} vitórias!`,
+        `🌠 Alguém pare esse jogador! ${player.name} está com ${player.currentWins} vitórias!`,
+        `🎩 ${player.name} tirou ${player.currentWins} vitórias da cartola! É mágica!`,
+        `🐉 ${player.name} está dominando a sala com ${player.currentWins} vitórias épicas!`,
+        `🛡️ Invencível! ${player.name} defende sua sequência de ${player.currentWins} vitórias!`,
+        `💥 BUM! ${player.name} explodiu o placar com ${player.currentWins} conquistas!`,
+        `🛸 De outro mundo! ${player.name} chegou a ${player.currentWins} vitórias!`,
+        `📈 O gráfico de ${player.name} só sobe: ${player.currentWins} vitórias agora!`,
+        `🐆 Velocidade total! ${player.name} já garantiu ${player.currentWins} prêmios!`,
+        `🎇 Espetáculo! ${player.name} brilha com uma sequência de ${player.currentWins}!`,
+        `💎 Joia rara do Bingo! ${player.name} acumulou ${player.currentWins} vitórias!`,
+        `🍀 O trevo de 4 folhas é pouco para as ${player.currentWins} vitórias de ${player.name}!`,
+        `🌋 Erupção de sorte! ${player.name} não para nessas ${player.currentWins} vitórias!`,
+        `🏹 Flecha certeira! ${player.name} acertou a marca de ${player.currentWins} triunfos!`,
+        `🏆 Colecionador de troféus! ${player.name} já tem ${player.currentWins} na estante!`,
+        `⚓ Ancorado na vitória! ${player.name} mantém sua sequência de ${player.currentWins}!`,
+        `🎡 A roda da fortuna gira sempre para ${player.name}: ${player.currentWins} vezes!`,
+        `🕹️ Pro Player de Bingo! ${player.name} atingiu ${player.currentWins} vitórias!`,
+        `🎊 Não é apenas sorte, é ${player.name} vencendo pela ${player.currentWins}ª vez!`,
+        `🧱 ${player.name} construiu um império de ${player.currentWins} vitórias seguidas!`,
+        `🌊 Impossível conter essa onda! ${player.name} venceu ${player.currentWins} vezes!`,
+        `🎁 O maior presente da rodada é a sequência de ${player.currentWins} de ${player.name}!`
+];
       ];
       const streakMsg = streakMessages[Math.floor(Math.random() * streakMessages.length)];
       setTimeout(() => {
@@ -589,6 +770,36 @@ function handleWin(roomType, allWinners) {
       setTimeout(() => {
         io.to(roomType).emit('chat-message', {
           message: `✨✨✨ CARTÃO DOURADO ATIVADO! ${humanNames} fez BINGO! ✨✨✨`,
+          `✨✨✨ CARTÃO DOURADO ATIVADO! ${humanNames} fez BINGO! ✨✨✨`,
+          `👑👑👑 REALEZA DETECTADA! ${humanNames} dominou a sala e fez BINGO! 👑👑👑`,
+          `💎💎💎 BRILHO ETERNO! ${humanNames} acaba de conquistar o BINGO SUPREMO! 💎💎💎`,
+          `🚀🚀🚀 DECOLAGEM AUTORIZADA! ${humanNames} voou alto e fez BINGO! 🚀🚀🚀`,
+          `🔥 🔥 🔥 O MESTRE CHEGOU! ${humanNames} detonou tudo com esse BINGO! 🔥 🔥 🔥`,
+          `🌈🌈🌈 SORTE MÁXIMA! ${humanNames} encontrou o pote de ouro: BINGO! 🌈🌈🌈`,
+          `🏆🏆🏆 GLÓRIA AO CAMPEÃO! ${humanNames} venceu a rodada com BINGO! 🏆🏆🏆`,
+          `🏅🏅🏅 NÍVEL LENDÁRIO! ${humanNames} mostrou como se faz um BINGO! 🏅🏅🏅`,
+          `🎊🎊🎊 FESTA NO BINGO MASTER PRO! ${humanNames} é o nome da vez! 🎊🎊🎊`,
+          `⚡⚡⚡ CHOQUE DE VITÓRIA! ${humanNames} paralisou a sala com esse BINGO! ⚡⚡⚡`,
+          `🛸🛸🛸 FORA DESTE MUNDO! ${humanNames} atingiu o BINGO intergaláctico! 🛸🛸🛸`,
+          `🦾🦾🦾 MÃO DE FERRO! ${humanNames} não deu chance e gritou BINGO! 🦾🦾🦾`,
+          `🏦🏦🏦 O COFRE ABRIU! ${humanNames} fez BINGO e limpou a banca! 🏦🏦🏦`,
+          `🏹🏹🏹 ALVO ATINGIDO! ${humanNames} foi direto no BINGO! 🏹🏹🏹`,
+          `🎇🎇🎇 FOGOS DE ARTIFÍCIO! ${humanNames} iluminou a tela com BINGO! 🎇🎇🎇`,
+          `🍀🍀🍀 TREVO SUPREMO! A sorte escolheu ${humanNames} para o BINGO! 🍀🍀🍀`,
+          `🤺🤺🤺 DUELO VENCIDO! ${humanNames} superou todos e fez BINGO! 🤺🤺🤺`,
+          `🎈🎈🎈 CELEBRAÇÃO! O BINGO de ${humanNames} é motivo de festa! 🎈🎈🎈`,
+          `🛡️🛡️🛡️ INVENCÍVEL! Ninguém parou o BINGO de ${humanNames}! 🛡️🛡️🛡️`,
+          `🤩🤩🤩 ESPETÁCULO! ${humanNames} deu um show com esse BINGO! 🤩🤩🤩`,
+          `🎹🎹🎹 NA BATIDA CERTA! ${humanNames} fechou a cartela e fez BINGO! 🎹🎹🎹`,
+          `🌊🌊🌊 ONDA DE SORTE! ${humanNames} foi levado direto para o BINGO! 🌊🌊🌊`,
+          `🧗🧗🧗 NO TOPO DA MONTANHA! ${humanNames} conquistou o BINGO! 🧗🧗🧗`,
+          `🧿🧿🧿 PROTEGIDO PELA SORTE! ${humanNames} garantiu seu BINGO! 🧿🧿🧿`,
+          `🎮🎮🎮 PRO PLAYER! ${humanNames} subiu de nível com esse BINGO! 🎮🎮🎮`,
+          `💸💸💸 CHUVA DE PRÊMIOS! ${humanNames} molhou a conta com esse BINGO! 💸💸💸`,
+          `🥇🥇🥇 PRIMEIRO LUGAR! ${humanNames} é o dono da rodada! BINGO! 🥇🥇🥇`,
+          `🦁🦁🦁 FORÇA BRUTA! ${humanNames} rugiu alto no grito de BINGO! 🦁🦁🦁`,
+          `💎💎💎 DIAMANTE LAPIDADO! ${humanNames} fez o BINGO mais brilhante! 💎💎💎`,
+          `✨✨✨ MAGIA PURA! ${humanNames} transformou números em BINGO! ✨✨✨`
           sender: "Sistema",
           isBot: false,
           special: "golden-bingo"
@@ -604,6 +815,35 @@ function handleWin(roomType, allWinners) {
     setTimeout(() => {
       io.to(roomType).emit('chat-message', {
         message: `[JACKPOT]💰💰💰 JACKPOT HISTÓRICO! ${jackpotNames} levaram R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]💎💎💎 FORTUNA ENCONTRADA! ${jackpotNames} acaba de faturar R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🌋🌋🌋 EXPLOSÃO DE DINHEIRO! O Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')} saiu para ${jackpotNames}![/JACKPOT]`,
+                 `[JACKPOT]🏦🏦🏦 O BANCO QUEBROU! ${jackpotNames} levou a bolada de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]👑👑👑 REALEZA DO BINGO! ${jackpotNames} conquistou o prêmio máximo: R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🚀🚀🚀 RUMO À LUA! ${jackpotNames} faturou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🍀🍀🍀 SORTE LENDÁRIA! ${jackpotNames} ganhou o prêmio acumulado de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]⚡⚡⚡ IMPACTO TOTAL! O Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')} tem novos donos: ${jackpotNames}![/JACKPOT]`,
+                 `[JACKPOT]🎇🎇🎇 ESPETÁCULO DE PRÊMIOS! ${jackpotNames} limpou o pote de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🤑🤑🤑 CHUVA DE NOTAS! ${jackpotNames} garantiu R$ ${jackpotAmount.toLocaleString('pt-BR')} no Jackpot![/JACKPOT]`,
+                 `[JACKPOT]🏆🏆🏆 O TROFÉU DE OURO! ${jackpotNames} levou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🌈🌈🌈 FIM DO ARCO-ÍRIS! ${jackpotNames} encontrou R$ ${jackpotAmount.toLocaleString('pt-BR')} no pote![/JACKPOT]`,
+                 `[JACKPOT]🔥 🔥 🔥 RODADA INCENDIÁRIA! ${jackpotNames} faturou o acumulado de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🌟🌟🌟 ESTRELA DO DIA! ${jackpotNames} brilhou com o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🥊🥊🥊 NOCAUTE NO ACUMULADO! ${jackpotNames} levou R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🗝️🗝️🗝️ O COFRE FOI ABERTO! ${jackpotNames} resgatou R$ ${jackpotAmount.toLocaleString('pt-BR')} do Jackpot![/JACKPOT]`,
+                 `[JACKPOT]🎰🎰🎰 COMBINAÇÃO PERFEITA! ${jackpotNames} ganhou o prêmio de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🌍🌍🌍 O MUNDO É DELES! ${jackpotNames} conquistou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]💎💎💎 DIAMANTE BRUTO! ${jackpotNames} levou a raridade de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🎊🎊🎊 CARNAVAL DE VITÓRIA! ${jackpotNames} faturou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🛡️🛡️🛡️ CONQUISTA ÉPICA! ${jackpotNames} dominou o Jackpot: R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]💹💹💹 PATRIMÔNIO ATUALIZADO! ${jackpotNames} ganhou R$ ${jackpotAmount.toLocaleString('pt-BR')} no acumulado![/JACKPOT]`,
+                 `[JACKPOT]🔔🔔🔔 ALERTA DE MILIONÁRIO! ${jackpotNames} levou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]✨✨✨ MOMENTO MÁGICO! ${jackpotNames} acaba de ganhar R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🦁🦁🦁 RUGIDO DO VENCEDOR! ${jackpotNames} abocanhou R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]💎🤑💎 RIQUEZA SEM LIMITES! ${jackpotNames} faturou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🛸🛸🛸 PRÊMIO ESPACIAL! ${jackpotNames} decolou com R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🔱🔱🔱 PODER SUPREMO! ${jackpotNames} conquistou o Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🌋💰🌋 VULCÃO DE OURO! ${jackpotNames} levou a bolada de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+                 `[JACKPOT]🏅💎🏅 HONRA E GLÓRIA! ${jackpotNames} faturou o lendário Jackpot de R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`
         sender: "Sistema",
         isBot: false,
         type: "jackpot"
