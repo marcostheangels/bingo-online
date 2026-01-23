@@ -92,6 +92,14 @@ function updateControlButtons(stage) {
   if (!stage) return;
   currentStage = stage;
   document.getElementById('main-controls').className = `controls stage-${stage}`;
+  
+  // Atualiza o indicador de fase
+  const stageText = document.getElementById('stage-text');
+  if (stageText) {
+    stageText.textContent = stage === 'linha1' ? 'Linha 1' :
+                             stage === 'linha2' ? 'Linha 2' :
+                             'BINGO!';
+  }
 }
 
 // ✅ Função centralizada para atualizar TUDO relacionado a chips
@@ -139,7 +147,7 @@ function refreshAllChipDisplays() {
     });
   }
 
-  // 4. Atualiza ranking
+  // 4. Atualiza ranking com troféus e cores
   if (roomsState?.players) {
     const ranked = Object.entries(roomsState.players)
       .map(([id, p]) => ({ id, name: p.name, chips: p.chips, isBot: p.isBot }))
@@ -150,11 +158,34 @@ function refreshAllChipDisplays() {
     rankingList.innerHTML = '';
     ranked.forEach(player => {
       const li = document.createElement('li');
+      
+      // Troféu e cor baseado na posição
+      let trophy = '';
+      let bgColor = '';
+      if (player.position === 1) {
+        trophy = '🥇';
+        bgColor = '#FFD700'; // Dourado
+      } else if (player.position === 2) {
+        trophy = '🥈';
+        bgColor = '#C0C0C0'; // Prata
+      } else if (player.position === 3) {
+        trophy = '🥉';
+        bgColor = '#CD7F32'; // Bronze
+      }
+      
       li.innerHTML = `
         <div class="ranking-position">${player.position}º</div>
-        <div class="ranking-name">${player.name}</div>
+        <div class="ranking-name">${trophy} ${player.name}</div>
         <div class="ranking-chips">R$ ${player.chips.toLocaleString('pt-BR')}</div>
       `;
+      
+      // Aplica cor de fundo
+      if (bgColor) {
+        li.style.background = `${bgColor}20`; // 20% de opacidade
+        li.style.borderLeft = `5px solid ${bgColor}`;
+        li.style.color = player.position <= 3 ? '#1a1a2e' : 'white';
+      }
+      
       rankingList.appendChild(li);
     });
   }
@@ -228,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   socket.on('ranking-update', (ranking) => {
-    // Já é tratado por refreshAllChipDisplays, mas mantemos compatibilidade
+    // Já é tratado por refreshAllChipDisplays
   });
 
   socket.on('update-player', (data) => {
