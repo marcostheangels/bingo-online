@@ -929,9 +929,10 @@ async function handleAutoRestart(socket, roomType) {
   for (const [id, player] of Object.entries(room.players)) {
     // ✅ Bots NÃO compram cartelas automaticamente no restart
 // Eles só compram quando humanos entram ou compram cartelas
+// ✅ LIMPAR CARTELAS, MAS NÃO COMPRAR NOVAMENTE
 for (const [id, player] of Object.entries(room.players)) {
   if (player.isBot) {
-    // ✅ Mantém os chips, mas limpa as cartelas
+    // ✅ Mantém os chips, só limpa as cartelas
     player.cards75 = [];
     player.cards90 = [];
   } else {
