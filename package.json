@@ -10,7 +10,5 @@
     "pg": "^8.17.2",
     "socket.io": "^4.7.5"
   }
-  "scripts": {
-  "start": "node server.js",
-  "production": "NODE_ENV=production node server.js"
+
 }
