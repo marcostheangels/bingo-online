@@ -637,6 +637,9 @@ function resumeDraw(roomType) {
         }
       }
     }
+
+    // ✅ EMITIR ATUALIZAÇÃO DO POTE E JACKPOT PARA TODOS OS JOGADORES
+    io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
   }
 
   if (!hasHumanWithCards(roomType)) {
