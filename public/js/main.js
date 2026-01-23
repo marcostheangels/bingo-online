@@ -8,6 +8,7 @@ let roomsDrawnNumbers = [];
 let gameEnded = false;
 let playerName = '';
 let currentStage = 'linha1';
+let roomsState = {}; // ← Estado global da sala
 
 // ✅ CONEXÃO
 const SOCKET_URL = 'https://bingo-online-production.up.railway.app';
@@ -93,6 +94,72 @@ function updateControlButtons(stage) {
   document.getElementById('main-controls').className = `controls stage-${stage}`;
 }
 
+// ✅ Função centralizada para atualizar TUDO relacionado a chips
+function refreshAllChipDisplays() {
+  // 1. Atualiza saldo do jogador atual
+  const player = socket.id ? roomsState?.players?.[socket.id] : null;
+  if (player) {
+    document.getElementById('chips-display').textContent = player.chips.toLocaleString('pt-BR');
+  }
+
+  // 2. Atualiza pote e jackpot
+  if (roomsState?.pot != null) {
+    document.getElementById('pot-display').textContent = `Pote: R$ ${roomsState.pot.toLocaleString('pt-BR')}`;
+  }
+  if (roomsState?.jackpot != null) {
+    document.getElementById('jackpot-display').textContent = `Jackpot: R$ ${roomsState.jackpot.toLocaleString('pt-BR')}`;
+  }
+
+  // 3. Atualiza lista de jogadores
+  if (roomsState?.players) {
+    const playersArray = Object.entries(roomsState.players).map(([id, p]) => ({ id, ...p }));
+    const withoutChips = playersArray.filter(p => p.chips <= 0);
+    const withChips = playersArray.filter(p => p.chips > 0).sort((a, b) => b.chips - a.chips);
+
+    document.getElementById('no-chips-count').textContent = withoutChips.length;
+    document.getElementById('with-chips-count').textContent = withChips.length;
+
+    const withoutList = document.getElementById('without-chips-list').querySelector('ul');
+    const withList = document.getElementById('with-chips-list').querySelector('ul');
+    withoutList.innerHTML = '';
+    withList.innerHTML = '';
+
+    withoutChips.forEach(p => {
+      const li = document.createElement('li');
+      li.textContent = p.name;
+      li.classList.add('x-out');
+      withoutList.appendChild(li);
+    });
+
+    withChips.forEach(p => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span>${p.name}</span><span>R$ ${p.chips.toLocaleString('pt-BR')}</span>`;
+      if (p.currentWins > 0) li.classList.add('winner');
+      withList.appendChild(li);
+    });
+  }
+
+  // 4. Atualiza ranking
+  if (roomsState?.players) {
+    const ranked = Object.entries(roomsState.players)
+      .map(([id, p]) => ({ id, name: p.name, chips: p.chips, isBot: p.isBot }))
+      .sort((a, b) => b.chips - a.chips)
+      .map((p, i) => ({ ...p, position: i + 1 }));
+
+    const rankingList = document.getElementById('ranking-list');
+    rankingList.innerHTML = '';
+    ranked.forEach(player => {
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <div class="ranking-position">${player.position}º</div>
+        <div class="ranking-name">${player.name}</div>
+        <div class="ranking-chips">R$ ${player.chips.toLocaleString('pt-BR')}</div>
+      `;
+      rankingList.appendChild(li);
+    });
+  }
+}
+
 // ✅ Restante principal
 document.addEventListener('DOMContentLoaded', () => {
   const playerNameInput = document.getElementById('player-name');
@@ -137,9 +204,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   socket.on('room-state', (data) => {
+    roomsState = data; // ← SALVA O ESTADO
     document.getElementById('player-name-display').textContent = data.players[socket.id]?.name || '?';
-    const chips = data.players[socket.id]?.chips || 10000;
-    document.getElementById('chips-display').textContent = chips.toLocaleString('pt-BR');
     roomsDrawnNumbers = data.drawnNumbers || [];
     ballsCountDisplay.textContent = roomsDrawnNumbers.length;
     updateHistory(data.drawnNumbers || []);
@@ -147,52 +213,29 @@ document.addEventListener('DOMContentLoaded', () => {
     updateControlButtons(data.currentStage || 'linha1');
     const player = data.players[socket.id];
     if (player) saveGameState(playerName, player.chips, player.cards75, player.cards90);
+    refreshAllChipDisplays(); // ← ATUALIZA TUDO
   });
 
   socket.on('pot-update', (data) => {
-    potDisplay.textContent = `Pote: R$ ${data.pot.toLocaleString('pt-BR')}`;
-    jackpotDisplay.textContent = `Jackpot: R$ ${data.jackpot.toLocaleString('pt-BR')}`;
+    if (!roomsState) roomsState = {};
+    roomsState.pot = data.pot;
+    roomsState.jackpot = data.jackpot;
+    refreshAllChipDisplays();
   });
 
   socket.on('player-list', (data) => {
-    const withoutList = document.getElementById('without-chips-list').querySelector('ul');
-    const withList = document.getElementById('with-chips-list').querySelector('ul');
-    withoutList.innerHTML = '';
-    withList.innerHTML = '';
-    document.getElementById('no-chips-count').textContent = data.withoutChips.length;
-    document.getElementById('with-chips-count').textContent = data.withChips.length;
-    data.withoutChips.forEach(p => {
-      const li = document.createElement('li');
-      li.textContent = p.name;
-      li.classList.add('x-out');
-      withoutList.appendChild(li);
-    });
-    data.withChips.forEach(p => {
-      const li = document.createElement('li');
-      li.innerHTML = `<span>${p.name}</span><span>R$ ${p.chips.toLocaleString('pt-BR')}</span>`;
-      if (p.currentWins > 0) li.classList.add('winner');
-      withList.appendChild(li);
-    });
+    refreshAllChipDisplays();
   });
 
   socket.on('ranking-update', (ranking) => {
-    const rankingList = document.getElementById('ranking-list');
-    rankingList.innerHTML = '';
-    ranking.forEach(player => {
-      const li = document.createElement('li');
-      li.innerHTML = `
-        <div class="ranking-position">${player.position}º</div>
-        <div class="ranking-name">${player.name}</div>
-        <div class="ranking-chips">R$ ${player.chips.toLocaleString('pt-BR')}</div>
-      `;
-      rankingList.appendChild(li);
-    });
+    // Já é tratado por refreshAllChipDisplays, mas mantemos compatibilidade
   });
 
   socket.on('update-player', (data) => {
-    document.getElementById('chips-display').textContent = data.chips.toLocaleString('pt-BR');
-    const currentState = loadGameState(playerName) || {};
-    saveGameState(playerName, data.chips, currentState.cards75 || [], currentState.cards90 || []);
+    if (roomsState?.players?.[socket.id]) {
+      roomsState.players[socket.id].chips = data.chips;
+    }
+    refreshAllChipDisplays();
   });
 
   // ✅ Receber mensagens do chat
@@ -252,7 +295,6 @@ document.addEventListener('DOMContentLoaded', () => {
       speak(`Bingo feito por ${data.winnerNames}!`);
       checkAchievements('bingo', 0, data.ballsCount);
 
-      // ✅ Verifica se foi jackpot
       if (isJackpot) {
         showJackpotVictory(data.jackpotAmount || data.totalPrize, data.winnerNames, data.ballsCount);
       } else {
@@ -262,9 +304,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (data.newStage) updateControlButtons(data.newStage);
     if (winType === 'bingo') gameEnded = true;
-  });
 
-  // ❌ REMOVIDO: Não há evento separado 'jackpot-won'
+    // Força atualização após vitória
+    setTimeout(() => {
+      socket.emit('sync-state');
+    }, 500);
+  });
 
   socket.on('show-restart-button', () => { gameEnded = true; });
   socket.on('game-over', () => { gameEnded = true; });
@@ -280,6 +325,8 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.removeItem(`bingo_player_${playerName}`);
     renderCards();
     updateControlButtons('linha1');
+    roomsState = {};
+    refreshAllChipDisplays();
   });
   socket.on('error', (msg) => showAdminMessage(msg, 'error'));
   socket.on('message', (msg) => showAdminMessage(msg, 'success'));
@@ -323,6 +370,16 @@ document.addEventListener('DOMContentLoaded', () => {
       socket.emit('restart-game');
     }
   });
+
+  // ✅ MOBILE: Wake Lock e sorteio em background
+  if ('wakeLock' in navigator) {
+    const gameObserver = new MutationObserver(() => {
+      if (gameArea.style.display === 'block') {
+        navigator.wakeLock.request('screen').catch(err => console.warn('Wake Lock:', err));
+      }
+    });
+    gameObserver.observe(gameArea, { attributes: true, attributeFilter: ['style'] });
+  }
 
   window.addEventListener('beforeunload', (e) => {
     if (currentRoom && !gameEnded) {
@@ -465,81 +522,6 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
       };
-    }
-  }
-});
-// ============ FUNÇÕES PARA MOBILE ============
-
-// 1. 🔌 Impedir que a tela apague (Wake Lock)
-let wakeLock = null;
-
-async function requestWakeLock() {
-  if ('wakeLock' in navigator) {
-    try {
-      wakeLock = await navigator.wakeLock.request('screen');
-      console.log('✅ Wake Lock ativado — tela permanecerá ligada.');
-      
-      // Opcional: ouvir quando o lock é liberado
-      wakeLock.addEventListener('release', () => {
-        console.log('⚠️ Wake Lock liberado.');
-      });
-    } catch (err) {
-      console.warn('⚠️ Não foi possível ativar o Wake Lock:', err);
-    }
-  } else {
-    console.warn('⚠️ Wake Lock não suportado neste navegador.');
-  }
-}
-
-// 2. ▶️ Manter o sorteio funcionando mesmo em segundo plano
-let lastDrawTime = 0;
-const DRAW_INTERVAL_MS = 3000; // 3 segundos entre bolas
-
-function startBackgroundSafeDraw() {
-  // Cancela qualquer intervalo antigo
-  if (window.drawInterval) clearInterval(window.drawInterval);
-
-  // Usa timestamp para garantir precisão
-  function drawTick() {
-    const now = Date.now();
-    if (!lastDrawTime || now - lastDrawTime >= DRAW_INTERVAL_MS) {
-      lastDrawTime = now;
-      
-      // Só dispara se estiver em uma sala ativa
-      if (currentRoom && !gameEnded) {
-        socket.emit('draw-next-number'); // ← vamos criar este evento
-      }
-    }
-    
-    // Continua rodando mesmo em background
-    window.drawRAF = requestAnimationFrame(drawTick);
-  }
-
-  drawTick();
-}
-
-// 3. 🔄 Iniciar tudo quando entrar em uma sala
-document.addEventListener('DOMContentLoaded', () => {
-  // Ativa Wake Lock assim que o jogo começa
-  const gameArea = document.getElementById('game-area');
-  const observer = new MutationObserver(() => {
-    if (gameArea.style.display === 'block') {
-      requestWakeLock();
-      // Não inicia sorteio automático aqui — só quando o servidor mandar
-    }
-  });
-  observer.observe(gameArea, { attributes: true, attributeFilter: ['style'] });
-});
-
-// 4. 📱 Detectar foco/blur da aba (opcional: pausar UI, mas não o sorteio)
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    console.log('📱 App em segundo plano — sorteio continua via servidor.');
-  } else {
-    console.log('📱 App em primeiro plano.');
-    // Opcional: atualizar UI imediatamente
-    if (currentRoom) {
-      socket.emit('sync-state');
     }
   }
 });
