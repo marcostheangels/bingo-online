@@ -65,12 +65,12 @@ const BOT_NAMES = [
 
 // ✅ CONFIGURAÇÕES JUSTAS
 const PRICE_PER_CARD = 100;
-const INITIAL_CHIPS = 10000; // Chips iniciais para novos jogadores
-const MAX_CARDS_PER_PLAYER = 10; // Limite máximo de 10 cartelas por jogador
+const INITIAL_CHIPS = 10000;
+const MAX_CARDS_PER_PLAYER = 10;
 const JACKPOT_BALL_LIMIT = 40;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '0589';
 
-// ✅ Salas em memória - CORRIGIDO maxBots para 25
+// ✅ Salas em memória
 const rooms = {
   'bingo75': { 
     name: 'Bingo 75 (Americano)', 
@@ -78,13 +78,14 @@ const rooms = {
     drawnNumbers: [], 
     gameActive: false, 
     lastNumber: null,
-    maxBots: 25, // ✅ AGORA SÃO 25 BOTS
+    maxBots: 10, // ✅ AGORA MÁXIMO DE 10 BOTS
     pot: 0,
     drawInterval: null,
     currentStage: 'linha1',
     stageCompleted: { linha1: false, linha2: false, bingo: false },
     jackpot: 1000000,
-    gameCompleted: false
+    gameCompleted: false,
+    recentWinners: [] // ✅ Para rastrear Markim/Marília
   },
   'bingo90': { 
     name: 'Bingo 90 (Brasileiro)', 
@@ -92,17 +93,18 @@ const rooms = {
     drawnNumbers: [], 
     gameActive: false, 
     lastNumber: null,
-    maxBots: 25, // ✅ AGORA SÃO 25 BOTS
+    maxBots: 10, // ✅ AGORA MÁXIMO DE 10 BOTS
     pot: 0,
     drawInterval: null,
     currentStage: 'linha1',
     stageCompleted: { linha1: false, linha2: false, bingo: false },
     jackpot: 1000000,
-    gameCompleted: false
+    gameCompleted: false,
+    recentWinners: []
   }
 };
 
-// ✅ MENSAGENS DE PARABENIZAÇÃO (APENAS QUANDO ALGUÉM GANHA)
+// ✅ MENSAGENS DE PARABENIZAÇÃO
 function getVictoryMessage(winType, winnerNames) {
   const messages = {
     linha1: [
@@ -295,7 +297,6 @@ function getLineStatusForCard(card, drawnNumbers) {
   };
 }
 
-// ✅ CORRIGIDA: função aceita apenas 2 parâmetros
 function calculateBallsLeftForCard(card, drawnNumbers) {
   const markedInRow = [0, 0, 0];
   for (let r = 0; r < 3; r++) {
@@ -319,16 +320,13 @@ function calculateBallsLeftForCard(card, drawnNumbers) {
   };
 }
 
-// ✅ FUNÇÃO DE DISTRIBUIÇÃO DE PRÊMIOS - CORRIGIDA E VERIFICADA
 function distributePrize(room, winners, prize) {
   if (winners.length === 0 || prize <= 0) return [];
   
-  // ✅ DIVISÃO EXATA: todos os vencedores (humanos e bots) dividem o prêmio igualmente
   const baseShare = Math.floor(prize / winners.length);
   const remainder = prize % winners.length;
   
   return winners.map((winner, index) => {
-    // ✅ Distribui o resto do prêmio para os primeiros vencedores (método justo)
     let finalShare = baseShare + (index < remainder ? 1 : 0);
     room.players[winner.playerId].chips += finalShare;
     return {
@@ -393,8 +391,6 @@ function resumeDraw(roomType) {
       lastNumber: number
     });
     
-    // ✅ SEM VERIFICAÇÃO DE BOTS PRÓXIMOS DA VITÓRIA
-    
     if (roomType === 'bingo90') {
       Object.keys(room.players).forEach(playerId => {
         const player = room.players[playerId];
@@ -418,6 +414,16 @@ function handleWin(roomType, allWinners) {
   const currentStage = room.currentStage;
   if (room.stageCompleted[currentStage]) return;
   room.stageCompleted[currentStage] = true;
+
+  // ✅ Registrar se Markim ou Marília venceram
+  const markimOrMariliaWon = allWinners.some(w => {
+    const name = room.players[w.playerId]?.name;
+    return name === 'Markim' || name === 'Marília';
+  });
+  if (markimOrMariliaWon) {
+    room.recentWinners = ['Markim', 'Marília']; // Sinaliza que deve adicionar bots no restart
+  }
+
   let prize = 0;
   if (currentStage === 'linha1') {
     prize = Math.floor(room.pot * 0.20);
@@ -441,13 +447,12 @@ function handleWin(roomType, allWinners) {
   if (currentStage === 'bingo' && room.drawnNumbers.length <= JACKPOT_BALL_LIMIT) {
     wonJackpot = true;
     const jackpotPrize = room.jackpot;
-    room.jackpot = 1000000; // Resetar jackpot após ganhar
+    room.jackpot = 1000000;
     jackpotWinners = distributePrize(room, allWinners, jackpotPrize);
   }
   const winnerNames = results.map(r => r.playerName).join(', ');
   const totalPrize = results.reduce((sum, r) => sum + r.prize, 0);
   
-  // ✅ Enviar mensagem de parabenização no chat (APENAS QUANDO ALGUÉM GANHA)
   const victoryMessage = getVictoryMessage(currentStage, winnerNames);
   io.to(roomType).emit('chat-message', {
     message: victoryMessage,
@@ -470,7 +475,6 @@ function handleWin(roomType, allWinners) {
       jackpotAmount: room.jackpot,
       ballsCount: room.drawnNumbers.length
     });
-    // ✅ Mensagem especial de jackpot no chat
     io.to(roomType).emit('chat-message', {
       message: `💰💰💰 JACKPOT HISTÓRICO! ${jackpotNames} ganharam o prêmio de R$ ${room.jackpot.toLocaleString('pt-BR')}!`,
       sender: "Sistema",
@@ -490,11 +494,11 @@ function handleWin(roomType, allWinners) {
   }, 5000);
 }
 
-// ✅ Função CORRIGIDA para adicionar bot à sala - 25 BOTS!
+// ✅ Função para adicionar bot com 3 cartelas
 function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
   const room = rooms[roomType];
   const currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
-  if (currentBots >= room.maxBots) return; // Agora respeita maxBots = 25
+  if (currentBots >= room.maxBots) return;
   
   const usedNames = new Set();
   Object.values(room.players).forEach(p => { if (p.isBot) usedNames.add(p.name); });
@@ -507,16 +511,10 @@ function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
   if (usedNames.has(name)) name = `${name} ${Math.floor(Math.random() * 1000)}`;
   
   const botId = `bot_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+  const cardCount = 3; // ✅ EXATAMENTE 3 CARTELAS
+  const totalCost = cardCount * PRICE_PER_CARD; // 300 chips
   
-  // ✅ BOTS COMPRAM EXATAMENTE 10 CARTELAS COMO OS HUMANOS
-  const cardCount = MAX_CARDS_PER_PLAYER; // 10 cartelas fixas
-  const totalCost = cardCount * PRICE_PER_CARD; // 10 * 100 = 1000 chips
-  
-  // ✅ Verificar se o bot tem chips suficientes
-  if (initialChips < totalCost) {
-    // Se não tiver chips suficientes, não adiciona o bot
-    return;
-  }
+  if (initialChips < totalCost) return;
   
   const cards90 = roomType === 'bingo90' 
     ? Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card())) 
@@ -527,7 +525,7 @@ function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
     
   room.players[botId] = {
     name: name,
-    chips: initialChips - totalCost, // 10.000 - 1.000 = 9.000 chips restantes
+    chips: initialChips - totalCost,
     isBot: true,
     cards75,
     cards90,
@@ -535,9 +533,17 @@ function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
     currentWins: 0
   };
   
-  room.pot += totalCost; // Adiciona 1.000 chips ao pote por bot
-  room.jackpot += Math.floor(totalCost * 0.5); // Adiciona 500 ao jackpot
+  room.pot += totalCost;
+  room.jackpot += Math.floor(totalCost * 0.5);
   console.log(`🤖 Bot adicionado: ${name} comprou ${cardCount} cartelas. Pote atual: ${room.pot}`);
+}
+
+// ✅ Adicionar bots iniciais (3 bots)
+function initializeBots(roomType) {
+  const room = rooms[roomType];
+  while (Object.keys(room.players).filter(id => id.startsWith('bot_')).length < 3) {
+    addBotToRoom(roomType, INITIAL_CHIPS);
+  }
 }
 
 function broadcastPlayerList(roomType) {
@@ -591,7 +597,6 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // ✅ Sanitização no servidor
     playerName = sanitizeName(playerName);
 
     const room = rooms[roomType];
@@ -612,7 +617,6 @@ io.on('connection', (socket) => {
       room.players[playerId] = validatePlayerState(playerData, roomType);
     } else {
       playerId = socket.id;
-      // ✅ NOVOS JOGADORES RECEBEM CHIPS INICIAIS
       const initialChips = (savedChips != null && savedChips >= 0) ? savedChips : INITIAL_CHIPS;
       const cards75 = (!room.gameCompleted && savedCards75) ? savedCards75 : [];
       const cards90 = (!room.gameCompleted && savedCards90) ? savedCards90.map(c => validateAndFixBingo90Card(c)) : [];
@@ -630,16 +634,10 @@ io.on('connection', (socket) => {
     socket.join(roomType);
     socket.data = { roomType };
     
-    // ✅ ADICIONAR BOTS PARA COMPLETAR 25 - MAS RESPEITANDO CHIPS DISPONÍVEIS
-    let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
-    while (currentBots < room.maxBots) {
-      addBotToRoom(roomType);
-      const newBotCount = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
-      if (newBotCount === currentBots) {
-        // Não conseguiu adicionar mais bots (sem chips suficientes)
-        break;
-      }
-      currentBots = newBotCount;
+    // ✅ Inicializar com 3 bots se for o primeiro humano
+    if (Object.keys(room.players).filter(id => !room.players[id].isBot).length === 1 && 
+        Object.keys(room.players).filter(id => id.startsWith('bot_')).length === 0) {
+      initializeBots(roomType);
     }
     
     socket.emit('room-welcome', {
@@ -687,7 +685,6 @@ io.on('connection', (socket) => {
     broadcastRanking(roomType);
   });
 
-  // ✅ Endpoint de compra de cartelas - ADICIONAR VALIDAÇÃO DE LIMITE
   socket.on('buy-cards', ({ count, cardType }) => {
     try {
       const roomType = socket.data?.roomType;
@@ -698,7 +695,6 @@ io.on('connection', (socket) => {
       const player = room.players[socket.id];
       if (!player || player.isBot) return;
       
-      // ✅ VERIFICAR LIMITE TOTAL DE CARTELAS
       const currentCardCount = cardType === '75' ? player.cards75.length : player.cards90.length;
       if (currentCardCount + count > MAX_CARDS_PER_PLAYER) {
         return socket.emit('error', `Você já tem ${currentCardCount} cartelas. Máximo permitido: ${MAX_CARDS_PER_PLAYER}.`);
@@ -784,19 +780,17 @@ io.on('connection', (socket) => {
     socket.emit(result.success ? 'message' : 'error', result.message);
   });
 
-  // ✅ Reinício do jogo - MANTER SALDOS REAIS DE TODOS OS JOGADORES!
   socket.on('restart-game', () => {
     const roomType = socket.data?.roomType;
     if (!roomType) return socket.emit('error', 'Sala inválida.');
     pauseDraw(roomType);
     const room = rooms[roomType];
     
-    // ✅ MANTEM OS SALDOS REAIS DE TODOS OS JOGADORES (humanos E bots!)
     const allPlayers = {};
     for (const [id, player] of Object.entries(room.players)) {
       allPlayers[id] = {
         name: player.name,
-        chips: player.chips, // Mantém o saldo real de TODOS
+        chips: player.chips,
         isBot: player.isBot,
         winsCount: player.winsCount || 0,
         cards75: [],
@@ -814,26 +808,27 @@ io.on('connection', (socket) => {
     room.gameCompleted = false;
     room.gameActive = false;
     
-    // ✅ ADICIONAR BOTS PARA COMPLETAR 25 (usando chips existentes de cada bot)
+    // ✅ Verificar se deve adicionar bots até 10
     let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
-    const botsToAdd = room.maxBots - currentBots;
-    
-    // Adicionar novos bots apenas se necessário
-    for (let i = 0; i < botsToAdd; i++) {
-      addBotToRoom(roomType, INITIAL_CHIPS); // Novos bots começam com chips iniciais
+    if (room.recentWinners.length > 0 && currentBots < room.maxBots) {
+      while (currentBots < room.maxBots) {
+        addBotToRoom(roomType, INITIAL_CHIPS);
+        const newCount = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
+        if (newCount === currentBots) break;
+        currentBots = newCount;
+      }
+      room.recentWinners = []; // Limpar sinal
     }
     
-    // Comprar cartelas para bots existentes que tenham chips suficientes
+    // Comprar cartelas para bots existentes (3 cartelas cada)
     for (const [id, player] of Object.entries(room.players)) {
       if (player.isBot && player.cards90.length === 0 && player.cards75.length === 0) {
-        // Bot existente precisa comprar cartelas
-        const cardCount = Math.min(MAX_CARDS_PER_PLAYER, Math.floor(player.chips / PRICE_PER_CARD));
-        if (cardCount > 0) {
-          const totalCost = cardCount * PRICE_PER_CARD;
+        const cardCount = 3;
+        const totalCost = cardCount * PRICE_PER_CARD;
+        if (player.chips >= totalCost) {
           player.chips -= totalCost;
           room.pot += totalCost;
           room.jackpot += Math.floor(totalCost * 0.5);
-          
           if (roomType === 'bingo90') {
             player.cards90 = Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card()));
           } else {
@@ -850,16 +845,13 @@ io.on('connection', (socket) => {
     console.log(`[${roomType}] Jogo reiniciado. ${Object.keys(room.players).filter(id => id.startsWith('bot_')).length} bots ativos.`);
   });
 
-  // ✅ EVENTO DE CHAT-MESSAGE (IA INTELIGENTE)
   socket.on('chat-message', ({ message, sender, isBot }) => {
     const roomType = socket.data?.roomType;
     if (!roomType || !rooms[roomType]) return;
     
-    // Se for mensagem de humano, IA responde inteligentemente
     if (!isBot) {
       io.to(roomType).emit('chat-message', { message, sender, isBot: false });
       
-      // ✅ IA responde apenas a perguntas relevantes
       const lowerMsg = message.toLowerCase();
       const relevantKeywords = ['bingo', 'jogo', 'cartela', 'número', 'sorteio', 'como', 'regra', 'vitória', 'prêmio', 'chips', 'comprar', 'linha', 'jackpot', 'estratégia', 'bot', 'chat'];
       
@@ -902,12 +894,10 @@ io.on('connection', (socket) => {
   });
 });
 
-// ✅ Função de validação de estado do jogador
 function validatePlayerState(player, roomType) {
   if (player.chips == null || typeof player.chips !== 'number' || player.chips < 0) player.chips = INITIAL_CHIPS;
   if (!Array.isArray(player.cards90)) player.cards90 = [];
   if (!Array.isArray(player.cards75)) player.cards75 = [];
-  // ✅ APLICAR LIMITE DE CARTELAS
   if (player.cards90.length > MAX_CARDS_PER_PLAYER) {
     player.cards90 = player.cards90.slice(0, MAX_CARDS_PER_PLAYER);
   }
@@ -922,5 +912,3 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
 });
-
-                    
