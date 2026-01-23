@@ -927,27 +927,18 @@ async function handleAutoRestart(socket, roomType) {
   room.currentWinnerId = null;
 
   for (const [id, player] of Object.entries(room.players)) {
-    if (player.isBot) {
-      const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
-      const cardCount = Math.min(getBotCardCount(totalBotsNow), Math.floor(player.chips / PRICE_PER_CARD));
-      if (cardCount > 0) {
-        const totalCost = cardCount * PRICE_PER_CARD;
-        player.chips -= totalCost;
-        room.pot += totalCost;
-        room.jackpot += Math.floor(totalCost * 0.5);
-        if (roomType === 'bingo90') {
-          player.cards90 = Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card()));
-          player.cards75 = [];
-        } else {
-          player.cards75 = Array(cardCount).fill().map(() => generateBingo75Card());
-          player.cards90 = [];
-        }
-      }
-    } else {
-      player.cards75 = [];
-      player.cards90 = [];
-    }
+    // ✅ Bots NÃO compram cartelas automaticamente no restart
+// Eles só compram quando humanos entram ou compram cartelas
+for (const [id, player] of Object.entries(room.players)) {
+  if (player.isBot) {
+    // ✅ Mantém os chips, mas limpa as cartelas
+    player.cards75 = [];
+    player.cards90 = [];
+  } else {
+    player.cards75 = [];
+    player.cards90 = [];
   }
+}
 
   io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
   io.to(roomType).emit('room-reset');
