@@ -240,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   socket.on('room-state', (data) => {
-    roomsState = data; // ← SALVA O ESTADO
+    roomsState = data;
     document.getElementById('player-name-display').textContent = data.players[socket.id]?.name || '?';
     roomsDrawnNumbers = data.drawnNumbers || [];
     ballsCountDisplay.textContent = roomsDrawnNumbers.length;
@@ -249,7 +249,14 @@ document.addEventListener('DOMContentLoaded', () => {
     updateControlButtons(data.currentStage || 'linha1');
     const player = data.players[socket.id];
     if (player) saveGameState(playerName, player.chips, player.cards75, player.cards90);
-    refreshAllChipDisplays(); // ← ATUALIZA TUDO
+    refreshAllChipDisplays();
+  });
+
+  // ✅ NOVO: Receber "cartelas na boa"
+  socket.on('near-win-stats', (stats) => {
+    document.getElementById('near-line1').textContent = stats.line1 || 0;
+    document.getElementById('near-line2').textContent = stats.line2 || 0;
+    document.getElementById('near-bingo').textContent = stats.bingo || 0;
   });
 
   socket.on('pot-update', (data) => {
