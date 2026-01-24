@@ -87,7 +87,7 @@ function saveGameState(name, chips, cards75, cards90) {
   }
 }
 
-// ✅ Atualização de interface com reset automático dos contadores "na boa"
+// ✅ Atualização de interface com reset automático dos contadores "na boa" e cores nos botões
 function updateControlButtons(stage) {
   if (!stage) return;
   currentStage = stage;
@@ -101,22 +101,34 @@ function updateControlButtons(stage) {
                              'BINGO!';
   }
 
-  // ✅ ZERA OS CONTADORES VISUAIS CONFORME A FASE ATUAL
+  // ✅ Referências aos elementos dos contadores
   const nearLine1 = document.getElementById('near-line1');
   const nearLine2 = document.getElementById('near-line2');
-  const nearBingo = document.getElementById('near-bingo');
 
-  if (nearLine1 && nearLine2 && nearBingo) {
+  // ✅ Zera os contadores IRRELEVANTES para a fase atual
+  if (nearLine1 && nearLine2) {
     if (stage === 'linha1') {
-      // Mantém todos visíveis (não zera nada)
+      // Mostra tudo — não zera nada
     } else if (stage === 'linha2') {
-      // Já passou da linha 1 → zera linha 1
+      // Já passou da linha 1 → não faz sentido mostrar "na boa" para linha 1
       nearLine1.textContent = '0';
     } else if (stage === 'bingo') {
-      // Já passou da linha 2 → zera linha 2
+      // Já passou da linha 2 → não faz sentido mostrar "na boa" para linha 2
       nearLine2.textContent = '0';
-      // O bingo continua sendo atualizado normalmente pelo servidor
     }
+  }
+
+  // ✅ Cores nos botões
+  const line2Btn = document.getElementById('line2-btn');
+  const bingoBtn = document.getElementById('bingo-btn');
+
+  if (line2Btn) line2Btn.style.backgroundColor = '';
+  if (bingoBtn) bingoBtn.style.backgroundColor = '';
+
+  if (stage === 'linha2' && line2Btn) {
+    line2Btn.style.backgroundColor = '#ab47bc'; // roxo
+  } else if (stage === 'bingo' && bingoBtn) {
+    bingoBtn.style.backgroundColor = '#ffd700'; // dourado
   }
 }
 
@@ -270,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshAllChipDisplays();
   });
 
-  // ✅ NOVO: Receber "cartelas na boa"
+  // ✅ Receber atualizações de "cartelas na boa"
   socket.on('near-win-stats', (stats) => {
     document.getElementById('near-line1').textContent = stats.line1 || 0;
     document.getElementById('near-line2').textContent = stats.line2 || 0;
