@@ -796,8 +796,7 @@ if (currentStage === 'linha1') {
     `[BINGO]👑👑 O REI DO BINGO! ${winnerNames} limpou a banca com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`
   ];
   formattedMessage = msgs[Math.floor(Math.random() * msgs.length)];
- 
-  });
+ }
   // ✅ Verificar vitórias consecutivas (apenas humanos)
   const humanWinners = results.filter(r => !room.players[r.playerId].isBot);
   for (const hw of humanWinners) {
