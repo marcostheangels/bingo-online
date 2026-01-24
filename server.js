@@ -144,8 +144,8 @@ const BOT_NAMES = [
 ];
 
 // ✅ CONFIGURAÇÕES JUSTAS
-const PRICE_PER_CARD = 100;
-const INITIAL_CHIPS = 10000;
+const PRICE_PER_CARD = 1000;
+const INITIAL_CHIPS = 100000;
 const MAX_CARDS_PER_PLAYER = 10;
 const JACKPOT_BALL_LIMIT = 60;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '0589';
@@ -723,7 +723,7 @@ function resumeDraw(roomType) {
 
     const winners = checkWinForAllPlayers(roomType);
     if (winners) handleWin(roomType, winners);
-  }, 3000);
+  }, 5000); // 👈 INTERVALO AUMENTADO PARA 5 SEGUNDOS
 }
 
 function startAutoRestart(roomType) {
@@ -731,7 +731,7 @@ function startAutoRestart(roomType) {
   if (room.autoRestartTimeout) clearTimeout(room.autoRestartTimeout);
   io.to(roomType).emit('countdown-start', { seconds: 25 });
   room.autoRestartTimeout = setTimeout(() => {
-    const fakeSocket = { data: { roomType }, id: 'system' };
+    const fakeSocket = { emit: () => {}, data: { roomType }, id: 'system' };
     handleAutoRestart(fakeSocket, roomType);
   }, 25000);
 }
@@ -769,8 +769,10 @@ async function handleWin(roomType, allWinners) {
     jackpotWinners = distributePrize(room, allWinners, jackpotPrize);
   }
 
-  const winnerNames = results.map(r => r.playerName).join(', ');
-  const totalPrize = results.reduce((sum, r) => sum + r.prize, 0);
+  // ✅ REMOVER NOMES DUPLICADOS
+  const uniqueWinnerNames = [...new Set(results.map(r => r.playerName))];
+  const winnerNames = uniqueWinnerNames.join(', ');
+
   if (results.length > 0) {
     room.currentWinnerId = results[0].playerId;
   }
@@ -801,6 +803,8 @@ async function handleWin(roomType, allWinners) {
     ];
     formattedMessage = msgs[Math.floor(Math.random() * msgs.length)];
   }
+
+  const totalPrize = results.reduce((sum, r) => sum + r.prize, 0);
 
   io.to(roomType).emit('chat-message', {
     message: formattedMessage,
@@ -843,9 +847,10 @@ async function handleWin(roomType, allWinners) {
     }, 1000);
   }
 
-  // ✅ Jackpot
+  // ✅ Jackpot com nomes únicos
   if (wonJackpot) {
-    const jackpotNames = jackpotWinners.map(w => w.playerName).join(', ');
+    const jackpotUniqueNames = [...new Set(jackpotWinners.map(w => w.playerName))];
+    const jackpotNames = jackpotUniqueNames.join(', ');
     const jackpotAmount = room.jackpot; // valor ANTES do reset
     setTimeout(() => {
       io.to(roomType).emit('chat-message', {
