@@ -3,46 +3,39 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Bingo Multiplayer</title>
+  <title>Bingo MultiPlayer</title>
   <!-- Socket.IO -->
   <script src="/socket.io/socket.io.js"></script>
   <!-- Fontes -->
   <link href="https://fonts.googleapis.com/css2?family=Goldman:wght@400;700&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
   <!-- CSS Externo -->
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <div class="container">
-    <!-- TELA DE LOGIN -->
+    <!-- TELA DE LOGIN MODERNA -->
     <div id="login-screen">
-      <div style="text-align: center; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); max-width: 500px; margin: 60px auto;">
-        <h1 style="font-size: 2.4em; margin-bottom: 20px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-          🎰 <strong>BINGO</strong> MULTIPLAYER 🎰
-        </h1>
-        <p style="margin-bottom: 20px; color: #fff; font-size: 1.1em;">Entre com seu nome e comece a jogar!</p>
+      <div id="chips-container"></div>
+
+      <div class="login-card">
+        <div class="logo">
+          <h1>Bingo <span>Multi</span> Player</h1>
+        </div>
+        <p class="subtitle">Escolha seu modo de jogo</p>
+
         <input
           type="text"
           id="player-name"
           placeholder="Digite seu nome (2-15 letras)"
           maxlength="15"
           autocomplete="off"
-          style="padding: 14px; width: 80%; max-width: 300px; border: none; border-radius: 50px; font-size: 1.1em; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); outline: none;"
+          class="input-box"
         />
-        <div style="margin-top: 25px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
-          <button id="join-bingo75"
-            style="background: #ff9a00; color: white; padding: 12px 24px; border: none; border-radius: 50px; font-weight: bold; font-size: 1.1em; cursor: pointer; box-shadow: 0 4px 12px rgba(255,154,0,0.4); transition: all 0.3s; min-width: 140px;"
-            onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 16px rgba(255,154,0,0.6)';"
-            onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(255,154,0,0.4)';"
-          >
-            🇺🇸 Bingo 75
-          </button>
-          <button id="join-bingo90"
-            style="background: #e91e63; color: white; padding: 12px 24px; border: none; border-radius: 50px; font-weight: bold; font-size: 1.1em; cursor: pointer; box-shadow: 0 4px 12px rgba(233,30,99,0.4); transition: all 0.3s; min-width: 140px;"
-            onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 16px rgba(233,30,99,0.6)';"
-            onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(233,30,99,0.4)';"
-          >
-            🇧🇷 Bingo 90
-          </button>
+
+        <div class="game-modes">
+          <button id="join-bingo75" class="mode-btn usa">🇺🇸 Bingo 75</button>
+          <button id="join-bingo90" class="mode-btn br">🇧🇷 Bingo 90</button>
         </div>
       </div>
     </div>
@@ -93,7 +86,7 @@
           <input type="number" id="card-count" min="1" max="10" value="1" style="width: 80px; padding: 4px;" inputmode="numeric">
         </label>
         <button id="set-10-cards">10</button>
-        <button id="buy-btn">Comprar (1000 chips/CARTELA)</button>
+        <button id="buy-btn">Comprar (100 chips/carta)</button>
         <button id="start-btn">Iniciar Sorteio</button>
         <!-- ❌ Botão Linha 1 REMOVIDO -->
         <button id="line2-btn">Linha 2</button>
@@ -215,5 +208,49 @@
   <script src="js/ui.js"></script>
   <script src="js/chat.js"></script>
   <script src="js/main.js"></script>
+
+  <!-- SCRIPT DE FICHAS ANIMADAS -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const container = document.getElementById('chips-container');
+      if (!container) return;
+
+      const colors = ['#e63946', '#ffd700', '#1d3557', '#52b788', '#333333'];
+
+      function createChip() {
+        const chip = document.createElement('div');
+        chip.className = 'chip-particle';
+        
+        const size = Math.random() * (80 - 40) + 40;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const startPos = Math.random() * 100;
+        const duration = Math.random() * (10 - 5) + 5;
+        const rotation = Math.random() * 360;
+
+        chip.style.width = `${size}px`;
+        chip.style.height = `${size}px`;
+        chip.style.backgroundColor = color;
+        chip.style.left = `${startPos}%`;
+        chip.style.bottom = `-100px`;
+        chip.style.opacity = Math.random() * (0.8 - 0.4) + 0.4;
+        
+        container.appendChild(chip);
+
+        const animation = chip.animate([
+          { transform: `translateY(0) rotate(${rotation}deg)`, opacity: 0 },
+          { opacity: 1, offset: 0.2 },
+          { transform: `translateY(-120vh) rotate(${rotation + 720}deg)`, opacity: 0 }
+        ], {
+          duration: duration * 1000,
+          easing: 'linear'
+        });
+
+        animation.onfinish = () => chip.remove();
+      }
+
+      setInterval(createChip, 400);
+      for(let i = 0; i < 10; i++) setTimeout(createChip, i * 300);
+    });
+  </script>
 </body>
 </html>
