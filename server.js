@@ -1,3 +1,4 @@
+
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -770,33 +771,32 @@ async function handleWin(roomType, allWinners) {
     room.addBotOnNextRestart = true;
     console.log(`✅ Vitória de Markim ou Marília! Bot será adicionado no próximo restart.`);
   }
-  // ✅ Mensagem de vitória
-  let formattedMessage = "";
-  if (currentStage === 'linha1') {
-    const msgs = [
-      `[L1]🎉 Parabéns, ${winnerNames}! Você ganhou R$ ${totalPrize.toLocaleString('pt-BR')} com a primeira linha![/L1]`,
-      `[L1]✨ Primeira etapa concluída! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`
-    ];
-    formattedMessage = msgs[Math.floor(Math.random() * msgs.length)];
-  } else if (currentStage === 'linha2') {
-    const msgs = [
-      `[L2]🎊 Dupla vitória! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')} pelas duas linhas![/L2]`,
-      `[L2]🌓 Metade do caminho! ${winnerNames} levou a Linha Dupla: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`
-    ];
-    formattedMessage = msgs[Math.floor(Math.random() * msgs.length)];
-  } else if (currentStage === 'linha3') {
-    const msgs = [
-      `[L3]💫 Triunfo diagonal! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')} pela terceira linha![/L3]`,
-      `[L3]🔶 Diagonal completa! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L3]`
-    ];
-    formattedMessage = msgs[Math.floor(Math.random() * msgs.length)];
-  } else if (currentStage === 'bingo') {
-    const msgs = [
-      `[BINGO]🏆🏆🏆 BINGO ÉPICO! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
-      `[BINGO]👑👑 O REI DO BINGO! ${winnerNames} limpou a banca com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`
-    ];
-    formattedMessage = msgs[Math.floor(Math.random() * msgs.length)];
-  }
+  // ✅ REMOVER TODAS AS MENSAGENS DE CHAT QUE USAM [L3] ou "LINHA DIAGONAL"
+// SUBSTITUIR POR:
+let formattedMessage = "";
+if (currentStage === 'linha1') {
+  const msgs = [
+    `[L1]🎉 Parabéns, ${winnerNames}! Você ganhou R$ ${totalPrize.toLocaleString('pt-BR')} com a primeira linha![/L1]`,
+    `[L1]✨ Primeira etapa concluída! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L1]`
+  ];
+  formattedMessage = msgs[Math.floor(Math.random() * msgs.length)];
+} else if (currentStage === 'linha2') {
+  const msgs = [
+    `[L2]🎊 Dupla vitória! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')} pelas duas linhas![/L2]`,
+    `[L2]🌓 Metade do caminho! ${winnerNames} levou a Linha Dupla: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`
+  ];
+  formattedMessage = msgs[Math.floor(Math.random() * msgs.length)];
+} else if (currentStage === 'linha3') {
+  // ✅ NÃO ENVIAR COMO MENSAGEM DE CHAT — O FRONTEND JÁ TRATA VIA showLine3Victory()
+  // Remova qualquer .emit('chat-message') aqui para linha3
+  // Só deixe o emit('player-won') que já dispara a animação
+} else if (currentStage === 'bingo') {
+  const msgs = [
+    `[BINGO]🏆🏆🏆 BINGO ÉPICO! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`,
+    `[BINGO]👑👑 O REI DO BINGO! ${winnerNames} limpou a banca com R$ ${totalPrize.toLocaleString('pt-BR')}![/BINGO]`
+  ];
+  formattedMessage = msgs[Math.floor(Math.random() * msgs.length)];
+}
   io.to(roomType).emit('chat-message', {
     message: formattedMessage,
     sender: "Sistema",
