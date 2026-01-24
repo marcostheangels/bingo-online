@@ -49,6 +49,7 @@ function sendAdminCommand() {
 
 let clickCount = 0;
 let clickTimer = null;
+
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('player-name').addEventListener('click', function() {
     clickCount++;
@@ -92,7 +93,6 @@ function updateControlButtons(stage) {
   if (!stage) return;
   currentStage = stage;
   document.getElementById('main-controls').className = `controls stage-${stage}`;
-  
   const stageText = document.getElementById('stage-text');
   const nearLine1 = document.getElementById('near-line1');
   const nearLine2 = document.getElementById('near-line2');
@@ -135,19 +135,16 @@ function refreshAllChipDisplays() {
   if (player) {
     document.getElementById('chips-display').textContent = player.chips.toLocaleString('pt-BR');
   }
-
   if (roomsState?.pot != null) {
     document.getElementById('pot-display').textContent = `Pote: R$ ${roomsState.pot.toLocaleString('pt-BR')}`;
   }
   if (roomsState?.jackpot != null) {
     document.getElementById('jackpot-display').textContent = `Jackpot: R$ ${roomsState.jackpot.toLocaleString('pt-BR')}`;
   }
-
   if (roomsState?.players) {
     const playersArray = Object.entries(roomsState.players).map(([id, p]) => ({ id, ...p }));
     const withoutChips = playersArray.filter(p => p.chips <= 0);
     const withChips = playersArray.filter(p => p.chips > 0).sort((a, b) => b.chips - a.chips);
-
     document.getElementById('no-chips-count').textContent = withoutChips.length;
     document.getElementById('with-chips-count').textContent = withChips.length;
 
@@ -170,13 +167,11 @@ function refreshAllChipDisplays() {
       withList.appendChild(li);
     });
   }
-
   if (roomsState?.players) {
     const ranked = Object.entries(roomsState.players)
       .map(([id, p]) => ({ id, name: p.name, chips: p.chips, isBot: p.isBot }))
       .sort((a, b) => b.chips - a.chips)
       .map((p, i) => ({ ...p, position: i + 1 }));
-
     const rankingList = document.getElementById('ranking-list');
     rankingList.innerHTML = '';
     ranked.forEach(player => {
@@ -219,15 +214,12 @@ function startChipsBackground() {
     if (container) container.style.display = 'none';
     return;
   }
-
   container.style.display = 'block';
   container.innerHTML = ''; // Limpa chips antigos
-  
   const colors = ['#e63946', '#ffd700', '#1d3557', '#52b788', '#333333'];
   const interval = setInterval(() => {
     const chip = document.createElement('div');
     chip.className = 'chip-bg';
-    
     const size = Math.random() * (70 - 30) + 30;
     const color = colors[Math.floor(Math.random() * colors.length)];
     const startPos = Math.random() * 100;
@@ -240,7 +232,7 @@ function startChipsBackground() {
     chip.style.left = `${startPos}%`;
     chip.style.bottom = `-100px`;
     chip.style.opacity = Math.random() * (0.7 - 0.3) + 0.3;
-    
+
     container.appendChild(chip);
 
     const animation = chip.animate([
@@ -254,7 +246,6 @@ function startChipsBackground() {
 
     animation.onfinish = () => chip.remove();
   }, 500);
-
   window.chipsBackgroundInterval = interval;
 }
 
@@ -298,7 +289,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('room-title').textContent = `Sala: ${data.roomName}`;
     gameEnded = data.gameCompleted || false;
     updateControlButtons(data.currentStage || 'linha1');
-    
     // ✅ ATIVA FUNDO DINÂMICO APÓS ENTRAR NA SALA
     setTimeout(() => startChipsBackground(), 100);
   });
@@ -321,7 +311,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const nearLine1 = document.getElementById('near-line1');
     const nearLine2 = document.getElementById('near-line2');
     const nearBingo = document.getElementById('near-bingo');
-
     if (currentStage === 'linha1') {
       if (nearLine1) nearLine1.textContent = stats.line1 || 0;
       if (nearLine2) nearLine2.textContent = stats.line2 || 0;
@@ -383,7 +372,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCards();
     playSound('sorteio', data.number);
     speak(data.number.toString());
-
     // Atualiza bolas restantes para jackpot
     const remainingForJackpot = Math.max(0, 60 - roomsDrawnNumbers.length);
     document.getElementById('jackpot-remaining').textContent = `Bolas restantes para Jackpot: ${remainingForJackpot}`;
@@ -392,7 +380,6 @@ document.addEventListener('DOMContentLoaded', () => {
   socket.on('player-won', (data) => {
     const winType = data.winners[0]?.winType;
     const isJackpot = data.wonJackpot;
-
     if (winType === 'linha1') {
       playSound('linha1');
       speak(`Linha 1 ganha por ${data.winnerNames}!`);
@@ -437,7 +424,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateControlButtons('linha1');
     roomsState = {};
     refreshAllChipDisplays();
-    
     // Limpa fundo ao reiniciar
     const chipsBg = document.getElementById('chips-background');
     if (chipsBg) chipsBg.style.display = 'none';
@@ -495,7 +481,6 @@ document.addEventListener('DOMContentLoaded', () => {
       e.returnValue = '';
       return '';
     }
-    
     // Limpa intervalo ao sair
     if (window.chipsBackgroundInterval) {
       clearInterval(window.chipsBackgroundInterval);
@@ -520,32 +505,64 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function getBallsLeftForCurrentStage(card, drawnNumbers, stage) {
+    if (cardType === '75') {
+      const marked = card.map(n => n === 'FREE' || drawnNumbers.includes(n));
+      const totalMarked = marked.filter(Boolean).length;
+      return 24 - totalMarked; // 24 números reais
+    } else {
+      let markedInRow = [0, 0, 0];
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 9; c++) {
+          if (card[r][c] !== null && drawnNumbers.includes(card[r][c])) {
+            markedInRow[r]++;
+          }
+        }
+      }
+      if (stage === 'linha1') {
+        return Math.min(5 - markedInRow[0], 5 - markedInRow[1], 5 - markedInRow[2]);
+      } else if (stage === 'linha2') {
+        const sorted = [...markedInRow].sort((a, b) => b - a);
+        return (5 - sorted[0]) + (5 - sorted[1]);
+      } else {
+        return 15 - markedInRow.reduce((a, b) => a + b, 0);
+      }
+    }
+  }
+
   function renderCards() {
     const container = document.getElementById('cards-container');
     container.innerHTML = '';
+
     const validCards = playerCards.filter(item =>
       item && item.card &&
       ((cardType === '75' && item.card.length === 25) ||
-        (cardType === '90' && item.card.length === 3 && item.card.every(row => Array.isArray(row) && row.length === 9)))
+       (cardType === '90' && item.card.length === 3 && item.card.every(row => Array.isArray(row) && row.length === 9)))
     );
+
     const sortedCards = [...validCards].sort((a, b) => {
       const ballsA = getBallsLeftForCurrentStage(a.card, roomsDrawnNumbers, currentStage);
       const ballsB = getBallsLeftForCurrentStage(b.card, roomsDrawnNumbers, currentStage);
       return ballsA - ballsB;
     });
+
     sortedCards.forEach((item, idx) => {
       item.index = idx;
     });
+
     sortedCards.forEach(item => {
       const wrapper = document.createElement('div');
       wrapper.className = 'card-wrapper';
+
       const ballsLeftForStage = getBallsLeftForCurrentStage(item.card, roomsDrawnNumbers, currentStage);
       if (ballsLeftForStage === 1) {
         wrapper.classList.add('near-win');
       }
+
       wrapper.innerHTML = `<div class="card-title">Cartela ${item.index + 1}</div>`;
       const grid = document.createElement('div');
       grid.className = cardType === '75' ? 'grid-75' : 'grid-90';
+
       if (cardType === '90') {
         const markedInRow = [0, 0, 0];
         for (let r = 0; r < 3; r++) {
@@ -561,6 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (markedInRow[1] >= 5) completedLines.push(1);
         if (markedInRow[2] >= 5) completedLines.push(2);
         const bingo = completedLines.length >= 3;
+
         for (let r = 0; r < 3; r++) {
           for (let c = 0; c < 9; c++) {
             const cell = document.createElement('div');
@@ -578,6 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
             grid.appendChild(cell);
           }
         }
+
         if (bingo) {
           wrapper.className = 'card-wrapper bingo-complete';
           const overlay = document.createElement('div');
@@ -631,8 +650,26 @@ document.addEventListener('DOMContentLoaded', () => {
           grid.appendChild(cell);
         }
       }
+
       wrapper.appendChild(grid);
       container.appendChild(wrapper);
     });
+  }
+
+  // Funções auxiliares de som e voz (mantidas como placeholders)
+  function playSound(type, number) { /* implementar se desejar */ }
+  function speak(text) { /* implementar se desejar */ }
+  function checkAchievements(type, count, balls) { /* implementar se desejar */ }
+  function showLineVictory(prize, names) { /* implementar se desejar */ }
+  function showLine2Victory(prize, names) { /* implementar se desejar */ }
+  function showBingoVictory(prize, names) { /* implementar se desejar */ }
+  function showJackpotVictory(prize, names, balls) { /* implementar se desejar */ }
+  function addChatMessage(message, sender, isBot, isSystem) {
+    const chatBox = document.getElementById('chat-messages');
+    const p = document.createElement('p');
+    p.className = isSystem ? 'system' : isBot ? 'bot' : 'human';
+    p.innerHTML = `<strong>${sender}:</strong> ${message}`;
+    chatBox.appendChild(p);
+    chatBox.scrollTop = chatBox.scrollHeight;
   }
 });
