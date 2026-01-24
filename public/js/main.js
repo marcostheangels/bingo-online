@@ -8,9 +8,9 @@ let roomsDrawnNumbers = [];
 let gameEnded = false;
 let playerName = '';
 let currentStage = 'linha1';
-let roomsState = {}; // ← Estado global da sala
+let roomsState = {};
 
-// ✅ CONEXÃO
+// ✅ Conexão
 const SOCKET_URL = 'https://bingo-online-production.up.railway.app';
 socket = io(SOCKET_URL, {
   transports: ['websocket'],
@@ -18,7 +18,7 @@ socket = io(SOCKET_URL, {
   reconnectionAttempts: Infinity
 });
 
-// ✅ Funções de Administração
+// ✅ Admin
 function toggleAdminMode() {
   const controls = document.getElementById('admin-controls');
   controls.style.display = isAdminMode ? 'none' : 'block';
@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// ✅ Funções de Estado do Jogador
+// ✅ Estado do jogador
 function loadGameState(name) {
   try {
     const saved = localStorage.getItem(`bingo_player_${name}`);
@@ -88,16 +88,13 @@ function saveGameState(name, chips, cards75, cards90) {
   }
 }
 
-// ✅ Atualização de interface com cores forçadas e reset automático
+// ✅ Atualização de interface
 function updateControlButtons(stage) {
   if (!stage) return;
   currentStage = stage;
   document.getElementById('main-controls').className = `controls stage-${stage}`;
   const stageText = document.getElementById('stage-text');
-  const nearLine1 = document.getElementById('near-line1');
-  const nearLine2 = document.getElementById('near-line2');
 
-  // Função para aplicar cor com !important
   function setTextColor(el, color) {
     if (el) {
       el.style.setProperty('color', color, 'important');
@@ -107,29 +104,22 @@ function updateControlButtons(stage) {
 
   if (stageText) {
     if (stage === 'linha1') {
-      stageText.textContent = 'Linha 1';
-      setTextColor(stageText, '#66bb6a'); // verde
+      stageText.textContent = 'Linha 1 (Horizontal)';
+      setTextColor(stageText, '#66bb6a');
     } else if (stage === 'linha2') {
-      stageText.textContent = 'Linha 2';
-      setTextColor(stageText, '#ab47bc'); // roxo
-      if (nearLine1) nearLine1.textContent = '0';
+      stageText.textContent = 'Linha 2 (Vertical)';
+      setTextColor(stageText, '#4fc3f7');
+    } else if (stage === 'linha3') {
+      stageText.textContent = 'Linha 3 (Diagonal)';
+      setTextColor(stageText, '#FFCA28');
     } else if (stage === 'bingo') {
-      stageText.textContent = 'BINGO!';
-      setTextColor(stageText, '#ffd700'); // dourado
-      if (nearLine2) nearLine2.textContent = '0';
+      stageText.textContent = 'BINGO! (Diagonal Secundária)';
+      setTextColor(stageText, '#ffd700');
     }
   }
-
-  // Cores nos botões reais (opcional)
-  const line2Btn = document.getElementById('line2-btn');
-  const bingoBtn = document.getElementById('bingo-btn');
-  if (line2Btn) line2Btn.style.backgroundColor = '';
-  if (bingoBtn) bingoBtn.style.backgroundColor = '';
-  if (stage === 'linha2' && line2Btn) line2Btn.style.backgroundColor = '#ab47bc';
-  if (stage === 'bingo' && bingoBtn) bingoBtn.style.backgroundColor = '#ffd700';
 }
 
-// ✅ Função centralizada para atualizar TUDO relacionado a chips
+// ✅ Atualização de chips
 function refreshAllChipDisplays() {
   const player = socket.id ? roomsState?.players?.[socket.id] : null;
   if (player) {
@@ -207,7 +197,7 @@ function refreshAllChipDisplays() {
   }
 }
 
-// ✅ FUNDO DINÂMICO DE FICHAS NA SALA
+// ✅ Fundo dinâmico
 function startChipsBackground() {
   const container = document.getElementById('chips-background');
   if (!container || currentRoom !== 'bingo90') {
@@ -215,7 +205,7 @@ function startChipsBackground() {
     return;
   }
   container.style.display = 'block';
-  container.innerHTML = ''; // Limpa chips antigos
+  container.innerHTML = '';
   const colors = ['#e63946', '#ffd700', '#1d3557', '#52b788', '#333333'];
   const interval = setInterval(() => {
     const chip = document.createElement('div');
@@ -249,15 +239,11 @@ function startChipsBackground() {
   window.chipsBackgroundInterval = interval;
 }
 
-// ✅ Restante principal
+// ✅ Principal
 document.addEventListener('DOMContentLoaded', () => {
   const playerNameInput = document.getElementById('player-name');
   const loginScreen = document.getElementById('login-screen');
   const gameArea = document.getElementById('game-area');
-  const potDisplay = document.getElementById('pot-display');
-  const jackpotDisplay = document.getElementById('jackpot-display');
-  const ballsCountDisplay = document.getElementById('balls-count');
-  const lastNumberDisplay = document.getElementById('last-number');
 
   window.joinRoom = function(roomType) {
     let name = playerNameInput.value.trim();
@@ -289,7 +275,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('room-title').textContent = `Sala: ${data.roomName}`;
     gameEnded = data.gameCompleted || false;
     updateControlButtons(data.currentStage || 'linha1');
-    // ✅ ATIVA FUNDO DINÂMICO APÓS ENTRAR NA SALA
     setTimeout(() => startChipsBackground(), 100);
   });
 
@@ -297,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
     roomsState = data;
     document.getElementById('player-name-display').textContent = data.players[socket.id]?.name || '?';
     roomsDrawnNumbers = data.drawnNumbers || [];
-    ballsCountDisplay.textContent = roomsDrawnNumbers.length;
+    document.getElementById('balls-count').textContent = roomsDrawnNumbers.length;
     updateHistory(data.drawnNumbers || []);
     if (data.lastNumber) document.getElementById('last-number').textContent = data.lastNumber;
     updateControlButtons(data.currentStage || 'linha1');
@@ -306,18 +291,11 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshAllChipDisplays();
   });
 
-  // ✅ Receber "cartelas na boa"
   socket.on('near-win-stats', (stats) => {
-    const nearLine1 = document.getElementById('near-line1');
-    const nearLine2 = document.getElementById('near-line2');
-    const nearBingo = document.getElementById('near-bingo');
-    if (currentStage === 'linha1') {
-      if (nearLine1) nearLine1.textContent = stats.line1 || 0;
-      if (nearLine2) nearLine2.textContent = stats.line2 || 0;
-    } else if (currentStage === 'linha2') {
-      if (nearLine2) nearLine2.textContent = stats.line2 || 0;
-    }
-    if (nearBingo) nearBingo.textContent = stats.bingo || 0;
+    document.getElementById('near-line1').textContent = stats.line1 || 0;
+    document.getElementById('near-line2').textContent = stats.line2 || 0;
+    document.getElementById('near-line3').textContent = stats.line3 || 0;
+    document.getElementById('near-bingo').textContent = stats.bingo || 0;
   });
 
   socket.on('pot-update', (data) => {
@@ -366,42 +344,40 @@ document.addEventListener('DOMContentLoaded', () => {
   socket.on('number-drawn', (data) => {
     document.getElementById('last-number').textContent = data.number;
     roomsDrawnNumbers = data.drawnNumbers;
-    ballsCountDisplay.textContent = roomsDrawnNumbers.length;
+    document.getElementById('balls-count').textContent = roomsDrawnNumbers.length;
+    document.getElementById('jackpot-remaining').textContent = `Bolas restantes para Jackpot: ${Math.max(0, 60 - roomsDrawnNumbers.length)}`;
     updateHistory(data.drawnNumbers);
     markDrawnNumbers(data.number);
     renderCards();
     playSound('sorteio', data.number);
     speak(data.number.toString());
-    // Atualiza bolas restantes para jackpot
-    const remainingForJackpot = Math.max(0, 60 - roomsDrawnNumbers.length);
-    document.getElementById('jackpot-remaining').textContent = `Bolas restantes para Jackpot: ${remainingForJackpot}`;
   });
 
   socket.on('player-won', (data) => {
-  const winType = data.winners[0]?.winType;
-  const isJackpot = data.wonJackpot;
+    const winType = data.winners[0]?.winType;
+    const isJackpot = data.wonJackpot;
 
-  if (winType === 'linha1') {
-    playSound('linha1');
-    speak(`Linha 1 ganha por ${data.winnerNames}!`);
-    showLineVictory(data.totalPrize, data.winnerNames);
-  } else if (winType === 'linha2') {
-    playSound('linha2');
-    speak(`Linha 2 ganha por ${data.winnerNames}!`);
-    showLine2Victory(data.totalPrize, data.winnerNames);
-  } else if (winType === 'linha3') {
-    playSound('linha3');
-    speak(`Linha Diagonal ganha por ${data.winnerNames}!`);
-    showLine3Victory(data.totalPrize, data.winnerNames); // ← Isso já está correto!
-  } else if (winType === 'bingo') {
-    playSound('bingo');
-    speak(`Bingo feito por ${data.winnerNames}!`);
-    if (isJackpot) {
-      showJackpotVictory(data.jackpotAmount || data.totalPrize, data.winnerNames, data.ballsCount);
-    } else {
-      showBingoVictory(data.totalPrize, data.winnerNames);
+    if (winType === 'linha1') {
+      playSound('linha1');
+      speak(`Linha 1 ganha por ${data.winnerNames}!`);
+      showLineVictory(data.totalPrize, data.winnerNames);
+    } else if (winType === 'linha2') {
+      playSound('linha2');
+      speak(`Linha 2 ganha por ${data.winnerNames}!`);
+      showLine2Victory(data.totalPrize, data.winnerNames);
+    } else if (winType === 'linha3') {
+      playSound('linha3');
+      speak(`Linha Diagonal ganha por ${data.winnerNames}!`);
+      showLine3Victory(data.totalPrize, data.winnerNames); // ✅ Só overlay, sem chat
+    } else if (winType === 'bingo') {
+      playSound('bingo');
+      speak(`Bingo feito por ${data.winnerNames}!`);
+      if (isJackpot) {
+        showJackpotVictory(data.jackpotAmount || data.totalPrize, data.winnerNames, data.ballsCount);
+      } else {
+        showBingoVictory(data.totalPrize, data.winnerNames);
+      }
     }
-  }
 
     if (data.newStage) updateControlButtons(data.newStage);
     if (winType === 'bingo') gameEnded = true;
@@ -425,7 +401,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateControlButtons('linha1');
     roomsState = {};
     refreshAllChipDisplays();
-    // Limpa fundo ao reiniciar
     const chipsBg = document.getElementById('chips-background');
     if (chipsBg) chipsBg.style.display = 'none';
   });
@@ -482,7 +457,6 @@ document.addEventListener('DOMContentLoaded', () => {
       e.returnValue = '';
       return '';
     }
-    // Limpa intervalo ao sair
     if (window.chipsBackgroundInterval) {
       clearInterval(window.chipsBackgroundInterval);
     }
@@ -508,9 +482,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getBallsLeftForCurrentStage(card, drawnNumbers, stage) {
     if (cardType === '75') {
-      const marked = card.map(n => n === 'FREE' || drawnNumbers.includes(n));
-      const totalMarked = marked.filter(Boolean).length;
-      return 24 - totalMarked; // 24 números reais
+      const marked = card.map(n => n === null ? false : drawnNumbers.includes(n));
+      
+      const line1Indices = [10,11,12,13,14];
+      const line1Marked = line1Indices.filter(i => marked[i]).length;
+      const ballsForLine1 = 5 - line1Marked;
+
+      const line2Indices = [2,7,12,17,22];
+      const line2Marked = line2Indices.filter(i => marked[i]).length;
+      const ballsForLine2 = 5 - line2Marked;
+
+      const line3Indices = [0,6,12,18,24];
+      const line3Marked = line3Indices.filter(i => marked[i]).length;
+      const ballsForLine3 = 5 - line3Marked;
+
+      const bingoIndices = [4,8,12,16,20];
+      const bingoMarked = bingoIndices.filter(i => marked[i]).length;
+      const ballsForBingo = 5 - bingoMarked;
+
+      if (stage === 'linha1') return Math.max(0, ballsForLine1);
+      if (stage === 'linha2') return Math.max(0, ballsForLine2);
+      if (stage === 'linha3') return Math.max(0, ballsForLine3);
+      return Math.max(0, ballsForBingo);
     } else {
       let markedInRow = [0, 0, 0];
       for (let r = 0; r < 3; r++) {
@@ -532,141 +525,292 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderCards() {
-  const container = document.getElementById('cards-container');
-  container.innerHTML = '';
+    const container = document.getElementById('cards-container');
+    container.innerHTML = '';
 
-  const validCards = playerCards.filter(item =>
-    item && item.card &&
-    ((cardType === '75' && item.card.length === 25) ||
-     (cardType === '90' && item.card.length === 3 && item.card.every(row => Array.isArray(row) && row.length === 9)))
-  );
+    const validCards = playerCards.filter(item =>
+      item && item.card &&
+      ((cardType === '75' && item.card.length === 25) ||
+       (cardType === '90' && item.card.length === 3 && item.card.every(row => Array.isArray(row) && row.length === 9)))
+    );
 
-  const sortedCards = [...validCards].sort((a, b) => {
-    const ballsA = getBallsLeftForCurrentStage(a.card, roomsDrawnNumbers, currentStage);
-    const ballsB = getBallsLeftForCurrentStage(b.card, roomsDrawnNumbers, currentStage);
-    return ballsA - ballsB;
-  });
+    const sortedCards = [...validCards].sort((a, b) => {
+      const ballsA = getBallsLeftForCurrentStage(a.card, roomsDrawnNumbers, currentStage);
+      const ballsB = getBallsLeftForCurrentStage(b.card, roomsDrawnNumbers, currentStage);
+      return ballsA - ballsB;
+    });
 
-  sortedCards.forEach((item, idx) => {
-    item.index = idx;
-  });
+    sortedCards.forEach((item, idx) => {
+      item.index = idx;
+    });
 
-  sortedCards.forEach(item => {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'card-wrapper';
+    sortedCards.forEach(item => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'card-wrapper';
 
-    const ballsLeftForStage = getBallsLeftForCurrentStage(item.card, roomsDrawnNumbers, currentStage);
-    if (ballsLeftForStage === 1) {
-      wrapper.classList.add('near-win');
-    }
+      const ballsLeftForStage = getBallsLeftForCurrentStage(item.card, roomsDrawnNumbers, currentStage);
+      if (ballsLeftForStage === 1) {
+        wrapper.classList.add('near-win');
+      }
 
-    wrapper.innerHTML = `<div class="card-title">Cartela ${item.index + 1}</div>`;
-    const grid = document.createElement('div');
-    grid.className = cardType === '75' ? 'grid-75' : 'grid-90';
+      wrapper.innerHTML = `<div class="card-title">Cartela ${item.index + 1}</div>`;
+      const grid = document.createElement('div');
+      grid.className = cardType === '75' ? 'grid-75' : 'grid-90';
 
-    if (cardType === '90') {
-      // --- RENDERIZAÇÃO DO BINGO 90 (3x9) ---
-      const markedInRow = [0, 0, 0];
-      for (let r = 0; r < 3; r++) {
-        for (let c = 0; c < 9; c++) {
-          const num = item.card[r][c];
-          if (num !== null && roomsDrawnNumbers.includes(num)) {
-            markedInRow[r]++;
+      if (cardType === '90') {
+        const markedInRow = [0, 0, 0];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 9; c++) {
+            const num = item.card[r][c];
+            if (num !== null && roomsDrawnNumbers.includes(num)) {
+              markedInRow[r]++;
+            }
           }
         }
-      }
-      const completedLines = [];
-      if (markedInRow[0] >= 5) completedLines.push(0);
-      if (markedInRow[1] >= 5) completedLines.push(1);
-      if (markedInRow[2] >= 5) completedLines.push(2);
-      const bingo = completedLines.length >= 3;
+        const completedLines = [];
+        if (markedInRow[0] >= 5) completedLines.push(0);
+        if (markedInRow[1] >= 5) completedLines.push(1);
+        if (markedInRow[2] >= 5) completedLines.push(2);
+        const bingo = completedLines.length >= 3;
 
-      for (let r = 0; r < 3; r++) {
-        for (let c = 0; c < 9; c++) {
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 9; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            const val = item.card[r][c];
+            if (val !== null) {
+              cell.textContent = val.toString();
+              cell.dataset.num = val.toString();
+              if (roomsDrawnNumbers.includes(val)) {
+                cell.classList.add('marked');
+              }
+            } else {
+              cell.classList.add('empty');
+            }
+            grid.appendChild(cell);
+          }
+        }
+
+        if (bingo) {
+          wrapper.className = 'card-wrapper bingo-complete';
+          const overlay = document.createElement('div');
+          overlay.style.position = 'absolute';
+          overlay.style.top = '0';
+          overlay.style.left = '0';
+          overlay.style.width = '100%';
+          overlay.style.height = '100%';
+          overlay.style.display = 'flex';
+          overlay.style.justifyContent = 'center';
+          overlay.style.alignItems = 'center';
+          overlay.style.zIndex = '10';
+          overlay.style.pointerEvents = 'none';
+
+          const bingoText = document.createElement('div');
+          bingoText.textContent = 'BINGO!';
+          bingoText.style.color = 'white';
+          bingoText.style.fontSize = '2.4em';
+          bingoText.style.fontWeight = '900';
+          bingoText.style.fontFamily = "'Montserrat', sans-serif";
+          bingoText.style.textShadow = `
+            0 0 8px rgba(0, 0, 0, 0.8),
+            0 0 16px rgba(255, 215, 0, 0.6),
+            0 0 24px rgba(255, 215, 0, 0.4)
+          `;
+          bingoText.style.letterSpacing = '2px';
+          bingoText.style.textAlign = 'center';
+          bingoText.style.background = 'rgba(0, 0, 0, 0.5)';
+          bingoText.style.padding = '8px 20px';
+          bingoText.style.borderRadius = '10px';
+          bingoText.style.backdropFilter = 'blur(3px)';
+          bingoText.style.webkitBackdropFilter = 'blur(3px)';
+          overlay.appendChild(bingoText);
+          wrapper.appendChild(overlay);
+        }
+      } else {
+        // ✅ RENDERIZAÇÃO DO BINGO 75 COM 16 NÚMEROS E 9 VAZIOS
+        for (let i = 0; i < 25; i++) {
           const cell = document.createElement('div');
           cell.className = 'cell';
-          const val = item.card[r][c];
-          if (val !== null) {
+          const val = item.card[i];
+          if (val === null) {
+            cell.classList.add('empty');
+          } else {
             cell.textContent = val.toString();
             cell.dataset.num = val.toString();
             if (roomsDrawnNumbers.includes(val)) {
               cell.classList.add('marked');
             }
-          } else {
-            cell.classList.add('empty');
           }
           grid.appendChild(cell);
         }
       }
 
-      if (bingo) {
-        wrapper.className = 'card-wrapper bingo-complete';
-        const overlay = document.createElement('div');
-        overlay.style.position = 'absolute';
-        overlay.style.top = '0';
-        overlay.style.left = '0';
-        overlay.style.width = '100%';
-        overlay.style.height = '100%';
-        overlay.style.display = 'flex';
-        overlay.style.justifyContent = 'center';
-        overlay.style.alignItems = 'center';
-        overlay.style.zIndex = '10';
-        overlay.style.pointerEvents = 'none';
+      wrapper.appendChild(grid);
+      container.appendChild(wrapper);
+    });
+  }
 
-        const bingoText = document.createElement('div');
-        bingoText.textContent = 'BINGO!';
-        bingoText.style.color = 'white';
-        bingoText.style.fontSize = '2.4em';
-        bingoText.style.fontWeight = '900';
-        bingoText.style.fontFamily = "'Montserrat', sans-serif";
-        bingoText.style.textShadow = `
-          0 0 8px rgba(0, 0, 0, 0.8),
-          0 0 16px rgba(255, 215, 0, 0.6),
-          0 0 24px rgba(255, 215, 0, 0.4)
-        `;
-        bingoText.style.letterSpacing = '2px';
-        bingoText.style.textAlign = 'center';
-        bingoText.style.background = 'rgba(0, 0, 0, 0.5)';
-        bingoText.style.padding = '8px 20px';
-        bingoText.style.borderRadius = '10px';
-        bingoText.style.backdropFilter = 'blur(3px)';
-        bingoText.style.webkitBackdropFilter = 'blur(3px)';
-        overlay.appendChild(bingoText);
-        wrapper.appendChild(overlay);
-      }
-    } else {
-      // --- RENDERIZAÇÃO CORRETA DO BINGO 75 (5x5) ---
-      for (let i = 0; i < 25; i++) {
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        const val = item.card[i];
-        if (val === 'FREE') {
-          cell.textContent = '★';
-          cell.classList.add('free');
-        } else {
-          cell.textContent = val.toString();
-          cell.dataset.num = val.toString();
-          if (roomsDrawnNumbers.includes(val)) {
-            cell.classList.add('marked');
-          }
-        }
-        grid.appendChild(cell);
-      }
+  // ✅ Áudio
+  function playSound(type, number) {
+    if (type === 'sorteio') {
+      const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3');
+      audio.volume = 0.4;
+      audio.play().catch(e => console.warn('Áudio bloqueado:', e));
+    } else if (type === 'linha1') {
+      const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3');
+      audio.volume = 0.5;
+      audio.play().catch(e => console.warn('Áudio bloqueado:', e));
+    } else if (type === 'linha2') {
+      const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3');
+      audio.volume = 0.5;
+      audio.play().catch(e => console.warn('Áudio bloqueado:', e));
+    } else if (type === 'linha3') {
+      const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-magic-spell-cast-649.mp3');
+      audio.volume = 0.5;
+      audio.play().catch(e => console.warn('Áudio bloqueado:', e));
+    } else if (type === 'bingo') {
+      const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-crowd-cheering-short-632.mp3');
+      audio.volume = 0.6;
+      audio.play().catch(e => console.warn('Áudio bloqueado:', e));
     }
+  }
 
-    wrapper.appendChild(grid);
-    container.appendChild(wrapper);
-  });
-}
+  function speak(text) {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'pt-BR';
+      utterance.rate = 1.0;
+      speechSynthesis.speak(utterance);
+    }
+  }
 
-  // Funções auxiliares de som e voz (mantidas como placeholders)
-  function playSound(type, number) { /* implementar se desejar */ }
-  function speak(text) { /* implementar se desejar */ }
-  function checkAchievements(type, count, balls) { /* implementar se desejar */ }
-  function showLineVictory(prize, names) { /* implementar se desejar */ }
-  function showLine2Victory(prize, names) { /* implementar se desejar */ }
-  function showBingoVictory(prize, names) { /* implementar se desejar */ }
-  function showJackpotVictory(prize, names, balls) { /* implementar se desejar */ }
+  // ✅ Animações de vitória
+  function showLineVictory(prize, names) {
+    const overlay = document.getElementById('line-victory-overlay');
+    if (!overlay) {
+      const el = document.createElement('div');
+      el.id = 'line-victory-overlay';
+      el.innerHTML = `
+        <div class="line-card">
+          <div class="line-title">Linha 1!</div>
+          <span class="winner-name">${names}</span>
+          <div class="chips-box">
+            <div class="prize-chips">R$ ${prize.toLocaleString('pt-BR')}</div>
+            <div class="chip-label">PRÊMIO</div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(el);
+      setTimeout(() => el.classList.add('active'), 10);
+      setTimeout(() => el.classList.remove('active'), 4000);
+      setTimeout(() => el.remove(), 4500);
+      return;
+    }
+    overlay.querySelector('.winner-name').textContent = names;
+    overlay.querySelector('.prize-chips').textContent = `R$ ${prize.toLocaleString('pt-BR')}`;
+    overlay.classList.add('active');
+    setTimeout(() => overlay.classList.remove('active'), 4000);
+  }
+
+  function showLine2Victory(prize, names) {
+    const overlay = document.getElementById('line2-victory-overlay');
+    if (!overlay) {
+      const el = document.createElement('div');
+      el.id = 'line2-victory-overlay';
+      el.innerHTML = `
+        <div class="line-frame">
+          <div class="line-header">Linha Dupla!</div>
+          <span class="winner-name">${names}</span>
+          <div class="chips-amount">R$ ${prize.toLocaleString('pt-BR')}</div>
+          <div class="sub-label">DUAS LINHAS COMPLETAS</div>
+        </div>
+      `;
+      document.body.appendChild(el);
+      return;
+    }
+    overlay.querySelector('.winner-name').textContent = names;
+    overlay.querySelector('.chips-amount').textContent = `R$ ${prize.toLocaleString('pt-BR')}`;
+    overlay.classList.add('active');
+    setTimeout(() => overlay.classList.remove('active'), 4000);
+  }
+
+  function showLine3Victory(prize, names) {
+    const overlay = document.getElementById('line3-victory-overlay');
+    if (!overlay) {
+      const el = document.createElement('div');
+      el.id = 'line3-victory-overlay';
+      el.innerHTML = `
+        <div class="line3-frame">
+          <div class="line3-header">✨ LINHA DIAGONAL! ✨</div>
+          <div class="winner-name">${names}</div>
+          <div class="chips-box">
+            <div class="prize-chips">R$ ${prize.toLocaleString('pt-BR')}</div>
+            <div class="chip-label">PRÊMIO</div>
+          </div>
+          <div class="sub-label">Terceira conquista!</div>
+        </div>
+      `;
+      document.body.appendChild(el);
+      setTimeout(() => el.classList.add('active'), 10);
+      setTimeout(() => el.classList.remove('active'), 4000);
+      setTimeout(() => el.remove(), 4500);
+      return;
+    }
+    overlay.querySelector('.winner-name').textContent = names;
+    overlay.querySelector('.prize-chips').textContent = `R$ ${prize.toLocaleString('pt-BR')}`;
+    overlay.classList.add('active');
+    setTimeout(() => overlay.classList.remove('active'), 4000);
+  }
+
+  function showBingoVictory(prize, names) {
+    const overlay = document.getElementById('bingo-victory-overlay');
+    if (!overlay) {
+      const el = document.createElement('div');
+      el.id = 'bingo-victory-overlay';
+      el.innerHTML = `
+        <div class="bingo-card">
+          <div class="bingo-title">BINGO!</div>
+          <div class="prize-container">
+            <div class="prize-amount">R$ ${prize.toLocaleString('pt-BR')}</div>
+          </div>
+          <div class="sub-tag">✨ CARTELA CHEIA ✨</div>
+        </div>
+      `;
+      document.body.appendChild(el);
+      return;
+    }
+    overlay.querySelector('.prize-amount').textContent = `R$ ${prize.toLocaleString('pt-BR')}`;
+    overlay.classList.add('active');
+    setTimeout(() => overlay.classList.remove('active'), 5000);
+  }
+
+  function showJackpotVictory(prize, names, balls) {
+    const overlay = document.getElementById('jackpot-overlay');
+    if (!overlay) {
+      const el = document.createElement('div');
+      el.id = 'jackpot-overlay';
+      el.innerHTML = `
+        <div class="rays"></div>
+        <div class="winner-frame">
+          <h1 class="jackpot-header">JACKPOT</h1>
+          <p style="font-size: 0.7rem; color: #888; letter-spacing: 3px;">VENCEDOR</p>
+          <span class="username">${names}</span>
+          <div class="prize-box">
+            <span class="prize-amount">R$ ${prize.toLocaleString('pt-BR')}</span>
+          </div>
+          <p class="badge-info">✨ BINGO EM ${balls} BOLAS ✨</p>
+        </div>
+      `;
+      document.body.appendChild(el);
+      return;
+    }
+    overlay.querySelector('.username').textContent = names;
+    overlay.querySelector('.prize-amount').textContent = `R$ ${prize.toLocaleString('pt-BR')}`;
+    overlay.querySelector('.badge-info').textContent = `✨ BINGO EM ${balls} BOLAS ✨`;
+    overlay.classList.add('active');
+    setTimeout(() => overlay.classList.remove('active'), 6000);
+  }
+
   function addChatMessage(message, sender, isBot, isSystem) {
     const chatBox = document.getElementById('chat-messages');
     const p = document.createElement('p');
@@ -675,223 +819,4 @@ document.addEventListener('DOMContentLoaded', () => {
     chatBox.appendChild(p);
     chatBox.scrollTop = chatBox.scrollHeight;
   }
-  function getBallsLeftForCurrentStage(card, drawnNumbers, stage) {
-  if (cardType === '75') {
-    const marked = card.map(n => n === 'FREE' || drawnNumbers.includes(n));
-    const totalMarked = marked.filter(Boolean).length;
-    
-    // Linha 1: horizontal do meio → índices 10–14
-    const line1Indices = [10,11,12,13,14];
-    const line1Marked = line1Indices.filter(i => marked[i]).length;
-    const ballsForLine1 = 5 - line1Marked;
-
-    // Linha 2: vertical do meio → índices 2,7,12,17,22
-    const line2Indices = [2,7,12,17,22];
-    const line2Marked = line2Indices.filter(i => marked[i]).length;
-    const ballsForLine2 = 5 - line2Marked;
-
-    // Linha 3: diagonal → 0,6,12,18,24
-    const line3Indices = [0,6,12,18,24];
-    const line3Marked = line3Indices.filter(i => marked[i]).length;
-    const ballsForLine3 = 5 - line3Marked;
-
-    // Bingo: 24 números reais
-    const ballsForBingo = 24 - (totalMarked - 1); // -1 pq FREE não conta
-
-    if (stage === 'linha1') return Math.max(0, ballsForLine1);
-    if (stage === 'linha2') return Math.max(0, ballsForLine2);
-    if (stage === 'linha3') return Math.max(0, ballsForLine3);
-    return Math.max(0, ballsForBingo);
-  } else {
-    let markedInRow = [0, 0, 0];
-    for (let r = 0; r < 3; r++) {
-      for (let c = 0; c < 9; c++) {
-        if (card[r][c] !== null && drawnNumbers.includes(card[r][c])) {
-          markedInRow[r]++;
-        }
-      }
-    }
-    if (stage === 'linha1') {
-      return Math.min(5 - markedInRow[0], 5 - markedInRow[1], 5 - markedInRow[2]);
-    } else if (stage === 'linha2') {
-      const sorted = [...markedInRow].sort((a, b) => b - a);
-      return (5 - sorted[0]) + (5 - sorted[1]);
-    } else {
-      return 15 - markedInRow.reduce((a, b) => a + b, 0);
-    }
-  }
-}
-
-// ✅ Funções auxiliares de som e voz
-function playSound(type, number) {
-  if (type === 'sorteio') {
-    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3');
-    audio.volume = 0.4;
-    audio.play().catch(e => console.warn('Áudio bloqueado:', e));
-  } else if (type === 'linha1') {
-    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3');
-    audio.volume = 0.5;
-    audio.play().catch(e => console.warn('Áudio bloqueado:', e));
-  } else if (type === 'linha2') {
-    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3');
-    audio.volume = 0.5;
-    audio.play().catch(e => console.warn('Áudio bloqueado:', e));
-  } else if (type === 'linha3') {
-    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-magic-spell-cast-649.mp3');
-    audio.volume = 0.5;
-    audio.play().catch(e => console.warn('Áudio bloqueado:', e));
-  } else if (type === 'bingo') {
-    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-crowd-cheering-short-632.mp3');
-    audio.volume = 0.6;
-    audio.play().catch(e => console.warn('Áudio bloqueado:', e));
-  }
-}
-
-function speak(text) {
-  // Opcional: usar SpeechSynthesis API
-  if ('speechSynthesis' in window) {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'pt-BR';
-    utterance.rate = 1.0;
-    speechSynthesis.speak(utterance);
-  }
-}
-
-// ✅ Animações de vitória
-function showLineVictory(prize, names) {
-  const overlay = document.getElementById('line-victory-overlay');
-  if (!overlay) {
-    const el = document.createElement('div');
-    el.id = 'line-victory-overlay';
-    el.innerHTML = `
-      <div class="line-card">
-        <div class="line-title">Linha 1!</div>
-        <span class="winner-name">${names}</span>
-        <div class="chips-box">
-          <div class="prize-chips">R$ ${prize.toLocaleString('pt-BR')}</div>
-          <div class="chip-label">PRÊMIO</div>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(el);
-    setTimeout(() => el.classList.add('active'), 10);
-    setTimeout(() => el.classList.remove('active'), 4000);
-    setTimeout(() => el.remove(), 4500);
-    return;
-  }
-  overlay.querySelector('.winner-name').textContent = names;
-  overlay.querySelector('.prize-chips').textContent = `R$ ${prize.toLocaleString('pt-BR')}`;
-  overlay.classList.add('active');
-  setTimeout(() => overlay.classList.remove('active'), 4000);
-}
-
-function showLine2Victory(prize, names) {
-  const overlay = document.getElementById('line2-victory-overlay');
-  if (!overlay) {
-    const el = document.createElement('div');
-    el.id = 'line2-victory-overlay';
-    el.innerHTML = `
-      <div class="line-frame">
-        <div class="line-header">Linha Dupla!</div>
-        <span class="winner-name">${names}</span>
-        <div class="chips-amount">R$ ${prize.toLocaleString('pt-BR')}</div>
-        <div class="sub-label">DUAS LINHAS COMPLETAS</div>
-      </div>
-    `;
-    document.body.appendChild(el);
-    return;
-  }
-  overlay.querySelector('.winner-name').textContent = names;
-  overlay.querySelector('.chips-amount').textContent = `R$ ${prize.toLocaleString('pt-BR')}`;
-  overlay.classList.add('active');
-  setTimeout(() => overlay.classList.remove('active'), 4000);
-}
-
-function showLine3Victory(prize, names) {
-  const overlay = document.getElementById('line3-victory-overlay');
-  if (!overlay) {
-    const el = document.createElement('div');
-    el.id = 'line3-victory-overlay';
-    el.innerHTML = `
-      <div class="line3-frame">
-        <div class="line3-header">✨ LINHA DIAGONAL! ✨</div>
-        <div class="winner-name">${names}</div>
-        <div class="chips-box">
-          <div class="prize-chips">R$ ${prize.toLocaleString('pt-BR')}</div>
-          <div class="chip-label">PRÊMIO</div>
-        </div>
-        <div class="sub-label">Terceira conquista!</div>
-      </div>
-    `;
-    document.body.appendChild(el);
-    setTimeout(() => el.classList.add('active'), 10);
-    setTimeout(() => el.classList.remove('active'), 4000);
-    setTimeout(() => el.remove(), 4500);
-    return;
-  }
-  overlay.querySelector('.winner-name').textContent = names;
-  overlay.querySelector('.prize-chips').textContent = `R$ ${prize.toLocaleString('pt-BR')}`;
-  overlay.classList.add('active');
-  setTimeout(() => overlay.classList.remove('active'), 4000);
-}
-
-function showBingoVictory(prize, names) {
-  const overlay = document.getElementById('bingo-victory-overlay');
-  if (!overlay) {
-    const el = document.createElement('div');
-    el.id = 'bingo-victory-overlay';
-    el.innerHTML = `
-      <div class="bingo-card">
-        <div class="bingo-title">BINGO!</div>
-        <div class="prize-container">
-          <div class="prize-amount">R$ ${prize.toLocaleString('pt-BR')}</div>
-        </div>
-        <div class="sub-tag">CARTELA COMPLETA</div>
-      </div>
-    `;
-    document.body.appendChild(el);
-    return;
-  }
-  overlay.querySelector('.prize-amount').textContent = `R$ ${prize.toLocaleString('pt-BR')}`;
-  overlay.classList.add('active');
-  setTimeout(() => overlay.classList.remove('active'), 5000);
-}
-
-function showJackpotVictory(prize, names, balls) {
-  const overlay = document.getElementById('jackpot-overlay');
-  if (!overlay) {
-    const el = document.createElement('div');
-    el.id = 'jackpot-overlay';
-    el.innerHTML = `
-      <div class="winner-frame">
-        <div class="jackpot-header">JACKPOT!</div>
-        <span class="username">${names}</span>
-        <div class="prize-box">
-          <div class="prize-amount">R$ ${prize.toLocaleString('pt-BR')}</div>
-        </div>
-        <div class="badge-info">BINGO EM ${balls} BOLAS</div>
-      </div>
-    `;
-    document.body.appendChild(el);
-    return;
-  }
-  overlay.querySelector('.username').textContent = names;
-  overlay.querySelector('.prize-amount').textContent = `R$ ${prize.toLocaleString('pt-BR')}`;
-  overlay.querySelector('.badge-info').textContent = `BINGO EM ${balls} BOLAS`;
-  overlay.classList.add('active');
-  setTimeout(() => overlay.classList.remove('active'), 6000);
-}
-
-function checkAchievements(type, count, balls) {
-  // Placeholder – pode ser expandido com sistema de conquistas
-}
-
-function addChatMessage(message, sender, isBot, isSystem) {
-  const chatBox = document.getElementById('chat-messages');
-  const p = document.createElement('p');
-  p.className = isSystem ? 'system' : isBot ? 'bot' : 'human';
-  p.innerHTML = `<strong>${sender}:</strong> ${message}`;
-  chatBox.appendChild(p);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
 });
