@@ -723,7 +723,7 @@ function resumeDraw(roomType) {
 
     const winners = checkWinForAllPlayers(roomType);
     if (winners) handleWin(roomType, winners);
-  }, 5000); // 👈 INTERVALO AUMENTADO PARA 5 SEGUNDOS
+  }, 3000); // 👈 INTERVALO AUMENTADO PARA 5 SEGUNDOS
 }
 
 function startAutoRestart(roomType) {
