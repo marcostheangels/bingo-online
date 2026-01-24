@@ -87,7 +87,7 @@ function saveGameState(name, chips, cards75, cards90) {
   }
 }
 
-// ✅ Atualização de interface
+// ✅ Atualização de interface com reset automático dos contadores "na boa"
 function updateControlButtons(stage) {
   if (!stage) return;
   currentStage = stage;
@@ -99,6 +99,24 @@ function updateControlButtons(stage) {
     stageText.textContent = stage === 'linha1' ? 'Linha 1' :
                              stage === 'linha2' ? 'Linha 2' :
                              'BINGO!';
+  }
+
+  // ✅ ZERA OS CONTADORES VISUAIS CONFORME A FASE ATUAL
+  const nearLine1 = document.getElementById('near-line1');
+  const nearLine2 = document.getElementById('near-line2');
+  const nearBingo = document.getElementById('near-bingo');
+
+  if (nearLine1 && nearLine2 && nearBingo) {
+    if (stage === 'linha1') {
+      // Mantém todos visíveis (não zera nada)
+    } else if (stage === 'linha2') {
+      // Já passou da linha 1 → zera linha 1
+      nearLine1.textContent = '0';
+    } else if (stage === 'bingo') {
+      // Já passou da linha 2 → zera linha 2
+      nearLine2.textContent = '0';
+      // O bingo continua sendo atualizado normalmente pelo servidor
+    }
   }
 }
 
