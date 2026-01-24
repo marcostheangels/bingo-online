@@ -105,8 +105,7 @@ body {
   box-shadow: 0 0 10px rgba(46, 125, 50, 0.7);
 }
 
-/* ============ RANKING COM CORES CORRETAS ============ */
-/* ============ RANKING COM CORES CORRETAS E TEXTO VISÍVEL ============ */
+/* ============ RANKING SEM MÁSCARA ============ */
 .ranking-section {
   margin: 20px 0;
   background: rgba(25, 25, 45, 0.8);
@@ -130,6 +129,7 @@ body {
 .ranking-list ul {
   list-style: none;
   padding: 0;
+  margin: 0;
 }
 
 .ranking-list li {
@@ -138,14 +138,15 @@ body {
   padding: 12px;
   margin-bottom: 8px;
   border-radius: 8px;
-  background: rgba(30, 30, 50, 0.7);
-  color: white;
+  /* Remove qualquer fundo genérico */
+  background: transparent !important;
+  color: white !important;
 }
 
 /* 🥇 1º LUGAR - DOURADO */
 .ranking-list li:nth-child(1) {
-  background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%);
-  color: #1a1a2e; /* Texto escuro para fundo dourado */
+  background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%) !important;
+  color: #1a1a2e !important;
 }
 .ranking-list li:nth-child(1) .ranking-position,
 .ranking-list li:nth-child(1) .ranking-name,
@@ -155,8 +156,8 @@ body {
 
 /* 🥈 2º LUGAR - PRATA */
 .ranking-list li:nth-child(2) {
-  background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%);
-  color: #1a1a2e; /* Texto escuro para fundo prateado */
+  background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%) !important;
+  color: #1a1a2e !important;
 }
 .ranking-list li:nth-child(2) .ranking-position,
 .ranking-list li:nth-child(2) .ranking-name,
@@ -166,8 +167,8 @@ body {
 
 /* 🥉 3º LUGAR - BRONZE */
 .ranking-list li:nth-child(3) {
-  background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%);
-  color: #1a1a2e; /* Texto escuro para fundo bronze */
+  background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%) !important;
+  color: #1a1a2e !important;
 }
 .ranking-list li:nth-child(3) .ranking-position,
 .ranking-list li:nth-child(3) .ranking-name,
@@ -175,10 +176,20 @@ body {
   color: #1a1a2e !important;
 }
 
-.ranking-position { font-weight: bold; min-width: 30px; }
-.ranking-name { flex: 1; margin: 0 10px; }
-.ranking-chips { font-weight: bold; }
-
+.ranking-position { 
+  font-weight: bold; 
+  min-width: 30px; 
+  color: inherit !important;
+}
+.ranking-name { 
+  flex: 1; 
+  margin: 0 10px; 
+  color: inherit !important;
+}
+.ranking-chips { 
+  font-weight: bold; 
+  color: inherit !important;
+}
 .controls {
   display: flex;
   flex-wrap: wrap;
