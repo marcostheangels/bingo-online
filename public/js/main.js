@@ -522,21 +522,26 @@ document.addEventListener('DOMContentLoaded', () => {
           wrapper.className = 'card-wrapper bingo-complete';
           const overlay = document.createElement('div');
           overlay.className = 'bingo-overlay';
-          // ✅ TEXTO "BINGO!" VISÍVEL E ELEGANTE
+          // ✅ VISUAL PROFISSIONAL DE BINGO
           overlay.innerHTML = `
             <div style="
               position: absolute;
               top: 50%;
               left: 50%;
               transform: translate(-50%, -50%);
-              background: rgba(0, 0, 0, 0.7);
-              color: #FFD700;
-              padding: 10px 20px;
-              border-radius: 10px;
-              font-weight: bold;
-              font-size: 1.8em;
-              text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
-              letter-spacing: 2px;
+              background: rgba(0, 0, 0, 0.65);
+              color: white;
+              padding: 12px 24px;
+              border-radius: 12px;
+              font-weight: 900;
+              font-size: 2em;
+              font-family: 'Montserrat', sans-serif;
+              letter-spacing: 1px;
+              text-shadow: 
+                0 0 6px rgba(255, 215, 0, 0.7),
+                0 0 12px rgba(255, 215, 0, 0.4);
+              border: 2px solid rgba(255, 215, 0, 0.5);
+              backdrop-filter: blur(2px);
               z-index: 10;
             ">BINGO!</div>
           `;
