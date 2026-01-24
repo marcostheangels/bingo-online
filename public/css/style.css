@@ -21,7 +21,6 @@ body {
   z-index: 1000;
 }
 
-/* --- Fichas Animadas --- */
 #chips-container {
   position: absolute;
   top: 0;
@@ -51,7 +50,6 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* --- Card de Login --- */
 .login-card {
   position: relative;
   z-index: 10;
@@ -109,7 +107,6 @@ body {
   box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
 }
 
-/* --- Botões de Modo --- */
 .game-modes {
   display: flex;
   gap: 15px;
@@ -146,15 +143,50 @@ body {
   box-shadow: 0 6px 16px rgba(0,0,0,0.4);
 }
 
-/* Ajustes Mobile */
 @media (max-width: 400px) {
   .login-card { padding: 30px 20px; }
   .login-card .logo h1 { font-size: 1.5rem; }
 }
 
-/* === RESTANTE DO SEU ESTILO === */
+/* === FUNDO DINÂMICO DE FICHAS NA SALA === */
+#chips-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(circle at center, #2e1052 0%, #000000 100%);
+}
+
+.chip-bg {
+  position: absolute;
+  border-radius: 50%;
+  border: 3px dashed rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.chip-bg::after {
+  content: '';
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* === ESTILO DA ÁREA DO JOGO === */
 #game-area { 
   display: none; 
+  background: rgba(12, 12, 26, 0.85);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border-radius: 16px;
+  padding: 20px;
 }
 
 .header {
@@ -245,7 +277,6 @@ body {
   box-shadow: 0 0 10px rgba(46, 125, 50, 0.7);
 }
 
-/* ============ RANKING SEM MÁSCARA ============ */
 .ranking-section {
   margin: 20px 0;
   background: rgba(25, 25, 45, 0.8);
@@ -278,12 +309,10 @@ body {
   padding: 12px;
   margin-bottom: 8px;
   border-radius: 8px;
-  /* Remove qualquer fundo genérico */
   background: transparent !important;
   color: white !important;
 }
 
-/* 🥇 1º LUGAR - DOURADO */
 .ranking-list li:nth-child(1) {
   background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%) !important;
   color: #1a1a2e !important;
@@ -294,7 +323,6 @@ body {
   color: #1a1a2e !important;
 }
 
-/* 🥈 2º LUGAR - PRATA */
 .ranking-list li:nth-child(2) {
   background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%) !important;
   color: #1a1a2e !important;
@@ -305,7 +333,6 @@ body {
   color: #1a1a2e !important;
 }
 
-/* 🥉 3º LUGAR - BRONZE */
 .ranking-list li:nth-child(3) {
   background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%) !important;
   color: #1a1a2e !important;
@@ -330,6 +357,7 @@ body {
   font-weight: bold; 
   color: inherit !important;
 }
+
 .controls {
   display: flex;
   flex-wrap: wrap;
@@ -515,7 +543,6 @@ body {
   box-shadow: 0 4px 12px rgba(0,0,0,0.4);
 }
 
-/* ✅ Estilo do Chat */
 #chat-container {
   margin: 20px 0;
   background: rgba(25, 25, 45, 0.8);
@@ -567,7 +594,6 @@ body {
   cursor: pointer;
 }
 
-/* ============ BARA DE FASE ============ */
 #stage-indicator {
   text-align: center;
   padding: 10px;
@@ -585,12 +611,12 @@ body {
 .stage-bingo #stage-text { color: #FFD700; text-shadow: 0 0 6px rgba(255,215,0,0.5); }
 
 /* ============ ANIMAÇÕES DE VITÓRIA ============ */
-
-/* LINHA 1 */
-#line-victory-overlay {
+#line-victory-overlay,
+#line2-victory-overlay,
+#bingo-victory-overlay,
+#jackpot-overlay {
   position: fixed;
   inset: 0;
-  background: radial-gradient(circle, rgba(0, 50, 100, 0.4) 0%, #000 100%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -600,7 +626,10 @@ body {
   transition: all 0.5s ease;
 }
 
-#line-victory-overlay.active {
+#line-victory-overlay.active,
+#line2-victory-overlay.active,
+#bingo-victory-overlay.active,
+#jackpot-overlay.active {
   opacity: 1;
   visibility: visible;
 }
@@ -670,61 +699,6 @@ body {
   text-transform: uppercase;
 }
 
-.chip-particle {
-  position: absolute;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 3px dashed rgba(255,255,255,0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-weight: bold;
-  color: white;
-  font-size: 11px;
-  pointer-events: none;
-  z-index: 105;
-  box-shadow: inset 0 0 8px rgba(0,0,0,0.5);
-}
-
-.c-blue { background: #00d2ff; box-shadow: 0 0 12px #00d2ff; }
-.c-red { background: #ff4b2b; box-shadow: 0 0 12px #ff4b2b; }
-.c-green { background: #00ff87; box-shadow: 0 0 12px #00ff87; }
-.c-purple { background: #a800ff; box-shadow: 0 0 12px #a800ff; }
-
-@keyframes chipFly {
-  0% { transform: translateY(110vh) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(-20vh) rotate(720deg); opacity: 0; }
-}
-
-/* LINHA 2 */
-#line2-victory-overlay {
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(circle at center, #002d1a 0%, #000 100%);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 100;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.5s ease;
-}
-
-#line2-victory-overlay.active {
-  opacity: 1;
-  visibility: visible;
-}
-
-.rays-emerald {
-  position: absolute;
-  width: 300%;
-  height: 300%;
-  background: conic-gradient(from 0deg, transparent 0%, rgba(0, 255, 135, 0.06) 15%, transparent 30%);
-  animation: rotate 25s linear infinite;
-  z-index: 1;
-}
-
 .line-frame {
   position: relative;
   z-index: 20;
@@ -753,15 +727,6 @@ body {
   letter-spacing: 1.5px;
 }
 
-.chips-box {
-  background: rgba(0, 255, 135, 0.05);
-  border: 1px solid rgba(0, 255, 135, 0.3);
-  border-radius: 18px;
-  padding: 20px 10px;
-  margin: 0 auto;
-  width: 90%;
-}
-
 .chips-amount {
   font-size: clamp(2.0rem, 9.5vw, 3.6rem);
   font-weight: 900;
@@ -775,57 +740,6 @@ body {
   font-weight: bold;
   letter-spacing: 2.5px;
   font-size: 0.78rem;
-}
-
-.chip {
-  position: absolute;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 3px dashed rgba(255,255,255,0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-weight: bold;
-  color: white;
-  font-size: 12px;
-  z-index: 5;
-  pointer-events: none;
-}
-.c-emerald { background: #00ff87; box-shadow: 0 0 12px #00ff87; }
-.c-turquoise { background: #00f2fe; box-shadow: 0 0 12px #00f2fe; }
-.c-gold { background: #ffeb3b; color: #000; border-color: #000; box-shadow: 0 0 12px #ffeb3b; }
-
-@keyframes rotate { 
-  from { transform: rotate(0deg); } 
-  to { transform: rotate(360deg); } 
-}
-@keyframes popIn { 
-  from { transform: scale(0.7); opacity: 0; } 
-  to { transform: scale(1); opacity: 1; } 
-}
-@keyframes chipFall {
-  0% { transform: translateY(-10vh) rotate(0deg); }
-  100% { transform: translateY(110vh) rotate(720deg); }
-}
-
-/* BINGO */
-#bingo-victory-overlay {
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(circle, rgba(100, 80, 0, 0.4) 0%, #000 100%);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 100;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.5s ease;
-}
-
-#bingo-victory-overlay.active {
-  opacity: 1;
-  visibility: visible;
 }
 
 .bingo-card {
@@ -888,52 +802,6 @@ body {
   letter-spacing: 4px;
   font-weight: bold;
   text-transform: uppercase;
-}
-
-.particle {
-  position: absolute;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 3px dashed rgba(255,255,255,0.8);
-  z-index: 5;
-  pointer-events: none;
-}
-.p-gold { background: #FFD700; box-shadow: 0 0 12px #FFD700; }
-.p-emerald { background: #00ff87; box-shadow: 0 0 12px #00ff87; }
-.p-blue { background: #00d2ff; box-shadow: 0 0 12px #00d2ff; }
-
-@keyframes fall {
-  0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
-}
-
-/* JACKPOT */
-#jackpot-overlay {
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(circle at center, #500000 0%, #000 100%);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 100;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.5s ease;
-}
-
-#jackpot-overlay.active {
-  opacity: 1;
-  visibility: visible;
-}
-
-.rays {
-  position: absolute;
-  width: 300%;
-  height: 300%;
-  background: conic-gradient(from 0deg, transparent 0%, rgba(255,215,0,0.08) 15%, transparent 30%);
-  animation: rotate 25s linear infinite;
-  z-index: 1;
 }
 
 .winner-frame {
@@ -1001,26 +869,26 @@ body {
   letter-spacing: 2px;
 }
 
-.coin {
-  position: absolute;
-  width: clamp(22px, 6vw, 40px);
-  height: clamp(22px, 6vw, 40px);
-  background: #FFD700;
-  border-radius: 50%;
-  border: 2px solid #B8860B;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-weight: bold;
-  color: #8b6508;
-  font-size: 12px;
-  pointer-events: none;
-  box-shadow: inset 0 0 6px rgba(0,0,0,0.4);
+@keyframes rotate { 
+  from { transform: rotate(0deg); } 
+  to { transform: rotate(360deg); } 
 }
-
-.front-coin { z-index: 30; }
-.back-coin { z-index: 5; opacity: 0.7; }
-
+@keyframes popIn { 
+  from { transform: scale(0.7); opacity: 0; } 
+  to { transform: scale(1); opacity: 1; } 
+}
+@keyframes chipFly {
+  0% { transform: translateY(110vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-20vh) rotate(720deg); opacity: 0; }
+}
+@keyframes chipFall {
+  0% { transform: translateY(-10vh) rotate(0deg); }
+  100% { transform: translateY(110vh) rotate(720deg); }
+}
+@keyframes fall {
+  0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
 @keyframes coinFall {
   0% { transform: translateY(-15vh) rotate(0deg) translateX(0); }
   25% { transform: translateY(15vh) rotate(180deg) translateX(12px); }
@@ -1037,41 +905,4 @@ body {
   .prize-chips, .chips-amount, .prize-amount {
     line-height: 1.1;
   }
-}
-#chips-background {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: -1;
-  background: radial-gradient(circle at center, #2e1052 0%, #000000 100%);
-}
-
-.chip-bg {
-  position: absolute;
-  border-radius: 50%;
-  border: 3px dashed rgba(255, 255, 255, 0.3);
-  box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.chip-bg::after {
-  content: '';
-  width: 60%;
-  height: 60%;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-#game-area {
-  background: rgba(12, 12, 26, 0.85);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  border-radius: 16px;
-  padding: 20px;
 }
