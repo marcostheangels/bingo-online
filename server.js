@@ -738,7 +738,7 @@ function startAutoRestart(roomType) {
     };
     handleAutoRestart(fakeSocket, roomType);
   }, 25000);
-}
+} 
 
 async function handleWin(roomType, allWinners) {
   const room = rooms[roomType];
