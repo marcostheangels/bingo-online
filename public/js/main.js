@@ -87,60 +87,53 @@ function saveGameState(name, chips, cards75, cards90) {
   }
 }
 
-// ✅ Atualização de interface com reset automático dos contadores "na boa" e cores nos botões
+// ✅ Atualização de interface com cores e reset automático
 function updateControlButtons(stage) {
   if (!stage) return;
   currentStage = stage;
   document.getElementById('main-controls').className = `controls stage-${stage}`;
   
-  // Atualiza o indicador de fase
+  // ✅ Atualiza o indicador de fase e aplica cor
   const stageText = document.getElementById('stage-text');
-  if (stageText) {
-    stageText.textContent = stage === 'linha1' ? 'Linha 1' :
-                             stage === 'linha2' ? 'Linha 2' :
-                             'BINGO!';
-  }
-
-  // ✅ Referências aos elementos dos contadores
   const nearLine1 = document.getElementById('near-line1');
   const nearLine2 = document.getElementById('near-line2');
-
-  // ✅ Zera os contadores IRRELEVANTES para a fase atual
-  if (nearLine1 && nearLine2) {
-    if (stage === 'linha1') {
-      // Mostra tudo — não zera nada
-    } else if (stage === 'linha2') {
-      // Já passou da linha 1 → não faz sentido mostrar "na boa" para linha 1
-      nearLine1.textContent = '0';
-    } else if (stage === 'bingo') {
-      // Já passou da linha 2 → não faz sentido mostrar "na boa" para linha 2
-      nearLine2.textContent = '0';
-    }
-  }
-
-  // ✅ Cores nos botões
   const line2Btn = document.getElementById('line2-btn');
   const bingoBtn = document.getElementById('bingo-btn');
 
+  // Reset de estilos
+  if (stageText) stageText.style.color = '';
   if (line2Btn) line2Btn.style.backgroundColor = '';
   if (bingoBtn) bingoBtn.style.backgroundColor = '';
 
-  if (stage === 'linha2' && line2Btn) {
-    line2Btn.style.backgroundColor = '#ab47bc'; // roxo
-  } else if (stage === 'bingo' && bingoBtn) {
-    bingoBtn.style.backgroundColor = '#ffd700'; // dourado
+  if (stageText) {
+    if (stage === 'linha1') {
+      stageText.textContent = 'Linha 1';
+      stageText.style.color = '#66bb6a'; // verde
+    } else if (stage === 'linha2') {
+      stageText.textContent = 'Linha 2';
+      stageText.style.color = '#ab47bc'; // roxo
+      // Zera contador linha 1
+      if (nearLine1) nearLine1.textContent = '0';
+      // Cor do botão Linha 2
+      if (line2Btn) line2Btn.style.backgroundColor = '#ab47bc';
+    } else if (stage === 'bingo') {
+      stageText.textContent = 'BINGO!';
+      stageText.style.color = '#ffd700'; // dourado
+      // Zera contador linha 2
+      if (nearLine2) nearLine2.textContent = '0';
+      // Cor do botão Bingo
+      if (bingoBtn) bingoBtn.style.backgroundColor = '#ffd700';
+    }
   }
 }
 
 // ✅ Função centralizada para atualizar TUDO relacionado a chips
 function refreshAllChipDisplays() {
-  // 1. Atualiza saldo do jogador atual
   const player = socket.id ? roomsState?.players?.[socket.id] : null;
   if (player) {
     document.getElementById('chips-display').textContent = player.chips.toLocaleString('pt-BR');
   }
 
-  // 2. Atualiza pote e jackpot
   if (roomsState?.pot != null) {
     document.getElementById('pot-display').textContent = `Pote: R$ ${roomsState.pot.toLocaleString('pt-BR')}`;
   }
@@ -148,7 +141,6 @@ function refreshAllChipDisplays() {
     document.getElementById('jackpot-display').textContent = `Jackpot: R$ ${roomsState.jackpot.toLocaleString('pt-BR')}`;
   }
 
-  // 3. Atualiza lista de jogadores
   if (roomsState?.players) {
     const playersArray = Object.entries(roomsState.players).map(([id, p]) => ({ id, ...p }));
     const withoutChips = playersArray.filter(p => p.chips <= 0);
@@ -177,7 +169,6 @@ function refreshAllChipDisplays() {
     });
   }
 
-  // 4. Atualiza ranking com troféus e cores
   if (roomsState?.players) {
     const ranked = Object.entries(roomsState.players)
       .map(([id, p]) => ({ id, name: p.name, chips: p.chips, isBot: p.isBot }))
@@ -188,38 +179,32 @@ function refreshAllChipDisplays() {
     rankingList.innerHTML = '';
     ranked.forEach(player => {
       const li = document.createElement('li');
-      
-      // Troféu e cor baseado na posição
       let trophy = '';
       let bgColor = '';
       let textColor = 'white';
       if (player.position === 1) {
         trophy = '🥇';
-        bgColor = '#FFD700'; // Dourado
+        bgColor = '#FFD700';
         textColor = '#1a1a2e';
       } else if (player.position === 2) {
         trophy = '🥈';
-        bgColor = '#C0C0C0'; // Prata
+        bgColor = '#C0C0C0';
         textColor = '#1a1a2e';
       } else if (player.position === 3) {
         trophy = '🥉';
-        bgColor = '#CD7F32'; // Bronze
+        bgColor = '#CD7F32';
         textColor = '#1a1a2e';
       }
-      
       li.innerHTML = `
         <div class="ranking-position">${player.position}º</div>
         <div class="ranking-name">${trophy} ${player.name}</div>
         <div class="ranking-chips">R$ ${player.chips.toLocaleString('pt-BR')}</div>
       `;
-      
-      // Aplica cor de fundo e cor do texto
       if (bgColor) {
-        li.style.background = `${bgColor}20`; // 20% de opacidade
+        li.style.background = `${bgColor}20`;
         li.style.borderLeft = `5px solid ${bgColor}`;
         li.style.color = textColor;
       }
-      
       rankingList.appendChild(li);
     });
   }
@@ -235,7 +220,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const ballsCountDisplay = document.getElementById('balls-count');
   const lastNumberDisplay = document.getElementById('last-number');
 
-  // ✅ Função GLOBAL para joinRoom
   window.joinRoom = function(roomType) {
     let name = playerNameInput.value.trim();
     name = name.replace(/[^a-zA-ZÀ-ÿ\s]/g, '').substring(0, 15).trim() || 'Anônimo';
@@ -251,7 +235,6 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.emit('join-room', { playerName: name, roomType, savedChips, savedCards75, savedCards90 });
   };
 
-  // ✅ Event listeners modernos
   document.getElementById('join-bingo75').addEventListener('click', () => joinRoom('bingo75'));
   document.getElementById('join-bingo90').addEventListener('click', () => joinRoom('bingo90'));
   document.getElementById('set-10-cards').addEventListener('click', () => {
@@ -282,11 +265,21 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshAllChipDisplays();
   });
 
-  // ✅ Receber atualizações de "cartelas na boa"
+  // ✅ Receber "cartelas na boa"
   socket.on('near-win-stats', (stats) => {
-    document.getElementById('near-line1').textContent = stats.line1 || 0;
-    document.getElementById('near-line2').textContent = stats.line2 || 0;
-    document.getElementById('near-bingo').textContent = stats.bingo || 0;
+    // Só atualiza se estiver na fase correta
+    const nearLine1 = document.getElementById('near-line1');
+    const nearLine2 = document.getElementById('near-line2');
+    const nearBingo = document.getElementById('near-bingo');
+
+    if (currentStage === 'linha1') {
+      if (nearLine1) nearLine1.textContent = stats.line1 || 0;
+      if (nearLine2) nearLine2.textContent = stats.line2 || 0;
+    } else if (currentStage === 'linha2') {
+      if (nearLine2) nearLine2.textContent = stats.line2 || 0;
+    }
+    // Bingo sempre atualiza
+    if (nearBingo) nearBingo.textContent = stats.bingo || 0;
   });
 
   socket.on('pot-update', (data) => {
@@ -300,10 +293,6 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshAllChipDisplays();
   });
 
-  socket.on('ranking-update', (ranking) => {
-    // Já é tratado por refreshAllChipDisplays
-  });
-
   socket.on('update-player', (data) => {
     if (roomsState?.players?.[socket.id]) {
       roomsState.players[socket.id].chips = data.chips;
@@ -311,7 +300,6 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshAllChipDisplays();
   });
 
-  // ✅ Receber mensagens do chat
   socket.on('chat-message', (data) => {
     addChatMessage(data.message, data.sender, data.isBot, data.sender === "Sistema");
   });
@@ -346,13 +334,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCards();
     playSound('sorteio', data.number);
     speak(data.number.toString());
-
-    // Atualiza bolas restantes para jackpot
     const remainingForJackpot = Math.max(0, 60 - roomsDrawnNumbers.length);
     document.getElementById('jackpot-remaining').textContent = `Bolas restantes para Jackpot: ${remainingForJackpot}`;
   });
 
-  // ✅ CORREÇÃO: Trata todas as vitórias no mesmo evento
   socket.on('player-won', (data) => {
     const winType = data.winners[0]?.winType;
     const isJackpot = data.wonJackpot;
@@ -382,14 +367,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (data.newStage) updateControlButtons(data.newStage);
     if (winType === 'bingo') gameEnded = true;
 
-    // Força atualização após vitória
     setTimeout(() => {
       socket.emit('sync-state');
     }, 500);
   });
 
-  socket.on('show-restart-button', () => { gameEnded = true; });
-  socket.on('game-over', () => { gameEnded = true; });
   socket.on('room-reset', () => {
     roomsDrawnNumbers = [];
     playerCards = [];
@@ -405,10 +387,10 @@ document.addEventListener('DOMContentLoaded', () => {
     roomsState = {};
     refreshAllChipDisplays();
   });
+
   socket.on('error', (msg) => showAdminMessage(msg, 'error'));
   socket.on('message', (msg) => showAdminMessage(msg, 'success'));
 
-  // ✅ Eventos de compra e controles
   document.getElementById('buy-btn').addEventListener('click', () => {
     if (gameEnded) {
       alert('O jogo terminou. Clique em "Reiniciar Jogo".');
@@ -427,12 +409,6 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.emit('start-draw');
   });
 
-  // ❌ REMOVIDO: Botão Linha 1
-  // document.getElementById('line1-btn').addEventListener('click', () => {
-  //   if (gameEnded) return;
-  //   socket.emit('claim-win', { winType: 'linha1' });
-  // });
-
   document.getElementById('line2-btn').addEventListener('click', () => {
     if (gameEnded) return;
     socket.emit('claim-win', { winType: 'linha2' });
@@ -449,7 +425,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ✅ MOBILE: Wake Lock e sorteio em background
   if ('wakeLock' in navigator) {
     const gameObserver = new MutationObserver(() => {
       if (gameArea.style.display === 'block') {
@@ -538,12 +513,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 cell.classList.add('marked');
               }
               if (bingo) {
-                // será tratado no wrapper
+                // NÃO faz nada aqui — o overlay será adicionado abaixo
               } else if (completedLines.length >= 2) {
-                if (completedLines[0] === r) {
-                  cell.style.backgroundColor = '#27ae60';
-                  cell.style.color = 'white';
-                } else if (completedLines.includes(r)) {
+                if (completedLines.includes(r)) {
                   cell.style.backgroundColor = '#8e44ad';
                   cell.style.color = 'white';
                 }
@@ -561,7 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
           wrapper.className = 'card-wrapper bingo-complete';
           const overlay = document.createElement('div');
           overlay.className = 'bingo-overlay';
-          overlay.textContent = 'BINGO!';
+          overlay.innerHTML = '<h2 style="color:#ffd700;font-weight:bold;text-shadow:0 0 10px gold;">BINGO!</h2>';
           wrapper.appendChild(overlay);
         }
       } else {
@@ -584,22 +556,5 @@ document.addEventListener('DOMContentLoaded', () => {
       wrapper.appendChild(grid);
       container.appendChild(wrapper);
     });
-    if (cardType === '90' && sortedCards.length > 0 && validationWorker) {
-      const cardsToValidate = sortedCards.slice(0, 100).map(item => item.card);
-      validationWorker.postMessage({ cards: cardsToValidate, drawnNumbers: roomsDrawnNumbers });
-      validationWorker.onmessage = (e) => {
-        const results = e.data;
-        const wrappers = container.querySelectorAll('.card-wrapper');
-        results.forEach((res, idx) => {
-          if (idx < wrappers.length) {
-            const wrapper = wrappers[idx];
-            if (!res.valid) {
-              wrapper.style.opacity = '0.6';
-              wrapper.title = 'Cartela inválida (≠15 números)';
-            }
-          }
-        });
-      };
-    }
   }
 });
