@@ -212,5 +212,50 @@
   <script src="js/ui.js"></script>
   <script src="js/chat.js"></script>
   <script src="js/main.js"></script>
+
+  <!-- ✅ SCRIPT DE FICHAS ANIMADAS NA TELA DE LOGIN -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // ✅ FICHAS NA TELA DE LOGIN
+      const loginChips = document.getElementById('chips-container');
+      if (loginChips) {
+        const colors = ['#e63946', '#ffd700', '#1d3557', '#52b788', '#333333'];
+        
+        function createLoginChip() {
+          const chip = document.createElement('div');
+          chip.className = 'chip-particle';
+          
+          const size = Math.random() * (80 - 40) + 40;
+          const color = colors[Math.floor(Math.random() * colors.length)];
+          const startPos = Math.random() * 100;
+          const duration = Math.random() * (10 - 5) + 5;
+          const rotation = Math.random() * 360;
+
+          chip.style.width = `${size}px`;
+          chip.style.height = `${size}px`;
+          chip.style.backgroundColor = color;
+          chip.style.left = `${startPos}%`;
+          chip.style.bottom = `-100px`;
+          chip.style.opacity = Math.random() * (0.8 - 0.4) + 0.4;
+          
+          loginChips.appendChild(chip);
+
+          const animation = chip.animate([
+            { transform: `translateY(0) rotate(${rotation}deg)`, opacity: 0 },
+            { opacity: 1, offset: 0.2 },
+            { transform: `translateY(-120vh) rotate(${rotation + 720}deg)`, opacity: 0 }
+          ], {
+            duration: duration * 1000,
+            easing: 'linear'
+          });
+
+          animation.onfinish = () => chip.remove();
+        }
+
+        setInterval(createLoginChip, 400);
+        for(let i = 0; i < 10; i++) setTimeout(createLoginChip, i * 300);
+      }
+    });
+  </script>
 </body>
 </html>
