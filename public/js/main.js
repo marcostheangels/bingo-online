@@ -62,11 +62,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// ✅ Funções de Estado do Jogador — AGORA ISOLADAS POR SALA
-function loadGameState(name, roomType) {
+// ✅ Funções de Estado do Jogador
+function loadGameState(name) {
   try {
-    const key = `bingo_player_${name}_${roomType}`;
-    const saved = localStorage.getItem(key);
+    const saved = localStorage.getItem(`bingo_player_${name}`);
     if (!saved) return null;
     const data = JSON.parse(saved);
     if (typeof data.chips !== 'number' || data.chips < 0) data.chips = 10000;
@@ -75,15 +74,14 @@ function loadGameState(name, roomType) {
     return data;
   } catch (e) {
     console.warn('Erro ao carregar estado. Limpando.');
-    localStorage.removeItem(`bingo_player_${name}_${roomType}`);
+    localStorage.removeItem(`bingo_player_${name}`);
     return null;
   }
 }
 
-function saveGameState(name, roomType, chips, cards75, cards90) {
+function saveGameState(name, chips, cards75, cards90) {
   try {
-    const key = `bingo_player_${name}_${roomType}`;
-    localStorage.setItem(key, JSON.stringify({ chips, cards75, cards90 }));
+    localStorage.setItem(`bingo_player_${name}`, JSON.stringify({ chips, cards75, cards90 }));
   } catch (e) {
     console.warn('Não foi possível salvar o estado do jogo:', e);
   }
@@ -94,6 +92,7 @@ function updateControlButtons(stage) {
   if (!stage) return;
   currentStage = stage;
   document.getElementById('main-controls').className = `controls stage-${stage}`;
+  
   const stageText = document.getElementById('stage-text');
   const nearLine1 = document.getElementById('near-line1');
   const nearLine2 = document.getElementById('near-line2');
@@ -136,6 +135,7 @@ function refreshAllChipDisplays() {
   if (player) {
     document.getElementById('chips-display').textContent = player.chips.toLocaleString('pt-BR');
   }
+
   if (roomsState?.pot != null) {
     document.getElementById('pot-display').textContent = `Pote: R$ ${roomsState.pot.toLocaleString('pt-BR')}`;
   }
@@ -179,13 +179,11 @@ function refreshAllChipDisplays() {
 
     const rankingList = document.getElementById('ranking-list');
     rankingList.innerHTML = '';
-
     ranked.forEach(player => {
       const li = document.createElement('li');
       let trophy = '';
       let bgColor = '';
       let textColor = 'white';
-
       if (player.position === 1) {
         trophy = '🥇';
         bgColor = '#FFD700';
@@ -199,19 +197,16 @@ function refreshAllChipDisplays() {
         bgColor = '#CD7F32';
         textColor = '#1a1a2e';
       }
-
       li.innerHTML = `
         <div class="ranking-position">${player.position}º</div>
         <div class="ranking-name">${trophy} ${player.name}</div>
         <div class="ranking-chips">R$ ${player.chips.toLocaleString('pt-BR')}</div>
       `;
-
       if (bgColor) {
         li.style.background = `${bgColor}20`;
         li.style.borderLeft = `5px solid ${bgColor}`;
         li.style.color = textColor;
       }
-
       rankingList.appendChild(li);
     });
   }
@@ -224,13 +219,15 @@ function startChipsBackground() {
     if (container) container.style.display = 'none';
     return;
   }
+
   container.style.display = 'block';
   container.innerHTML = ''; // Limpa chips antigos
-
+  
   const colors = ['#e63946', '#ffd700', '#1d3557', '#52b788', '#333333'];
   const interval = setInterval(() => {
     const chip = document.createElement('div');
     chip.className = 'chip-bg';
+    
     const size = Math.random() * (70 - 30) + 30;
     const color = colors[Math.floor(Math.random() * colors.length)];
     const startPos = Math.random() * 100;
@@ -243,7 +240,7 @@ function startChipsBackground() {
     chip.style.left = `${startPos}%`;
     chip.style.bottom = `-100px`;
     chip.style.opacity = Math.random() * (0.7 - 0.3) + 0.3;
-
+    
     container.appendChild(chip);
 
     const animation = chip.animate([
@@ -279,23 +276,18 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     playerName = name;
-
-    // ✅ CARREGAR ESTADO DA SALA ESPECÍFICA
-    const savedState = loadGameState(name, roomType);
+    const savedState = loadGameState(name);
     const savedCards75 = savedState ? savedState.cards75 : null;
     const savedCards90 = savedState ? savedState.cards90 : null;
     const savedChips = savedState ? savedState.chips : null;
-
     socket.emit('join-room', { playerName: name, roomType, savedChips, savedCards75, savedCards90 });
   };
 
   document.getElementById('join-bingo75').addEventListener('click', () => joinRoom('bingo75'));
   document.getElementById('join-bingo90').addEventListener('click', () => joinRoom('bingo90'));
-
   document.getElementById('set-10-cards').addEventListener('click', () => {
     document.getElementById('card-count').value = 10;
   });
-
   document.getElementById('send-admin-command').addEventListener('click', sendAdminCommand);
 
   socket.on('room-welcome', (data) => {
@@ -306,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('room-title').textContent = `Sala: ${data.roomName}`;
     gameEnded = data.gameCompleted || false;
     updateControlButtons(data.currentStage || 'linha1');
-
+    
     // ✅ ATIVA FUNDO DINÂMICO APÓS ENTRAR NA SALA
     setTimeout(() => startChipsBackground(), 100);
   });
@@ -319,13 +311,8 @@ document.addEventListener('DOMContentLoaded', () => {
     updateHistory(data.drawnNumbers || []);
     if (data.lastNumber) document.getElementById('last-number').textContent = data.lastNumber;
     updateControlButtons(data.currentStage || 'linha1');
-
     const player = data.players[socket.id];
-    if (player) {
-      // ✅ SALVAR ESTADO DA SALA ESPECÍFICA
-      saveGameState(playerName, currentRoom, player.chips, player.cards75, player.cards90);
-    }
-
+    if (player) saveGameState(playerName, player.chips, player.cards75, player.cards90);
     refreshAllChipDisplays();
   });
 
@@ -372,9 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
       originalIndex: playerCards.length
     }));
     playerCards = playerCards.concat(newCards);
-
-    // ✅ CARREGAR E ATUALIZAR ESTADO DA SALA ESPECÍFICA
-    const currentState = loadGameState(playerName, currentRoom) || {};
+    const currentState = loadGameState(playerName) || {};
     if (data.cardType === '75') {
       currentState.cards75 = currentState.cards75 || [];
       data.cards.forEach(c => currentState.cards75.push(c.card));
@@ -382,8 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
       currentState.cards90 = currentState.cards90 || [];
       data.cards.forEach(c => currentState.cards90.push(c.card));
     }
-    saveGameState(playerName, currentRoom, currentState.chips || 10000, currentState.cards75, currentState.cards90);
-
+    saveGameState(playerName, currentState.chips || 10000, currentState.cards75, currentState.cards90);
     requestAnimationFrame(() => {
       renderCards();
       roomsDrawnNumbers.forEach(num => markDrawnNumbers(num));
@@ -448,15 +432,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('balls-count').textContent = '0';
     document.getElementById('history').innerHTML = '';
     document.getElementById('chat-messages').innerHTML = '';
-
-    // ✅ LIMPAR ESTADO DA SALA ESPECÍFICA
-    localStorage.removeItem(`bingo_player_${playerName}_${currentRoom}`);
-
+    localStorage.removeItem(`bingo_player_${playerName}`);
     renderCards();
     updateControlButtons('linha1');
     roomsState = {};
     refreshAllChipDisplays();
-
+    
     // Limpa fundo ao reiniciar
     const chipsBg = document.getElementById('chips-background');
     if (chipsBg) chipsBg.style.display = 'none';
@@ -499,7 +480,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ✅ Wake Lock para mobile
   if ('wakeLock' in navigator) {
     const gameObserver = new MutationObserver(() => {
       if (gameArea.style.display === 'block') {
@@ -509,19 +489,19 @@ document.addEventListener('DOMContentLoaded', () => {
     gameObserver.observe(gameArea, { attributes: true, attributeFilter: ['style'] });
   }
 
-  // ✅ Limpar fundo ao sair
   window.addEventListener('beforeunload', (e) => {
     if (currentRoom && !gameEnded) {
       e.preventDefault();
       e.returnValue = '';
       return '';
     }
+    
+    // Limpa intervalo ao sair
     if (window.chipsBackgroundInterval) {
       clearInterval(window.chipsBackgroundInterval);
     }
   });
 
-  // Funções auxiliares
   function updateHistory(numbers) {
     const hist = document.getElementById('history');
     hist.innerHTML = '';
@@ -540,65 +520,32 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function getBallsLeftForCurrentStage(card, drawnNumbers, stage) {
-    if (cardType === '90') {
-      const markedInRow = [0, 0, 0];
-      for (let r = 0; r < 3; r++) {
-        for (let c = 0; c < 9; c++) {
-          const num = card[r][c];
-          if (num !== null && drawnNumbers.includes(num)) {
-            markedInRow[r]++;
-          }
-        }
-      }
-      const sorted = [...markedInRow].sort((a, b) => b - a);
-      if (stage === 'linha1') return Math.min(5 - markedInRow[0], 5 - markedInRow[1], 5 - markedInRow[2]);
-      if (stage === 'linha2') return (5 - sorted[0]) + (5 - sorted[1]);
-      if (stage === 'bingo') return 15 - markedInRow.reduce((a, b) => a + b, 0);
-    } else {
-      // Bingo 75: full card only
-      let marked = 0;
-      for (let i = 0; i < 25; i++) {
-        if (card[i] === 'FREE' || drawnNumbers.includes(card[i])) marked++;
-      }
-      return 25 - marked;
-    }
-    return 999;
-  }
-
   function renderCards() {
     const container = document.getElementById('cards-container');
     container.innerHTML = '';
-
     const validCards = playerCards.filter(item =>
       item && item.card &&
       ((cardType === '75' && item.card.length === 25) ||
-       (cardType === '90' && item.card.length === 3 && item.card.every(row => Array.isArray(row) && row.length === 9)))
+        (cardType === '90' && item.card.length === 3 && item.card.every(row => Array.isArray(row) && row.length === 9)))
     );
-
     const sortedCards = [...validCards].sort((a, b) => {
       const ballsA = getBallsLeftForCurrentStage(a.card, roomsDrawnNumbers, currentStage);
       const ballsB = getBallsLeftForCurrentStage(b.card, roomsDrawnNumbers, currentStage);
       return ballsA - ballsB;
     });
-
     sortedCards.forEach((item, idx) => {
       item.index = idx;
     });
-
     sortedCards.forEach(item => {
       const wrapper = document.createElement('div');
       wrapper.className = 'card-wrapper';
-
       const ballsLeftForStage = getBallsLeftForCurrentStage(item.card, roomsDrawnNumbers, currentStage);
       if (ballsLeftForStage === 1) {
         wrapper.classList.add('near-win');
       }
-
       wrapper.innerHTML = `<div class="card-title">Cartela ${item.index + 1}</div>`;
       const grid = document.createElement('div');
       grid.className = cardType === '75' ? 'grid-75' : 'grid-90';
-
       if (cardType === '90') {
         const markedInRow = [0, 0, 0];
         for (let r = 0; r < 3; r++) {
@@ -614,7 +561,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (markedInRow[1] >= 5) completedLines.push(1);
         if (markedInRow[2] >= 5) completedLines.push(2);
         const bingo = completedLines.length >= 3;
-
         for (let r = 0; r < 3; r++) {
           for (let c = 0; c < 9; c++) {
             const cell = document.createElement('div');
@@ -632,7 +578,6 @@ document.addEventListener('DOMContentLoaded', () => {
             grid.appendChild(cell);
           }
         }
-
         if (bingo) {
           wrapper.className = 'card-wrapper bingo-complete';
           const overlay = document.createElement('div');
@@ -686,26 +631,8 @@ document.addEventListener('DOMContentLoaded', () => {
           grid.appendChild(cell);
         }
       }
-
       wrapper.appendChild(grid);
       container.appendChild(wrapper);
     });
   }
-
-  // Função placeholder para evitar erros (caso não estejam definidas em outro lugar)
-  window.addChatMessage = window.addChatMessage || ((msg, sender, isBot, isSystem) => {
-    const chat = document.getElementById('chat-messages');
-    const p = document.createElement('p');
-    p.className = isBot ? 'bot' : isSystem ? 'system' : 'human';
-    p.innerHTML = `<strong>${sender}:</strong> ${msg}`;
-    chat.appendChild(p);
-    chat.scrollTop = chat.scrollHeight;
-  });
-
-  window.checkAchievements = window.checkAchievements || (() => {});
-  window.showLineVictory = window.showLineVictory || (() => {});
-  window.showLine2Victory = window.showLine2Victory || (() => {});
-  window.showBingoVictory = window.showBingoVictory || (() => {});
-  window.showJackpotVictory = window.showJackpotVictory || (() => {});
-
 });
