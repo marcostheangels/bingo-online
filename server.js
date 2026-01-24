@@ -1,9 +1,12 @@
+// ✅ DECLARAÇÕES ÚNICAS NO INÍCIO
 const express = require('express');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+
 const app = express();
 const server = http.createServer(app);
+
 
 // ✅ Conexão com PostgreSQL (Railway)
 let pool;
