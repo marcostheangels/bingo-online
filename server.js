@@ -1,8 +1,8 @@
-// [Conteúdo completo de server.pdf com correções aplicadas]
+// Bingo Server - Corrigido e Atualizado
 const express = require('express');
 const http = require('http');
-const path = require('fs');
-const fs = require('fs');
+const fs = require('fs');        // ✅ fs para operações de arquivo
+const path = require('path');    // ✅ path para manipulação de caminhos
 const app = express();
 const server = http.createServer(app);
 
@@ -85,6 +85,7 @@ const io = require('socket.io')(server, {
   cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
+// ✅ Servir arquivos estáticos da pasta 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
@@ -125,7 +126,7 @@ const BOT_NAMES = [
 ];
 
 const PRICE_PER_CARD = 1000;
-const INITIAL_CHIPS = 100000;
+const INITIAL_CHIPS = 10000;
 const MAX_CARDS_PER_PLAYER = 10;
 const JACKPOT_BALL_LIMIT = 60;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '0589';
@@ -133,9 +134,25 @@ const MAX_BOTS_ALLOWED = 10;
 
 const AI_KEYWORDS = ['como', 'regra', 'funciona', 'ganhar', 'prêmio', 'pote', 'jackpot', 'cartela', 'bingo', 'linha', 'número', 'sorteio', 'chips', 'comprar', 'bot', 'humano','pix','saque','retirar','depósito','pagar','saldo','dinheiro','moeda','bônus','grátis', 'vitória', 'dica', 'estratégia', 'ajuda', '?'];
 const AI_RESPONSES = {
-  general: [/* ... mantido igual ... */],
-  jackpot: [/* ... */],
-  strategy: [/* ... */]
+  general: [
+    "Olá! Sou o SYSTEM, seu assistente de bingo! 🎉",
+    "Dúvidas? Pergunte sobre regras, prêmios ou como ganhar!",
+    "Você pode ganhar na Linha 1, Linha 2, Bingo ou até o Jackpot! 💰",
+    "O pote é dividido igualmente entre todos os vencedores — humanos e bots!",
+    "Compre cartelas com seus chips. Cada uma custa R$1.000.",
+    "O Jackpot só é válido se o Bingo for feito em até 60 bolas!",
+    "Bons jogos! Que a sorte esteja com você! 🍀"
+  ],
+  jackpot: [
+    "💰 O Jackpot começa em R$1.000.000 e cresce a cada cartela comprada!",
+    "Só é possível ganhar o Jackpot se completar o Bingo nas primeiras 60 bolas!",
+    "Se ninguém ganhar o Jackpot, ele acumula para a próxima rodada!"
+  ],
+  strategy: [
+    "Dica: compre mais cartelas para aumentar suas chances!",
+    "Fique de olho nas cartelas com poucas bolas faltando!",
+    "Linhas quase completas aparecem em destaque — aproveite!"
+  ]
 };
 let lastAiResponse = '';
 
@@ -146,8 +163,12 @@ function getSmartAiResponse(message) {
   else return getRandomUnique(AI_RESPONSES.general, 'general');
 }
 function getRandomUnique(list, category) {
-  let response; do { response = list[Math.floor(Math.random() * list.length)]; } while (response === lastAiResponse && list.length > 1);
-  lastAiResponse = response; return response;
+  let response;
+  do {
+    response = list[Math.floor(Math.random() * list.length)];
+  } while (response === lastAiResponse && list.length > 1);
+  lastAiResponse = response;
+  return response;
 }
 
 const rooms = {
@@ -160,8 +181,8 @@ const rooms = {
     maxBots: 3,
     pot: 0,
     drawInterval: null,
-    currentStage: 'linha1',
-    stageCompleted: { linha1: false, linha2: false, bingo: false },
+    currentStage: 'bingo',
+    stageCompleted: { bingo: false },
     jackpot: 1000000,
     gameCompleted: false,
     addBotOnNextRestart: false,
@@ -214,7 +235,13 @@ function startAutoMessages(roomType) {
   if (room.autoMessageInterval) clearInterval(room.autoMessageInterval);
   room.autoMessageInterval = setInterval(() => {
     if (!hasHumanWithCards(roomType)) return;
-    const messages = [/* ... mensagens automáticas ... */];
+    const messages = [
+      "Alguém já está perto de ganhar? 👀",
+      "Não esqueça de comprar suas cartelas!",
+      "O pote está crescendo... quem leva?",
+      "SYSTEM aqui: boa sorte a todos!",
+      "Atenção: o Jackpot está acumulando! 💰"
+    ];
     const msg = messages[Math.floor(Math.random() * messages.length)];
     io.to(roomType).emit('chat-message', {
       message: msg,
@@ -347,8 +374,6 @@ function drawNumber(roomType) {
 
 function checkCardAchievements(card, drawnNumbers, roomType) {
   if (roomType === 'bingo75') {
-    // Para Bingo 75: linha horizontal, vertical, diagonal, full
-    // Implementação simplificada: considerar apenas full card como bingo
     const marked = card.filter(n => n === 'FREE' || drawnNumbers.includes(n)).length;
     return { bingo: marked === 25 };
   } else {
@@ -795,8 +820,8 @@ async function handleAutoRestart(socket, roomType) {
   room.drawnNumbers = [];
   room.lastNumber = null;
   room.pot = 0;
-  room.currentStage = 'linha1';
-  room.stageCompleted = { linha1: false, linha2: false, bingo: false };
+  room.currentStage = roomType === 'bingo90' ? 'linha1' : 'bingo';
+  room.stageCompleted = roomType === 'bingo90' ? { linha1: false, linha2: false, bingo: false } : { bingo: false };
   room.gameCompleted = false;
   room.gameActive = false;
   room.autoRestartTimeout = null;
