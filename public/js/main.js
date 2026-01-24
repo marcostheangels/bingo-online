@@ -87,44 +87,46 @@ function saveGameState(name, chips, cards75, cards90) {
   }
 }
 
-// ✅ Atualização de interface com cores e reset automático
+// ✅ Atualização de interface com cores forçadas e reset automático
 function updateControlButtons(stage) {
   if (!stage) return;
   currentStage = stage;
   document.getElementById('main-controls').className = `controls stage-${stage}`;
   
-  // ✅ Atualiza o indicador de fase e aplica cor
   const stageText = document.getElementById('stage-text');
   const nearLine1 = document.getElementById('near-line1');
   const nearLine2 = document.getElementById('near-line2');
-  const line2Btn = document.getElementById('line2-btn');
-  const bingoBtn = document.getElementById('bingo-btn');
 
-  // Reset de estilos
-  if (stageText) stageText.style.color = '';
-  if (line2Btn) line2Btn.style.backgroundColor = '';
-  if (bingoBtn) bingoBtn.style.backgroundColor = '';
+  // Função para aplicar cor com !important
+  function setTextColor(el, color) {
+    if (el) {
+      el.style.setProperty('color', color, 'important');
+      el.style.fontWeight = 'bold';
+    }
+  }
 
   if (stageText) {
     if (stage === 'linha1') {
       stageText.textContent = 'Linha 1';
-      stageText.style.color = '#66bb6a'; // verde
+      setTextColor(stageText, '#66bb6a'); // verde
     } else if (stage === 'linha2') {
       stageText.textContent = 'Linha 2';
-      stageText.style.color = '#ab47bc'; // roxo
-      // Zera contador linha 1
+      setTextColor(stageText, '#ab47bc'); // roxo
       if (nearLine1) nearLine1.textContent = '0';
-      // Cor do botão Linha 2
-      if (line2Btn) line2Btn.style.backgroundColor = '#ab47bc';
     } else if (stage === 'bingo') {
       stageText.textContent = 'BINGO!';
-      stageText.style.color = '#ffd700'; // dourado
-      // Zera contador linha 2
+      setTextColor(stageText, '#ffd700'); // dourado
       if (nearLine2) nearLine2.textContent = '0';
-      // Cor do botão Bingo
-      if (bingoBtn) bingoBtn.style.backgroundColor = '#ffd700';
     }
   }
+
+  // Cores nos botões reais (opcional)
+  const line2Btn = document.getElementById('line2-btn');
+  const bingoBtn = document.getElementById('bingo-btn');
+  if (line2Btn) line2Btn.style.backgroundColor = '';
+  if (bingoBtn) bingoBtn.style.backgroundColor = '';
+  if (stage === 'linha2' && line2Btn) line2Btn.style.backgroundColor = '#ab47bc';
+  if (stage === 'bingo' && bingoBtn) bingoBtn.style.backgroundColor = '#ffd700';
 }
 
 // ✅ Função centralizada para atualizar TUDO relacionado a chips
@@ -267,7 +269,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ✅ Receber "cartelas na boa"
   socket.on('near-win-stats', (stats) => {
-    // Só atualiza se estiver na fase correta
     const nearLine1 = document.getElementById('near-line1');
     const nearLine2 = document.getElementById('near-line2');
     const nearBingo = document.getElementById('near-bingo');
@@ -278,7 +279,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (currentStage === 'linha2') {
       if (nearLine2) nearLine2.textContent = stats.line2 || 0;
     }
-    // Bingo sempre atualiza
     if (nearBingo) nearBingo.textContent = stats.bingo || 0;
   });
 
@@ -512,17 +512,6 @@ document.addEventListener('DOMContentLoaded', () => {
               if (roomsDrawnNumbers.includes(val)) {
                 cell.classList.add('marked');
               }
-              if (bingo) {
-                // NÃO faz nada aqui — o overlay será adicionado abaixo
-              } else if (completedLines.length >= 2) {
-                if (completedLines.includes(r)) {
-                  cell.style.backgroundColor = '#8e44ad';
-                  cell.style.color = 'white';
-                }
-              } else if (completedLines.length >= 1 && completedLines[0] === r) {
-                cell.style.backgroundColor = '#27ae60';
-                cell.style.color = 'white';
-              }
             } else {
               cell.classList.add('empty');
             }
@@ -533,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
           wrapper.className = 'card-wrapper bingo-complete';
           const overlay = document.createElement('div');
           overlay.className = 'bingo-overlay';
-          overlay.innerHTML = '<h2 style="color:#ffd700;font-weight:bold;text-shadow:0 0 10px gold;">BINGO!</h2>';
+          overlay.innerHTML = '<h2 style="color:#ffd700;font-weight:bold;text-shadow:0 0 10px gold, 0 0 20px gold;">BINGO!</h2>';
           wrapper.appendChild(overlay);
         }
       } else {
