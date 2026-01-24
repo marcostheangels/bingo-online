@@ -731,6 +731,7 @@ function startAutoRestart(roomType) {
   if (room.autoRestartTimeout) clearTimeout(room.autoRestartTimeout);
   io.to(roomType).emit('countdown-start', { seconds: 25 });
   room.autoRestartTimeout = setTimeout(() => {
+    // ✅ CORREÇÃO: Objeto fakeSocket com estrutura válida
     const fakeSocket = { emit: () => {},  { roomType }, id: 'system' };
     handleAutoRestart(fakeSocket, roomType);
   }, 25000);
@@ -1312,7 +1313,8 @@ io.on('connection', (socket) => {
   socket.on('restart-game', () => {
     const roomType = socket.data?.roomType;
     if (!roomType) return socket.emit('error', 'Sala inválida.');
-    const fakeSocket = { data: { roomType }, id: 'manual' };
+    // ✅ CORREÇÃO: Objeto fakeSocket com estrutura válida
+    const fakeSocket = {  { roomType }, id: 'manual' };
     handleAutoRestart(fakeSocket, roomType);
   });
 
