@@ -2,111 +2,277 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Bingo MultiPlayer</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Montserrat:wght@700;900&family=Goldman:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
+  <!-- Socket.IO -->
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Fontes -->
+  <link href="https://fonts.googleapis.com/css2?family=Goldman:wght@400;700&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+  <!-- CSS Externo -->
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- TELA DE LOGIN -->
-  <div id="login-screen">
-    <div class="login-card">
-      <div class="logo">
-        <h1>Bingo <span>MultiPlayer</span></h1>
-      </div>
-      <div class="subtitle">Digite seu nome para começar</div>
-      <input type="text" id="player-name" class="input-box" placeholder="Seu nome aqui..." maxlength="15" />
-      <div class="game-modes">
-        <button class="mode-btn usa" id="join-bingo75">🇺🇸 Bingo 75</button>
-        <button class="mode-btn br" id="join-bingo90">🇧🇷 Bingo 90</button>
+  <!-- ✅ FUNDO DINÂMICO DE FICHAS (tanto no login quanto na sala) -->
+  <div id="chips-background" style="display: block;"></div>
+
+  <div class="container">
+    <!-- TELA DE LOGIN MODERNA -->
+    <div id="login-screen">
+      <!-- ✅ FICHAS ANIMADAS NA TELA DE LOGIN -->
+      <div id="chips-container"></div>
+
+      <div class="login-card">
+        <div class="logo">
+          <h1>Bingo <span>Multi</span> Player</h1>
+        </div>
+        <p class="subtitle">Escolha seu modo de jogo</p>
+
+        <input
+          type="text"
+          id="player-name"
+          placeholder="Digite seu nome (2-15 letras)"
+          maxlength="15"
+          autocomplete="off"
+          class="input-box"
+        />
+
+        <div class="game-modes">
+          <button id="join-bingo75" class="mode-btn usa">🇺🇸 Bingo 75</button>
+          <button id="join-bingo90" class="mode-btn br">🇧🇷 Bingo 90</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- ÁREA DO JOGO -->
-  <div id="game-area" class="container">
-    <div class="header">
-      <h2 id="room-title">Sala: ?</h2>
-      <div class="player-info">
-        Jogador: <strong id="player-name-display">?</strong> | Chips: <strong id="chips-display">0</strong>
-      </div>
-      <div id="pot-display">Pote: R$ 0</div>
-      <div id="jackpot-display">Jackpot: R$ 0</div>
+    <!-- MENSAGEM ADMIN -->
+    <div id="admin-message"></div>
+
+    <!-- CONTROLES ADMIN -->
+    <div id="admin-controls" style="display:none;margin:20px auto;max-width:500px;background:rgba(255,255,255,0.1);padding:15px;border-radius:8px;">
+      <h3>🔧 Controles Administrativos</h3>
+      <input type="text" id="admin-player-name" placeholder="Nome do Jogador" style="margin:5px;padding:8px;width:calc(33% - 10px);">
+      <input type="number" id="admin-amount" placeholder="Quantidade" style="margin:5px;padding:8px;width:calc(33% - 10px);">
+      <input type="password" id="admin-password" placeholder="Senha" style="margin:5px;padding:8px;width:calc(33% - 10px);">
+      <button id="send-admin-command" style="margin:5px;padding:8px;">Enviar</button>
     </div>
 
-    <!-- CONTROLES DE COMPRA E INÍCIO -->
-    <div class="controls" id="main-controls">
-      <div>
-        Cartelas: 
-        <input type="number" id="card-count" min="1" max="10" value="1" />
+    <!-- ÁREA DO JOGO -->
+    <div id="game-area">
+      <div class="header">
+        <h2 id="room-title">Sala: ?</h2>
+        <div class="player-info">
+          <span>Jogador: <strong id="player-name-display"></strong></span>
+          <span>Chips: <strong id="chips-display">0</strong></span>
+        </div>
+        <div id="pot-display">Pote: R$ 0</div>
+        <div id="jackpot-display">Jackpot: R$ 0</div>
+      </div>
+
+      <div class="players-section">
+        <div class="players-column">
+          <h3>Sem Chips (<span id="no-chips-count">0</span>)</h3>
+          <div class="players-list" id="without-chips-list"><ul></ul></div>
+        </div>
+        <div class="players-column">
+          <h3>Com Chips (<span id="with-chips-count">0</span>)</h3>
+          <div class="players-list" id="with-chips-list"><ul></ul></div>
+        </div>
+      </div>
+
+      <div class="ranking-section">
+        <h3>🏆 Ranking por Chips</h3>
+        <div class="ranking-list"><ul id="ranking-list"></ul></div>
+      </div>
+
+      <div class="controls" id="main-controls">
+        <label>
+          Cartelas:
+          <input type="number" id="card-count" min="1" max="10" value="1" style="width: 80px; padding: 4px;" inputmode="numeric">
+        </label>
         <button id="set-10-cards">10</button>
+        <button id="buy-btn">Comprar (1000 chips/ Cada Cartela)</button>
+        <button id="start-btn">Iniciar Sorteio</button>
+        <!-- ❌ Botão Linha 1 REMOVIDO -->
+        <button id="line2-btn">Linha 2</button>
+        <button id="bingo-btn">BINGO!</button>
+        <button id="restart-btn">🔄 Reiniciar</button>
       </div>
-      <button id="buy-btn">Comprar (1000 chips/cada)</button>
-      <button id="start-btn">Iniciar Sorteio</button>
-      <button id="line2-btn">Linha 2</button>
-      <button id="bingo-btn">BINGO!</button>
-      <button id="restart-btn">🔄 Reiniciar</button>
+
+      <!-- CHAT -->
+      <div id="chat-container">
+        <h3 style="text-align:center;margin-bottom:10px;color:gold;">💬 Chat da Sala</h3>
+        <div id="chat-messages"></div>
+        <div id="chat-input-container">
+          <input type="text" id="chat-input" placeholder="Converse com os bots...">
+          <button id="chat-send">Enviar</button>
+        </div>
+      </div>
+
+      <!-- SORTEIO -->
+      <div class="draw-area">
+        <div>Último número: <span id="last-number">-</span></div>
+        <div>Bolas sorteadas: <span id="balls-count">0</span></div>
+        <div id="jackpot-remaining">Bolas restantes para Jackpot: 60</div>
+        <div class="history" id="history"></div>
+      </div>
+
+      <!-- ✅ BARRA DE FASE -->
+      <div id="stage-indicator">
+        <span id="stage-text">Linha 1</span>
+      </div>
+
+      <!-- ✅ PAINEL: CARTELAS "NA BOA" -->
+      <div id="near-win-panel" style="
+        background: rgba(0, 0, 0, 0.4);
+        border: 2px solid #4fc3f7;
+        border-radius: 12px;
+        padding: 12px;
+        margin: 15px auto;
+        max-width: 500px;
+        font-family: 'Montserrat', sans-serif;
+        color: white;
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+        gap: 8px;
+      ">
+        <div style="text-align: center;">
+          <div style="color: #66bb6a; font-weight: bold;">🟢 Linha 1</div>
+          <div><strong id="near-line1">0</strong> cartelas</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="color: #ab47bc; font-weight: bold;">🟣 Linha 2</div>
+          <div><strong id="near-line2">0</strong> cartelas</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="color: #FFCA28; font-weight: bold;">🔶 Linha 3</div>
+          <div><strong id="near-line3">0</strong> cartelas</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="color: #ffd700; font-weight: bold;">🟡 Bingo</div>
+          <div><strong id="near-bingo">0</strong> cartelas</div>
+        </div>
+      </div>
+
+      <!-- CARTELAS -->
+      <div class="cards-container" id="cards-container"></div>
     </div>
 
-    <!-- ESTÁGIO ATUAL -->
-    <div id="stage-indicator">
-      <span id="stage-text">Linha 1</span>
-    </div>
-
-    <!-- ESTATÍSTICAS "NA BOA" -->
-    Último número: <span id="last-number">-</span><br>
-    Bolas sorteadas: <span id="balls-count">0</span><br>
-    Bolas restantes para Jackpot: <span id="jackpot-remaining">60</span><br>
-    Linha 1 🟢 Linha 1 <span id="near-line1">0</span> cartelas<br>
-    🟣 Linha 2 <span id="near-line2">0</span> cartelas<br>
-    🔶 Linha 3 <span id="near-line3">0</span> cartelas<br>
-    🟡 Bingo <span id="near-bingo">0</span> cartelas
-
-    <!-- CHAT -->
-    <div id="chat-container">
-      <div id="chat-messages"></div>
-      <div id="chat-input-container">
-        <input type="text" id="chat-input" placeholder="Digite sua mensagem..." maxlength="100" />
-        <button id="chat-send">Enviar</button>
+    <!-- OVERLAYS DE VITÓRIA -->
+    <div id="line-victory-overlay">
+      <div class="line-card">
+        <h2 class="line-title">LINHA 1 COMPLETA!</h2>
+        <span class="winner-name" id="winner-display">?</span>
+        <div class="chips-box">
+          <div class="prize-chips" id="chip-counter">0</div>
+          <p class="chip-label">CHIPS</p>
+        </div>
+        <p style="font-size: 0.7rem; color: #555; letter-spacing: 2px;">BINGO MASTER PRO</p>
       </div>
     </div>
 
-    <!-- CARTAS -->
-    <div id="cards-container" class="cards-container"></div>
-
-    <!-- RANKING E LISTA DE JOGADORES -->
-    <div class="players-section">
-      <div class="players-column" id="without-chips-list">
-        <h3>Sem Chips (<span id="no-chips-count">0</span>)</h3>
-        <div class="players-list"><ul></ul></div>
-      </div>
-      <div class="players-column" id="with-chips-list">
-        <h3>Com Chips (<span id="with-chips-count">0</span>)</h3>
-        <div class="players-list"><ul></ul></div>
+    <div id="line2-victory-overlay">
+      <div class="rays-emerald"></div>
+      <div class="line-frame">
+        <h1 class="line-header">LINHA 2!</h1>
+        <p style="font-size: 0.7rem; color: #888; letter-spacing: 3px; margin-bottom: 5px;">VENCEDOR</p>
+        <span class="winner-name" id="line2-winner-name">?</span>
+        <div class="chips-box">
+          <span class="chips-amount" id="line2-chips-text">0</span>
+        </div>
+        <p class="sub-label">CHIPS GANHOS</p>
       </div>
     </div>
 
-    <div class="ranking-section">
-      <h3>🏆 Ranking por Chips</h3>
-      <div class="ranking-list"><ul id="ranking-list"></ul></div>
+    <!-- ✅ NOVO OVERLAY PARA LINHA 3 -->
+    <div id="line3-victory-overlay">
+      <div class="line3-frame">
+        <div class="line3-header">✨ LINHA DIAGONAL! ✨</div>
+        <div class="winner-name" id="line3-winner-name">?</div>
+        <div class="chips-box">
+          <div class="prize-chips" id="line3-prize-amount">0</div>
+          <div class="chip-label">PRÊMIO</div>
+        </div>
+        <div class="sub-label">Terceira conquista!</div>
+      </div>
+    </div>
+
+    <div id="bingo-victory-overlay">
+      <div class="bingo-card">
+        <h1 class="bingo-title">BINGO!</h1>
+        <p style="font-size: 0.7rem; color: #888; letter-spacing: 3px;">VENCEDOR</p>
+        <span class="winner-name" id="bingo-winner-name">?</span>
+        <div class="prize-container">
+          <div class="prize-amount" id="bingo-prize-amount">R$ 0</div>
+        </div>
+        <p class="sub-tag">✨ CARTELA CHEIA ✨</p>
+      </div>
+    </div>
+
+    <div id="jackpot-overlay">
+      <div class="rays"></div>
+      <div class="winner-frame">
+        <h1 class="jackpot-header">JACKPOT</h1>
+        <p style="font-size: 0.7rem; color: #888; letter-spacing: 3px;">VENCEDOR</p>
+        <span class="username" id="jackpot-winner-name">?</span>
+        <div class="prize-box">
+          <span class="prize-amount" id="jackpot-prize-amount">R$ 0</span>
+        </div>
+        <p class="badge-info" id="jackpot-balls-info">✨ BINGO EM ? BOLAS ✨</p>
+      </div>
     </div>
   </div>
 
-  <!-- FUNDO DINÂMICO DE FICHAS -->
-  <div id="chips-background"></div>
+  <!-- SCRIPTS EXTERNOS -->
+  <script src="js/audio.js"></script>
+  <script src="js/gameLogic.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/main.js"></script>
 
-  <!-- MENSAGEM ADMIN -->
-  <div id="admin-message"></div>
+  <!-- ✅ SCRIPT DE FICHAS ANIMADAS NA TELA DE LOGIN -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // ✅ FICHAS NA TELA DE LOGIN
+      const loginChips = document.getElementById('chips-container');
+      if (loginChips) {
+        const colors = ['#e63946', '#ffd700', '#1d3557', '#52b788', '#333333'];
+        
+        function createLoginChip() {
+          const chip = document.createElement('div');
+          chip.className = 'chip-particle';
+          
+          const size = Math.random() * (80 - 40) + 40;
+          const color = colors[Math.floor(Math.random() * colors.length)];
+          const startPos = Math.random() * 100;
+          const duration = Math.random() * (10 - 5) + 5;
+          const rotation = Math.random() * 360;
 
-  <!-- OVERLAYS DE VITÓRIA -->
-  <div id="line-victory-overlay"></div>
-  <div id="line2-victory-overlay"></div>
-  <div id="line3-victory-overlay"></div>
-  <div id="bingo-victory-overlay"></div>
-  <div id="jackpot-overlay"></div>
+          chip.style.width = `${size}px`;
+          chip.style.height = `${size}px`;
+          chip.style.backgroundColor = color;
+          chip.style.left = `${startPos}%`;
+          chip.style.bottom = `-100px`;
+          chip.style.opacity = Math.random() * (0.8 - 0.4) + 0.4;
+          
+          loginChips.appendChild(chip);
 
-  <!-- SCRIPTS -->
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="main.js"></script>
+          const animation = chip.animate([
+            { transform: `translateY(0) rotate(${rotation}deg)`, opacity: 0 },
+            { opacity: 1, offset: 0.2 },
+            { transform: `translateY(-120vh) rotate(${rotation + 720}deg)`, opacity: 0 }
+          ], {
+            duration: duration * 1000,
+            easing: 'linear'
+          });
+
+          animation.onfinish = () => chip.remove();
+        }
+
+        setInterval(createLoginChip, 400);
+        for(let i = 0; i < 10; i++) setTimeout(createLoginChip, i * 300);
+      }
+    });
+  </script>
 </body>
 </html>
