@@ -674,4 +674,223 @@ document.addEventListener('DOMContentLoaded', () => {
     chatBox.appendChild(p);
     chatBox.scrollTop = chatBox.scrollHeight;
   }
+  function getBallsLeftForCurrentStage(card, drawnNumbers, stage) {
+  if (cardType === '75') {
+    const marked = card.map(n => n === 'FREE' || drawnNumbers.includes(n));
+    const totalMarked = marked.filter(Boolean).length;
+    
+    // Linha 1: horizontal do meio → índices 10–14
+    const line1Indices = [10,11,12,13,14];
+    const line1Marked = line1Indices.filter(i => marked[i]).length;
+    const ballsForLine1 = 5 - line1Marked;
+
+    // Linha 2: vertical do meio → índices 2,7,12,17,22
+    const line2Indices = [2,7,12,17,22];
+    const line2Marked = line2Indices.filter(i => marked[i]).length;
+    const ballsForLine2 = 5 - line2Marked;
+
+    // Linha 3: diagonal → 0,6,12,18,24
+    const line3Indices = [0,6,12,18,24];
+    const line3Marked = line3Indices.filter(i => marked[i]).length;
+    const ballsForLine3 = 5 - line3Marked;
+
+    // Bingo: 24 números reais
+    const ballsForBingo = 24 - (totalMarked - 1); // -1 pq FREE não conta
+
+    if (stage === 'linha1') return Math.max(0, ballsForLine1);
+    if (stage === 'linha2') return Math.max(0, ballsForLine2);
+    if (stage === 'linha3') return Math.max(0, ballsForLine3);
+    return Math.max(0, ballsForBingo);
+  } else {
+    let markedInRow = [0, 0, 0];
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (card[r][c] !== null && drawnNumbers.includes(card[r][c])) {
+          markedInRow[r]++;
+        }
+      }
+    }
+    if (stage === 'linha1') {
+      return Math.min(5 - markedInRow[0], 5 - markedInRow[1], 5 - markedInRow[2]);
+    } else if (stage === 'linha2') {
+      const sorted = [...markedInRow].sort((a, b) => b - a);
+      return (5 - sorted[0]) + (5 - sorted[1]);
+    } else {
+      return 15 - markedInRow.reduce((a, b) => a + b, 0);
+    }
+  }
+}
+
+// ✅ Funções auxiliares de som e voz
+function playSound(type, number) {
+  if (type === 'sorteio') {
+    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3');
+    audio.volume = 0.4;
+    audio.play().catch(e => console.warn('Áudio bloqueado:', e));
+  } else if (type === 'linha1') {
+    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(e => console.warn('Áudio bloqueado:', e));
+  } else if (type === 'linha2') {
+    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(e => console.warn('Áudio bloqueado:', e));
+  } else if (type === 'linha3') {
+    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-magic-spell-cast-649.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(e => console.warn('Áudio bloqueado:', e));
+  } else if (type === 'bingo') {
+    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-crowd-cheering-short-632.mp3');
+    audio.volume = 0.6;
+    audio.play().catch(e => console.warn('Áudio bloqueado:', e));
+  }
+}
+
+function speak(text) {
+  // Opcional: usar SpeechSynthesis API
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'pt-BR';
+    utterance.rate = 1.0;
+    speechSynthesis.speak(utterance);
+  }
+}
+
+// ✅ Animações de vitória
+function showLineVictory(prize, names) {
+  const overlay = document.getElementById('line-victory-overlay');
+  if (!overlay) {
+    const el = document.createElement('div');
+    el.id = 'line-victory-overlay';
+    el.innerHTML = `
+      <div class="line-card">
+        <div class="line-title">Linha 1!</div>
+        <span class="winner-name">${names}</span>
+        <div class="chips-box">
+          <div class="prize-chips">R$ ${prize.toLocaleString('pt-BR')}</div>
+          <div class="chip-label">PRÊMIO</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(el);
+    setTimeout(() => el.classList.add('active'), 10);
+    setTimeout(() => el.classList.remove('active'), 4000);
+    setTimeout(() => el.remove(), 4500);
+    return;
+  }
+  overlay.querySelector('.winner-name').textContent = names;
+  overlay.querySelector('.prize-chips').textContent = `R$ ${prize.toLocaleString('pt-BR')}`;
+  overlay.classList.add('active');
+  setTimeout(() => overlay.classList.remove('active'), 4000);
+}
+
+function showLine2Victory(prize, names) {
+  const overlay = document.getElementById('line2-victory-overlay');
+  if (!overlay) {
+    const el = document.createElement('div');
+    el.id = 'line2-victory-overlay';
+    el.innerHTML = `
+      <div class="line-frame">
+        <div class="line-header">Linha Dupla!</div>
+        <span class="winner-name">${names}</span>
+        <div class="chips-amount">R$ ${prize.toLocaleString('pt-BR')}</div>
+        <div class="sub-label">DUAS LINHAS COMPLETAS</div>
+      </div>
+    `;
+    document.body.appendChild(el);
+    return;
+  }
+  overlay.querySelector('.winner-name').textContent = names;
+  overlay.querySelector('.chips-amount').textContent = `R$ ${prize.toLocaleString('pt-BR')}`;
+  overlay.classList.add('active');
+  setTimeout(() => overlay.classList.remove('active'), 4000);
+}
+
+function showLine3Victory(prize, names) {
+  const overlay = document.getElementById('line3-victory-overlay');
+  if (!overlay) {
+    const el = document.createElement('div');
+    el.id = 'line3-victory-overlay';
+    el.innerHTML = `
+      <div class="line3-frame">
+        <div class="line3-header">✨ LINHA DIAGONAL! ✨</div>
+        <div class="winner-name">${names}</div>
+        <div class="chips-box">
+          <div class="prize-chips">R$ ${prize.toLocaleString('pt-BR')}</div>
+          <div class="chip-label">PRÊMIO</div>
+        </div>
+        <div class="sub-label">Terceira conquista!</div>
+      </div>
+    `;
+    document.body.appendChild(el);
+    setTimeout(() => el.classList.add('active'), 10);
+    setTimeout(() => el.classList.remove('active'), 4000);
+    setTimeout(() => el.remove(), 4500);
+    return;
+  }
+  overlay.querySelector('.winner-name').textContent = names;
+  overlay.querySelector('.prize-chips').textContent = `R$ ${prize.toLocaleString('pt-BR')}`;
+  overlay.classList.add('active');
+  setTimeout(() => overlay.classList.remove('active'), 4000);
+}
+
+function showBingoVictory(prize, names) {
+  const overlay = document.getElementById('bingo-victory-overlay');
+  if (!overlay) {
+    const el = document.createElement('div');
+    el.id = 'bingo-victory-overlay';
+    el.innerHTML = `
+      <div class="bingo-card">
+        <div class="bingo-title">BINGO!</div>
+        <div class="prize-container">
+          <div class="prize-amount">R$ ${prize.toLocaleString('pt-BR')}</div>
+        </div>
+        <div class="sub-tag">CARTELA COMPLETA</div>
+      </div>
+    `;
+    document.body.appendChild(el);
+    return;
+  }
+  overlay.querySelector('.prize-amount').textContent = `R$ ${prize.toLocaleString('pt-BR')}`;
+  overlay.classList.add('active');
+  setTimeout(() => overlay.classList.remove('active'), 5000);
+}
+
+function showJackpotVictory(prize, names, balls) {
+  const overlay = document.getElementById('jackpot-overlay');
+  if (!overlay) {
+    const el = document.createElement('div');
+    el.id = 'jackpot-overlay';
+    el.innerHTML = `
+      <div class="winner-frame">
+        <div class="jackpot-header">JACKPOT!</div>
+        <span class="username">${names}</span>
+        <div class="prize-box">
+          <div class="prize-amount">R$ ${prize.toLocaleString('pt-BR')}</div>
+        </div>
+        <div class="badge-info">BINGO EM ${balls} BOLAS</div>
+      </div>
+    `;
+    document.body.appendChild(el);
+    return;
+  }
+  overlay.querySelector('.username').textContent = names;
+  overlay.querySelector('.prize-amount').textContent = `R$ ${prize.toLocaleString('pt-BR')}`;
+  overlay.querySelector('.badge-info').textContent = `BINGO EM ${balls} BOLAS`;
+  overlay.classList.add('active');
+  setTimeout(() => overlay.classList.remove('active'), 6000);
+}
+
+function checkAchievements(type, count, balls) {
+  // Placeholder – pode ser expandido com sistema de conquistas
+}
+
+function addChatMessage(message, sender, isBot, isSystem) {
+  const chatBox = document.getElementById('chat-messages');
+  const p = document.createElement('p');
+  p.className = isSystem ? 'system' : isBot ? 'bot' : 'human';
+  p.innerHTML = `<strong>${sender}:</strong> ${message}`;
+  chatBox.appendChild(p);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
 });
