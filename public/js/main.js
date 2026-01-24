@@ -212,6 +212,52 @@ function refreshAllChipDisplays() {
   }
 }
 
+// ✅ FUNDO DINÂMICO DE FICHAS NA SALA
+function startChipsBackground() {
+  const container = document.getElementById('chips-background');
+  if (!container || currentRoom !== 'bingo90') {
+    if (container) container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'block';
+  container.innerHTML = ''; // Limpa chips antigos
+  
+  const colors = ['#e63946', '#ffd700', '#1d3557', '#52b788', '#333333'];
+  const interval = setInterval(() => {
+    const chip = document.createElement('div');
+    chip.className = 'chip-bg';
+    
+    const size = Math.random() * (70 - 30) + 30;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const startPos = Math.random() * 100;
+    const duration = Math.random() * (12 - 6) + 6;
+    const rotation = Math.random() * 360;
+
+    chip.style.width = `${size}px`;
+    chip.style.height = `${size}px`;
+    chip.style.backgroundColor = color;
+    chip.style.left = `${startPos}%`;
+    chip.style.bottom = `-100px`;
+    chip.style.opacity = Math.random() * (0.7 - 0.3) + 0.3;
+    
+    container.appendChild(chip);
+
+    const animation = chip.animate([
+      { transform: `translateY(0) rotate(${rotation}deg)`, opacity: 0 },
+      { opacity: 1, offset: 0.2 },
+      { transform: `translateY(-120vh) rotate(${rotation + 720}deg)`, opacity: 0 }
+    ], {
+      duration: duration * 1000,
+      easing: 'linear'
+    });
+
+    animation.onfinish = () => chip.remove();
+  }, 500);
+
+  window.chipsBackgroundInterval = interval;
+}
+
 // ✅ Restante principal
 document.addEventListener('DOMContentLoaded', () => {
   const playerNameInput = document.getElementById('player-name');
@@ -252,6 +298,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('room-title').textContent = `Sala: ${data.roomName}`;
     gameEnded = data.gameCompleted || false;
     updateControlButtons(data.currentStage || 'linha1');
+    
+    // ✅ ATIVA FUNDO DINÂMICO APÓS ENTRAR NA SALA
+    setTimeout(() => startChipsBackground(), 100);
   });
 
   socket.on('room-state', (data) => {
@@ -334,6 +383,8 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCards();
     playSound('sorteio', data.number);
     speak(data.number.toString());
+
+    // Atualiza bolas restantes para jackpot
     const remainingForJackpot = Math.max(0, 60 - roomsDrawnNumbers.length);
     document.getElementById('jackpot-remaining').textContent = `Bolas restantes para Jackpot: ${remainingForJackpot}`;
   });
@@ -386,6 +437,10 @@ document.addEventListener('DOMContentLoaded', () => {
     updateControlButtons('linha1');
     roomsState = {};
     refreshAllChipDisplays();
+    
+    // Limpa fundo ao reiniciar
+    const chipsBg = document.getElementById('chips-background');
+    if (chipsBg) chipsBg.style.display = 'none';
   });
 
   socket.on('error', (msg) => showAdminMessage(msg, 'error'));
@@ -439,6 +494,11 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       e.returnValue = '';
       return '';
+    }
+    
+    // Limpa intervalo ao sair
+    if (window.chipsBackgroundInterval) {
+      clearInterval(window.chipsBackgroundInterval);
     }
   });
 
@@ -520,7 +580,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (bingo) {
           wrapper.className = 'card-wrapper bingo-complete';
-          // ✅ DESTAQUE PROFISSIONAL DE BINGO — SEM AMARELO, SÓ ELEGÂNCIA
           const overlay = document.createElement('div');
           overlay.style.position = 'absolute';
           overlay.style.top = '0';
