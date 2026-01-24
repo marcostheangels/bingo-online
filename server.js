@@ -24,16 +24,14 @@ if (process.env.DATABASE_URL) {
 // ✅ Cria tabela se não existir
 async function createTableIfNotExists() {
   if (!pool) return;
-  const query = `
-    CREATE TABLE IF NOT EXISTS persistent_chips (
-      id SERIAL PRIMARY KEY,
-      player_name VARCHAR(50) UNIQUE NOT NULL,
-      chips INTEGER NOT NULL DEFAULT 10000,
-      is_bot BOOLEAN NOT NULL DEFAULT false,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
-    );
-  `;
+  const query = `CREATE TABLE IF NOT EXISTS persistent_chips (
+    id SERIAL PRIMARY KEY,
+    player_name VARCHAR(50) UNIQUE NOT NULL,
+    chips INTEGER NOT NULL DEFAULT 10000,
+    is_bot BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+  );`;
   try {
     await pool.query(query);
     console.log('✅ Tabela persistent_chips verificada/criada.');
@@ -71,17 +69,13 @@ async function savePersistedChips(specialPlayers, bots) {
   try {
     for (const [name, chips] of Object.entries(specialPlayers)) {
       await pool.query(
-        `INSERT INTO persistent_chips (player_name, chips, is_bot)
-         VALUES ($1, $2, false)
-         ON CONFLICT (player_name) DO UPDATE SET chips = $2, updated_at = NOW()`,
+        `INSERT INTO persistent_chips (player_name, chips, is_bot) VALUES ($1, $2, false) ON CONFLICT (player_name) DO UPDATE SET chips = $2, updated_at = NOW()`,
         [name, chips]
       );
     }
     for (const [name, chips] of Object.entries(bots)) {
       await pool.query(
-        `INSERT INTO persistent_chips (player_name, chips, is_bot)
-         VALUES ($1, $2, true)
-         ON CONFLICT (player_name) DO UPDATE SET chips = $2, updated_at = NOW()`,
+        `INSERT INTO persistent_chips (player_name, chips, is_bot) VALUES ($1, $2, true) ON CONFLICT (player_name) DO UPDATE SET chips = $2, updated_at = NOW()`,
         [name, chips]
       );
     }
@@ -120,20 +114,16 @@ app.post('/api/feedback', (req, res) => {
   if (last && (now - last) < FEEDBACK_MIN_INTERVAL_MS) {
     return res.status(429).json({ error: 'Aguarde antes de enviar outro feedback.' });
   }
-
   const { playerName, message, roomType } = req.body;
   if (!playerName || !message || message.length < 5 || message.length > 500) {
     return res.status(400).json({ error: 'Mensagem inválida. Use 5 a 500 caracteres.' });
   }
-
   feedbackLimiter.set(ip, now);
   setTimeout(() => feedbackLimiter.delete(ip), FEEDBACK_MIN_INTERVAL_MS);
-
   const logEntry = `[${new Date().toISOString()}] [${roomType || 'unknown'}] ${playerName}: ${message}\n`;
   fs.appendFile('feedback.log', logEntry, (err) => {
     if (err) console.error('Erro ao salvar feedback:', err);
   });
-
   console.log('📩 Novo feedback recebido:', logEntry.trim());
   res.json({ success: true });
 });
@@ -162,64 +152,31 @@ const AI_KEYWORDS = [
   'bot', 'humano','pix','saque','retirar','depósito','pagar','saldo','dinheiro','moeda','bônus',
   'grátis', 'vitória', 'dica', 'estratégia', 'ajuda', '?'
 ];
-
 const AI_RESPONSES = {
   general: [
-    "No bingo, cada cartela é uma chance! Quanto mais você tem, maiores suas chances!",
-    "As regras são simples: complete linhas ou o bingo completo para levar prêmios!",
-    "Estratégia real? Compre até 10 cartelas — é o máximo permitido para todos!",
-    "Fique de olho nas cartelas que estão perto de completar! Elas aparecem no topo!",
-    "O jackpot só é liberado se você fizer bingo em até 60 bolas sorteadas!",
-    "Humanos e bots jogam com as mesmas regras — total transparência!",
-    "Cada fase distribui parte do pote: linha 1 (20%), linha 2 (30%) e bingo (50%)!",
-    "Seu nome fica em verde quando você vence — todos veem seu brilho! ✨",
-    "A sala entra em standby se não houver humanos. Estamos sempre esperando por você!",
-    "Ganhou várias vezes seguidas? Você é um(a) verdadeiro(a) campeão(ã)!",
-    "O segredo do mestre: paciência e persistência. A próxima bola pode ser a sua! 🍀",
-    "Sentindo falta de um número? O universo do bingo adora uma surpresa de última hora!",
-    "Lembre-se: o Bingo Master Pro é pura adrenalina! Divirta-se acima de tudo. 🎡",
-    "As chances são iguais para todos. A sorte não escolhe lado, ela escolhe quem insiste!",
-    "Já reparou como o pote cresce rápido? Quanto mais gente, maior a festa! 💰",
-    "Dica: Suas melhores cartelas sobem sozinhas para o topo da tela! Fique atento! 📈",
-    "Sabia que você pode personalizar seu avatar no menu de Perfil? Mostre seu estilo! 😎",
-    "Problemas de conexão? Verifique seu Wi-Fi para não perder nenhum número importante! 📶",
-    "O chat é o coração do jogo. Comemore suas vitórias e faça novos amigos! 🗣️",
-    "O som do sorteio te ajuda a manter o foco. Não esqueça de ligar o áudio! 🔊",
-    "O prêmio acumulado (Jackpot) é o sonho de todos! Complete a cartela rápido para levar! 💎",
-    "Linha 1 é só o começo! O verdadeiro tesouro está no grito final de BINGO! 🏆",
-    "Nossos bots Markim e Marília são feras, mas nada supera o talento de um humano! 🦾",
-    "Se houver empate na linha, o prêmio é dividido igualmente entre os vencedores. Justo, né? ⚖️",
-    "Bônus diários de login ajudam você a manter suas fichas sempre carregadas! 🎁",
-    "Sua senha é pessoal e intransferível. Proteja sua conta do Bingo Master Pro! 🔐",
-    "Vi algum erro? Reporte ao suporte e ajude a melhorar nossa arena de diversão! 🛠️",
-    "Mantenha seu cadastro atualizado para receber notificações de eventos especiais! 📝",
-    "O sistema de login garante que seus prêmios e conquistas fiquem salvos para sempre! 💾",
-    "Jogar como convidado é legal, mas ter uma conta registrada te dá muito mais moral! 🏅",
-    "Dizem que quem grita 'BINGO' na frente da tela ganha mais rápido... quer testar? 🤣",
-    "O recorde de vitórias seguidas nesta sala é impressionante! Será que você bate? 🥇",
-    "Os bots não dormem, mas você tem a intuição humana a seu favor! 🧠",
-    "Cada número sorteado é gerado de forma 100% aleatória pelo nosso algoritmo. 🎰",
-    "O Bingo Master Pro é a casa dos grandes campeões. Bem-vindo à elite! 👑",
-    "Não desanime se a linha não veio. O Bingo completo ainda está em jogo! 🌈",
-    "A vitória de hoje pode ser o começo de uma sequência épica de conquistas! 🌠",
-    "O mestre do bingo nunca desiste na bola 89. O 90 pode ser o seu! 🎯",
-    "Obrigado por escolher o Bingo Master Pro! Você faz nossa comunidade brilhar! ✨",
-    "Prepare os dedos! A próxima rodada começa em poucos segundos... 🚀"
+    "No bingo, cada cartela é uma chance! Quanto mais você tem, maiores suas chances! ",
+    "As regras são simples: complete linhas ou o bingo completo para levar prêmios! ",
+    "Estratégia real? Compre até 10 cartelas — é o máximo permitido para todos! ",
+    "Fique de olho nas cartelas que estão perto de completar! Elas aparecem no topo! ",
+    "O jackpot só é liberado se você fizer bingo em até 60 bolas sorteadas! ",
+    "Humanos e bots jogam com as mesmas regras — total transparência! ",
+    "Se houver empate na linha, o prêmio é dividido igualmente entre os vencedores. Justo, né? ⚖️ ",
+    "Ganhou várias vezes seguidas? Você é um(a) verdadeiro(a) campeão(ã)! ",
+    "O segredo do mestre: paciência e persistência. A próxima bola pode ser a sua! 🍀 ",
+    "Lembre-se: o Bingo Master Pro é pura adrenalina! Divirta-se acima de tudo. 🎡 "
   ],
   jackpot: [
-    "O jackpot começa em R$ 1.000.000 e cresce a cada cartela comprada!",
-    "Só é possível ganhar o jackpot se o bingo for feito em até 60 bolas!",
-    "Quando alguém leva o jackpot, ele volta a R$ 1.000.000 e recomeça!"
+    "O jackpot começa em R$ 1.000.000 e cresce a cada cartela comprada! ",
+    "Só é possível ganhar o jackpot se o bingo for feito em até 60 bolas! ",
+    "Quando alguém leva o jackpot, ele volta a R$ 1.000.000 e recomeça! "
   ],
   strategy: [
-    "Compre cartelas no início da rodada para garantir seu lugar!",
-    "Cartelas com menos bolas faltando aparecem no topo — foque nelas!",
-    "Não espere o último número: às vezes, a vitória vem antes do fim!"
+    "Compre cartelas no início da rodada para garantir seu lugar! ",
+    "Cartelas com menos bolas faltando aparecem no topo — foque nelas! ",
+    "Não espere o último número: às vezes, a vitória vem antes do fim! "
   ]
 };
-
 let lastAiResponse = '';
-
 function getSmartAiResponse(message) {
   const lower = message.toLowerCase();
   if (lower.includes('jackpot')) {
@@ -230,7 +187,6 @@ function getSmartAiResponse(message) {
     return getRandomUnique(AI_RESPONSES.general, 'general');
   }
 }
-
 function getRandomUnique(list, category) {
   let response;
   do {
@@ -252,7 +208,7 @@ const rooms = {
     pot: 0,
     drawInterval: null,
     currentStage: 'linha1',
-    stageCompleted: { linha1: false, linha2: false, bingo: false },
+    stageCompleted: { linha1: false, linha2: false, linha3: false, bingo: false },
     jackpot: 1000000,
     gameCompleted: false,
     addBotOnNextRestart: false,
@@ -299,7 +255,7 @@ function hasHumanWithCards(roomType) {
   return Object.values(room.players).some(p =>
     !p.isBot &&
     ((roomType === 'bingo90' && p.cards90 && p.cards90.length > 0) ||
-      (roomType === 'bingo75' && p.cards75 && p.cards75.length > 0))
+     (roomType === 'bingo75' && p.cards75 && p.cards75.length > 0))
   );
 }
 
@@ -310,44 +266,11 @@ function startAutoMessages(roomType) {
   room.autoMessageInterval = setInterval(() => {
     if (!hasHumanWithCards(roomType)) return;
     const messages = [
-      "✨ Alguém está prestes a fazer BINGO! Fiquem atentos!",
-      "💰 O pote está crescendo! Quem será o próximo vencedor?",
-      "🎯 Dica: cartelas com menos bolas faltando têm prioridade!",
-      "🔥 A disputa está acirrada! Humanos vs Bots — quem leva?",
-      "💎 Já pensou em ganhar o JACKPOT? Está quase lá!",
-      "🚀 Nova rodada, novas chances! Compre suas cartelas!",
-      "👑 O trono está vazio... Quem vai conquistá-lo hoje?",
-      "🎉 Não desista! Às vezes, a vitória vem na última bola!",
-      "⚡ O coração bate mais forte a cada número! Falta pouco?",
-      "🥊 A arena está quente! Quem vai derrubar os bots desta vez?",
-      "🏁 Reta final! A última bola pode mudar o destino do prêmio!",
-      "⚔️ Desafio aceito! Mostre que você é o mestre das cartelas!",
-      "😤 Por um triz! A sorte está rondando a sua mesa!",
-      "🧨 Explosão de prêmios! A rodada está apenas começando!",
-      "🏟️ Sala cheia, pote gigante! É agora ou nunca!",
-      "🌪️ O furacão do Bingo passou por aqui! Quem sobreviveu?",
-      "🏃‍♂️ Corra para marcar! O tempo não espera por ninguém!",
-      "🥇 Lugar de campeão é no topo do ranking do Bingo Multiplayer!",
-      "💸 O cofre abriu! O Jackpot está pedindo para ser levado!",
-      "🏦 Sua conta bancária no jogo agradece por essa rodada!",
-      "🤑 Sentindo o cheiro de vitória (e de moedas) no ar!",
-      "💳 Saldo atualizado: a sorte depositou um prêmio para você!",
-      "💎 Pedras preciosas e bolas numeradas: a combinação do sucesso!",
-      "📈 O multiplicador subiu! Ganhe mais nesta rodada especial!",
-      "💰 O prêmio acumulado está de cair o queixo! Vai encarar?",
-      "👑 Realeza do Bingo: o trono vem acompanhado de um belo pote!",
-      "💹 Invista em mais cartelas e colha os frutos do Jackpot!",
-      "🗝️ Você encontrou a chave para a fortuna de hoje!",
-      "💡 Dica de mestre: cartelas extras aumentam sua probabilidade!",
-      "🧐 Olho vivo! A distração é o maior inimigo do jogador.",
-      "📊 Analise o jogo: quais números estão saindo mais hoje?",
-      "🛡️ Mantenha sua conta segura e seu foco no marcador!",
-      "🧠 Bingo também é estratégia! Organize suas cartelas com sabedoria.",
-      "🔋 Bateria carregada e sorte preparada? Vamos ao sorteio!",
-      "🧘 Mantenha a calma... o Bingo vem para quem sabe esperar.",
-      "🔄 Rodada nova, estratégia nova! Tente algo diferente agora.",
-      "🧩 Cada bola sorteada é uma peça do seu quebra-cabeça vitorioso!",
-      "🛰️ Radar ligado: detectamos uma grande chance de Bingo na sua área!"
+      "✨ Alguém está prestes a fazer BINGO! Fiquem atentos! ",
+      "💰 O pote está crescendo! Quem será o próximo vencedor? ",
+      "🎯 Dica: cartelas com menos bolas faltando têm prioridade! ",
+      "🔥 A disputa está acirrada! Humanos vs Bots — quem leva? ",
+      "💎 Já pensou em ganhar o JACKPOT? Está quase lá! "
     ];
     const msg = messages[Math.floor(Math.random() * messages.length)];
     io.to(roomType).emit('chat-message', {
@@ -462,9 +385,10 @@ function generateBingo75Card() {
     const nums = new Set();
     while (nums.size < 5) nums.add(Math.floor(Math.random() * (max - min + 1)) + min);
     const colNums = Array.from(nums);
-    if (col === 2) colNums[2] = 'FREE';
     card.push(...colNums);
   }
+  // Posição central (índice 12) é FREE
+  card[12] = 'FREE';
   return card;
 }
 
@@ -496,6 +420,34 @@ function checkCardAchievements(card, drawnNumbers) {
     linha1: completeLines >= 1,
     linha2: completeLines >= 2,
     bingo: completeLines === 3 && totalMarked === 15
+  };
+}
+
+// ✅ NOVA FUNÇÃO: Verificar conquistas no Bingo 75
+function checkBingo75Achievements(card, drawnNumbers) {
+  const marked = card.map(n => n === 'FREE' || drawnNumbers.includes(n));
+  
+  // Linha 1: horizontal do meio → índices 10,11,12,13,14
+  const line1Indices = [10,11,12,13,14];
+  const line1Complete = line1Indices.every(i => marked[i]);
+
+  // Linha 2: vertical do meio → índices 2,7,12,17,22
+  const line2Indices = [2,7,12,17,22];
+  const line2Complete = line2Indices.every(i => marked[i]);
+
+  // Linha 3: diagonal principal → 0,6,12,18,24
+  const line3Indices = [0,6,12,18,24];
+  const line3Complete = line3Indices.every(i => marked[i]);
+
+  // Bingo: todos os 24 números marcados (posição 12 é FREE)
+  const totalMarked = marked.filter(Boolean).length;
+  const bingoComplete = totalMarked === 25; // inclui FREE
+
+  return {
+    linha1: line1Complete,
+    linha2: line2Complete,
+    linha3: line3Complete,
+    bingo: bingoComplete
   };
 }
 
@@ -545,6 +497,7 @@ function countCardsOneBallAway(roomType) {
   let stats = {
     line1: 0,
     line2: 0,
+    line3: 0,
     bingo: 0
   };
   const drawnCount = room.drawnNumbers.length;
@@ -552,10 +505,30 @@ function countCardsOneBallAway(roomType) {
     const cards = roomType === 'bingo90' ? player.cards90 : player.cards75;
     if (!cards || cards.length === 0) continue;
     for (const card of cards) {
-      const ballsLeft = calculateBallsLeftForCard(card, room.drawnNumbers);
-      if (ballsLeft.forLine1 === 1) stats.line1++;
-      if (ballsLeft.forLine2 === 1) stats.line2++;
-      if (ballsLeft.forBingo === 1) stats.bingo++;
+      if (roomType === 'bingo90') {
+        const ballsLeft = calculateBallsLeftForCard(card, room.drawnNumbers);
+        if (ballsLeft.forLine1 === 1) stats.line1++;
+        if (ballsLeft.forLine2 === 1) stats.line2++;
+        if (ballsLeft.forBingo === 1) stats.bingo++;
+      } else {
+        // Para Bingo 75, contamos manualmente
+        const marked = card.map(n => n === 'FREE' || room.drawnNumbers.includes(n));
+        const totalMarked = marked.filter(Boolean).length;
+        if (totalMarked === 24) stats.bingo++; // falta 1 para bingo
+
+        // Verificar linhas individuais
+        const line1Indices = [10,11,12,13,14];
+        const line1Marked = line1Indices.filter(i => marked[i]).length;
+        if (line1Marked === 4) stats.line1++;
+
+        const line2Indices = [2,7,12,17,22];
+        const line2Marked = line2Indices.filter(i => marked[i]).length;
+        if (line2Marked === 4) stats.line2++;
+
+        const line3Indices = [0,6,12,18,24];
+        const line3Marked = line3Indices.filter(i => marked[i]).length;
+        if (line3Marked === 4) stats.line3++;
+      }
     }
   }
   return stats;
@@ -584,20 +557,44 @@ function checkWinForAllPlayers(roomType) {
   const currentStage = room.currentStage;
   if (room.stageCompleted[currentStage]) return null;
   const allWinners = [];
+
   for (const [playerId, player] of Object.entries(room.players)) {
-    const cards = player.cards90 || [];
+    let cards = [];
+    if (roomType === 'bingo90') {
+      cards = player.cards90 || [];
+    } else if (roomType === 'bingo75') {
+      cards = player.cards75 || [];
+    }
+
     for (let i = 0; i < cards.length; i++) {
-      const card = validateAndFixBingo90Card(cards[i]);
-      const result = checkCardAchievements(card, room.drawnNumbers);
       let qualifies = false;
-      if (currentStage === 'linha1' && result.linha1) qualifies = true;
-      else if (currentStage === 'linha2' && result.linha2) qualifies = true;
-      else if (currentStage === 'bingo' && result.bingo) qualifies = true;
-      if (qualifies) allWinners.push({ playerId, cardIndex: i, winType: currentStage });
+      if (roomType === 'bingo90') {
+        const card = validateAndFixBingo90Card(cards[i]);
+        const result = checkCardAchievements(card, room.drawnNumbers);
+        if ((currentStage === 'linha1' && result.linha1) ||
+            (currentStage === 'linha2' && result.linha2) ||
+            (currentStage === 'bingo' && result.bingo)) {
+          qualifies = true;
+        }
+      } else if (roomType === 'bingo75') {
+        const result = checkBingo75Achievements(cards[i], room.drawnNumbers);
+        if ((currentStage === 'linha1' && result.linha1) ||
+            (currentStage === 'linha2' && result.linha2) ||
+            (currentStage === 'linha3' && result.linha3) ||
+            (currentStage === 'bingo' && result.bingo)) {
+          qualifies = true;
+        }
+      }
+
+      if (qualifies) {
+        allWinners.push({ playerId, cardIndex: i, winType: currentStage });
+      }
     }
   }
+
   if (allWinners.length > 0) {
-    console.log(`[VITÓRIA] Sala: ${roomType}, Etapa: ${currentStage}, Vencedores:`, allWinners.map(w => rooms[roomType].players[w.playerId]?.name).join(', '));
+    console.log(`[VITÓRIA] Sala: ${roomType}, Etapa: ${currentStage}, Vencedores:`, 
+      allWinners.map(w => rooms[roomType].players[w.playerId]?.name).join(', '));
   }
   return allWinners.length > 0 ? allWinners : null;
 }
@@ -618,7 +615,7 @@ function resumeDraw(roomType) {
   for (const player of Object.values(room.players)) {
     if (!player.isBot &&
       ((roomType === 'bingo90' && player.cards90.length > 0) ||
-        (roomType === 'bingo75' && player.cards75.length > 0))) {
+       (roomType === 'bingo75' && player.cards75.length > 0))) {
       humanHasCards = true;
       break;
     }
@@ -692,7 +689,7 @@ function resumeDraw(roomType) {
       number,
       drawnNumbers: room.drawnNumbers,
       lastNumber: number
-    });
+    }); 
     // ✅ Emitir estatísticas "na boa" após cada número
     const nearWinStats = countCardsOneBallAway(roomType);
     io.to(roomType).emit('near-win-stats', nearWinStats);
@@ -702,7 +699,7 @@ function resumeDraw(roomType) {
         if (!player.isBot) {
           const updatedCards = player.cards90.map(card => ({
             card: validateAndFixBingo90Card(card),
-            ballsLeft: calculateBallsLeftForCard(card, room.drawnNumbers),
+            ballsLeft: calculateBillsLeftForCard(card, room.drawnNumbers),
             lineStatus: getLineStatusForCard(card, room.drawnNumbers)
           }));
           io.to(playerId).emit('cards-updated', { cards: updatedCards, cardType: '90' });
@@ -711,7 +708,7 @@ function resumeDraw(roomType) {
     }
     const winners = checkWinForAllPlayers(roomType);
     if (winners) handleWin(roomType, winners);
-  }, 3000); // 👈 INTERVALO AUMENTADO PARA 5 SEGUNDOS
+  }, 3000);  // 👈 INTERVALO AUMENTADO PARA 5 SEGUNDOS
 }
 
 function startAutoRestart(roomType) {
@@ -734,13 +731,16 @@ async function handleWin(roomType, allWinners) {
   room.stageCompleted[currentStage] = true;
   let prize = 0;
   if (currentStage === 'linha1') {
-    prize = Math.floor(room.pot * 0.20);
+    prize = Math.floor(room.pot * 0.15);
     room.currentStage = 'linha2';
   } else if (currentStage === 'linha2') {
-    prize = Math.floor(room.pot * 0.30);
+    prize = Math.floor(room.pot * 0.20);
+    room.currentStage = 'linha3';
+  } else if (currentStage === 'linha3') {
+    prize = Math.floor(room.pot * 0.25);
     room.currentStage = 'bingo';
   } else if (currentStage === 'bingo') {
-    prize = Math.floor(room.pot * 0.50);
+    prize = Math.floor(room.pot * 0.40);
     room.gameCompleted = true;
   }
   prize = Math.max(prize, 100);
@@ -782,6 +782,12 @@ async function handleWin(roomType, allWinners) {
     const msgs = [
       `[L2]🎊 Dupla vitória! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')} pelas duas linhas![/L2]`,
       `[L2]🌓 Metade do caminho! ${winnerNames} levou a Linha Dupla: R$ ${totalPrize.toLocaleString('pt-BR')}![/L2]`
+    ];
+    formattedMessage = msgs[Math.floor(Math.random() * msgs.length)];
+  } else if (currentStage === 'linha3') {
+    const msgs = [
+      `[L3]💫 Triunfo diagonal! ${winnerNames} levou R$ ${totalPrize.toLocaleString('pt-BR')} pela terceira linha![/L3]`,
+      `[L3]🔶 Diagonal completa! ${winnerNames} faturou R$ ${totalPrize.toLocaleString('pt-BR')}![/L3]`
     ];
     formattedMessage = msgs[Math.floor(Math.random() * msgs.length)];
   } else if (currentStage === 'bingo') {
@@ -984,7 +990,7 @@ async function handleAutoRestart(socket, roomType) {
   room.lastNumber = null;
   room.pot = 0;
   room.currentStage = 'linha1';
-  room.stageCompleted = { linha1: false, linha2: false, bingo: false };
+  room.stageCompleted = { linha1: false, linha2: false, linha3: false, bingo: false };
   room.gameCompleted = false;
   room.gameActive = false;
   room.autoRestartTimeout = null;
@@ -1057,7 +1063,6 @@ io.on('connection', (socket) => {
   });
 
   console.log('🔌 Jogador conectado:', socket.id);
-
   socket.on('join-room', async ({ playerName, roomType, savedChips, savedCards75, savedCards90 }) => {
     if (!rooms[roomType]) {
       socket.emit('error', 'Sala inválida');
@@ -1228,13 +1233,25 @@ io.on('connection', (socket) => {
         return socket.emit('error', 'Etapa inválida.');
       }
       let hasWon = false;
-      for (let i = 0; i < player.cards90.length; i++) {
-        const card = validateAndFixBingo90Card(player.cards90[i]);
-        const result = checkCardAchievements(card, room.drawnNumbers);
-        if ((winType === 'linha1' && result.linha1) ||
-          (winType === 'linha2' && result.linha2) ||
-          (winType === 'bingo' && result.bingo)) {
-          hasWon = true; break;
+      if (roomType === 'bingo90') {
+        for (let i = 0; i < player.cards90.length; i++) {
+          const card = validateAndFixBingo90Card(player.cards90[i]);
+          const result = checkCardAchievements(card, room.drawnNumbers);
+          if ((winType === 'linha1' && result.linha1) ||
+              (winType === 'linha2' && result.linha2) ||
+              (winType === 'bingo' && result.bingo)) {
+            hasWon = true; break;
+          }
+        }
+      } else if (roomType === 'bingo75') {
+        for (let i = 0; i < player.cards75.length; i++) {
+          const result = checkBingo75Achievements(player.cards75[i], room.drawnNumbers);
+          if ((winType === 'linha1' && result.linha1) ||
+              (winType === 'linha2' && result.linha2) ||
+              (winType === 'linha3' && result.linha3) ||
+              (winType === 'bingo' && result.bingo)) {
+            hasWon = true; break;
+          }
         }
       }
       if (hasWon) {
