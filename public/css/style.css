@@ -7,12 +7,152 @@ body {
 }
 .container { max-width: 1200px; margin: 0 auto; }
 
-#login-screen { 
-  text-align: center; 
-  margin: 60px auto; 
-  max-width: 500px; 
+/* === TELA DE LOGIN MODERNA === */
+#login-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, #2e1052 0%, #000000 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 
+/* --- Fichas Animadas --- */
+#chips-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.chip-particle {
+  position: absolute;
+  border-radius: 50%;
+  border: 4px dashed rgba(255, 255, 255, 0.4);
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.chip-particle::after {
+  content: '';
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* --- Card de Login --- */
+.login-card {
+  position: relative;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 30px;
+  padding: 40px;
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+}
+
+.login-card .logo h1 {
+  color: #fff;
+  font-size: 1.8rem;
+  text-transform: uppercase;
+  font-weight: 800;
+  margin-bottom: 5px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.login-card .logo span {
+  background: linear-gradient(to bottom, #fff7ad, #ffd700);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.login-card .subtitle {
+  color: #bbb;
+  font-size: 0.85rem;
+  margin-bottom: 25px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.login-card .input-box {
+  width: 100%;
+  padding: 16px 20px;
+  background: rgba(0,0,0,0.4);
+  border: 2px solid rgba(255, 215, 0, 0.1);
+  border-radius: 50px;
+  color: #fff;
+  font-size: 1rem;
+  outline: none;
+  margin-bottom: 25px;
+  text-align: center;
+  transition: 0.3s;
+  font-family: 'Poppins', sans-serif;
+}
+
+.login-card .input-box:focus {
+  border-color: #ffd700;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+}
+
+/* --- Botões de Modo --- */
+.game-modes {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.mode-btn {
+  flex: 1;
+  min-width: 130px;
+  padding: 14px;
+  border: none;
+  border-radius: 50px;
+  font-weight: bold;
+  font-size: 1.1em;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  transition: all 0.3s;
+  font-family: 'Poppins', sans-serif;
+}
+
+.mode-btn.usa {
+  background: linear-gradient(135deg, #ff9a00, #ff5722);
+  color: white;
+}
+
+.mode-btn.br {
+  background: linear-gradient(135deg, #e91e63, #9c27b0);
+  color: white;
+}
+
+.mode-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+}
+
+/* Ajustes Mobile */
+@media (max-width: 400px) {
+  .login-card { padding: 30px 20px; }
+  .login-card .logo h1 { font-size: 1.5rem; }
+}
+
+/* === RESTANTE DO SEU ESTILO === */
 #game-area { 
   display: none; 
 }
