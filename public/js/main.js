@@ -378,29 +378,30 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   socket.on('player-won', (data) => {
-    const winType = data.winners[0]?.winType;
-    const isJackpot = data.wonJackpot;
-    if (winType === 'linha1') {
-      playSound('linha1');
-      speak(`Linha 1 ganha por ${data.winnerNames}!`);
-      checkAchievements('linha1', 0);
-      showLineVictory(data.totalPrize, data.winnerNames);
-    } else if (winType === 'linha2') {
-      playSound('linha2');
-      speak(`Linhas completas por ${data.winnerNames}!`);
-      checkAchievements('linha2', 0);
-      showLine2Victory(data.totalPrize, data.winnerNames);
-    } else if (winType === 'bingo') {
-      playSound('bingo');
-      speak(`Bingo feito por ${data.winnerNames}!`);
-      checkAchievements('bingo', 0, data.ballsCount);
+  const winType = data.winners[0]?.winType;
+  const isJackpot = data.wonJackpot;
 
-      if (isJackpot) {
-        showJackpotVictory(data.jackpotAmount || data.totalPrize, data.winnerNames, data.ballsCount);
-      } else {
-        showBingoVictory(data.totalPrize, data.winnerNames);
-      }
+  if (winType === 'linha1') {
+    playSound('linha1');
+    speak(`Linha 1 ganha por ${data.winnerNames}!`);
+    showLineVictory(data.totalPrize, data.winnerNames);
+  } else if (winType === 'linha2') {
+    playSound('linha2');
+    speak(`Linha 2 ganha por ${data.winnerNames}!`);
+    showLine2Victory(data.totalPrize, data.winnerNames);
+  } else if (winType === 'linha3') {
+    playSound('linha3');
+    speak(`Linha Diagonal ganha por ${data.winnerNames}!`);
+    showLine3Victory(data.totalPrize, data.winnerNames); // ← Isso já está correto!
+  } else if (winType === 'bingo') {
+    playSound('bingo');
+    speak(`Bingo feito por ${data.winnerNames}!`);
+    if (isJackpot) {
+      showJackpotVictory(data.jackpotAmount || data.totalPrize, data.winnerNames, data.ballsCount);
+    } else {
+      showBingoVictory(data.totalPrize, data.winnerNames);
     }
+  }
 
     if (data.newStage) updateControlButtons(data.newStage);
     if (winType === 'bingo') gameEnded = true;
