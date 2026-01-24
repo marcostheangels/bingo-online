@@ -520,31 +520,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (bingo) {
           wrapper.className = 'card-wrapper bingo-complete';
+          // ✅ DESTAQUE PROFISSIONAL DE BINGO — SEM AMARELO, SÓ ELEGÂNCIA
           const overlay = document.createElement('div');
-          overlay.className = 'bingo-overlay';
-          // ✅ VISUAL PROFISSIONAL DE BINGO
-          overlay.innerHTML = `
-            <div style="
-              position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%);
-              background: rgba(0, 0, 0, 0.65);
-              color: white;
-              padding: 12px 24px;
-              border-radius: 12px;
-              font-weight: 900;
-              font-size: 2em;
-              font-family: 'Montserrat', sans-serif;
-              letter-spacing: 1px;
-              text-shadow: 
-                0 0 6px rgba(255, 215, 0, 0.7),
-                0 0 12px rgba(255, 215, 0, 0.4);
-              border: 2px solid rgba(255, 215, 0, 0.5);
-              backdrop-filter: blur(2px);
-              z-index: 10;
-            ">BINGO!</div>
+          overlay.style.position = 'absolute';
+          overlay.style.top = '0';
+          overlay.style.left = '0';
+          overlay.style.width = '100%';
+          overlay.style.height = '100%';
+          overlay.style.display = 'flex';
+          overlay.style.justifyContent = 'center';
+          overlay.style.alignItems = 'center';
+          overlay.style.zIndex = '10';
+          overlay.style.pointerEvents = 'none';
+
+          const bingoText = document.createElement('div');
+          bingoText.textContent = 'BINGO!';
+          bingoText.style.color = 'white';
+          bingoText.style.fontSize = '2.4em';
+          bingoText.style.fontWeight = '900';
+          bingoText.style.fontFamily = "'Montserrat', sans-serif";
+          bingoText.style.textShadow = `
+            0 0 8px rgba(0, 0, 0, 0.8),
+            0 0 16px rgba(255, 215, 0, 0.6),
+            0 0 24px rgba(255, 215, 0, 0.4)
           `;
+          bingoText.style.letterSpacing = '2px';
+          bingoText.style.textAlign = 'center';
+          bingoText.style.background = 'rgba(0, 0, 0, 0.5)';
+          bingoText.style.padding = '8px 20px';
+          bingoText.style.borderRadius = '10px';
+          bingoText.style.backdropFilter = 'blur(3px)';
+          bingoText.style.webkitBackdropFilter = 'blur(3px)';
+
+          overlay.appendChild(bingoText);
           wrapper.appendChild(overlay);
         }
       } else {
