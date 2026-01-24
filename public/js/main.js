@@ -531,130 +531,132 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderCards() {
-    const container = document.getElementById('cards-container');
-    container.innerHTML = '';
+  const container = document.getElementById('cards-container');
+  container.innerHTML = '';
 
-    const validCards = playerCards.filter(item =>
-      item && item.card &&
-      ((cardType === '75' && item.card.length === 25) ||
-       (cardType === '90' && item.card.length === 3 && item.card.every(row => Array.isArray(row) && row.length === 9)))
-    );
+  const validCards = playerCards.filter(item =>
+    item && item.card &&
+    ((cardType === '75' && item.card.length === 25) ||
+     (cardType === '90' && item.card.length === 3 && item.card.every(row => Array.isArray(row) && row.length === 9)))
+  );
 
-    const sortedCards = [...validCards].sort((a, b) => {
-      const ballsA = getBallsLeftForCurrentStage(a.card, roomsDrawnNumbers, currentStage);
-      const ballsB = getBallsLeftForCurrentStage(b.card, roomsDrawnNumbers, currentStage);
-      return ballsA - ballsB;
-    });
+  const sortedCards = [...validCards].sort((a, b) => {
+    const ballsA = getBallsLeftForCurrentStage(a.card, roomsDrawnNumbers, currentStage);
+    const ballsB = getBallsLeftForCurrentStage(b.card, roomsDrawnNumbers, currentStage);
+    return ballsA - ballsB;
+  });
 
-    sortedCards.forEach((item, idx) => {
-      item.index = idx;
-    });
+  sortedCards.forEach((item, idx) => {
+    item.index = idx;
+  });
 
-    sortedCards.forEach(item => {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'card-wrapper';
+  sortedCards.forEach(item => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'card-wrapper';
 
-      const ballsLeftForStage = getBallsLeftForCurrentStage(item.card, roomsDrawnNumbers, currentStage);
-      if (ballsLeftForStage === 1) {
-        wrapper.classList.add('near-win');
+    const ballsLeftForStage = getBallsLeftForCurrentStage(item.card, roomsDrawnNumbers, currentStage);
+    if (ballsLeftForStage === 1) {
+      wrapper.classList.add('near-win');
+    }
+
+    wrapper.innerHTML = `<div class="card-title">Cartela ${item.index + 1}</div>`;
+    const grid = document.createElement('div');
+    grid.className = cardType === '75' ? 'grid-75' : 'grid-90';
+
+    if (cardType === '90') {
+      // --- RENDERIZAÇÃO DO BINGO 90 (3x9) ---
+      const markedInRow = [0, 0, 0];
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 9; c++) {
+          const num = item.card[r][c];
+          if (num !== null && roomsDrawnNumbers.includes(num)) {
+            markedInRow[r]++;
+          }
+        }
       }
+      const completedLines = [];
+      if (markedInRow[0] >= 5) completedLines.push(0);
+      if (markedInRow[1] >= 5) completedLines.push(1);
+      if (markedInRow[2] >= 5) completedLines.push(2);
+      const bingo = completedLines.length >= 3;
 
-      wrapper.innerHTML = `<div class="card-title">Cartela ${item.index + 1}</div>`;
-      const grid = document.createElement('div');
-      grid.className = cardType === '75' ? 'grid-75' : 'grid-90';
-
-      if (cardType === '90') {
-        const markedInRow = [0, 0, 0];
-        for (let r = 0; r < 3; r++) {
-          for (let c = 0; c < 9; c++) {
-            const num = item.card[r][c];
-            if (num !== null && roomsDrawnNumbers.includes(num)) {
-              markedInRow[r]++;
-            }
-          }
-        }
-        const completedLines = [];
-        if (markedInRow[0] >= 5) completedLines.push(0);
-        if (markedInRow[1] >= 5) completedLines.push(1);
-        if (markedInRow[2] >= 5) completedLines.push(2);
-        const bingo = completedLines.length >= 3;
-
-        for (let r = 0; r < 3; r++) {
-          for (let c = 0; c < 9; c++) {
-            const cell = document.createElement('div');
-            cell.className = 'cell';
-            const val = item.card[r][c];
-            if (val !== null) {
-              cell.textContent = val.toString();
-              cell.dataset.num = val.toString();
-              if (roomsDrawnNumbers.includes(val)) {
-                cell.classList.add('marked');
-              }
-            } else {
-              cell.classList.add('empty');
-            }
-            grid.appendChild(cell);
-          }
-        }
-
-        if (bingo) {
-          wrapper.className = 'card-wrapper bingo-complete';
-          const overlay = document.createElement('div');
-          overlay.style.position = 'absolute';
-          overlay.style.top = '0';
-          overlay.style.left = '0';
-          overlay.style.width = '100%';
-          overlay.style.height = '100%';
-          overlay.style.display = 'flex';
-          overlay.style.justifyContent = 'center';
-          overlay.style.alignItems = 'center';
-          overlay.style.zIndex = '10';
-          overlay.style.pointerEvents = 'none';
-
-          const bingoText = document.createElement('div');
-          bingoText.textContent = 'BINGO!';
-          bingoText.style.color = 'white';
-          bingoText.style.fontSize = '2.4em';
-          bingoText.style.fontWeight = '900';
-          bingoText.style.fontFamily = "'Montserrat', sans-serif";
-          bingoText.style.textShadow = `
-            0 0 8px rgba(0, 0, 0, 0.8),
-            0 0 16px rgba(255, 215, 0, 0.6),
-            0 0 24px rgba(255, 215, 0, 0.4)
-          `;
-          bingoText.style.letterSpacing = '2px';
-          bingoText.style.textAlign = 'center';
-          bingoText.style.background = 'rgba(0, 0, 0, 0.5)';
-          bingoText.style.padding = '8px 20px';
-          bingoText.style.borderRadius = '10px';
-          bingoText.style.backdropFilter = 'blur(3px)';
-          bingoText.style.webkitBackdropFilter = 'blur(3px)';
-
-          overlay.appendChild(bingoText);
-          wrapper.appendChild(overlay);
-        }
-      } else {
-        for (let i = 0; i < 25; i++) {
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 9; c++) {
           const cell = document.createElement('div');
           cell.className = 'cell';
-          if (item.card[i] === 'FREE') {
-            cell.textContent = '★';
-            cell.classList.add('free');
-          } else {
-            cell.textContent = item.card[i].toString();
-            cell.dataset.num = item.card[i].toString();
-            if (roomsDrawnNumbers.includes(item.card[i])) {
+          const val = item.card[r][c];
+          if (val !== null) {
+            cell.textContent = val.toString();
+            cell.dataset.num = val.toString();
+            if (roomsDrawnNumbers.includes(val)) {
               cell.classList.add('marked');
             }
+          } else {
+            cell.classList.add('empty');
           }
           grid.appendChild(cell);
         }
       }
 
-      wrapper.appendChild(grid);
-      container.appendChild(wrapper);
-    });
-  }
+      if (bingo) {
+        wrapper.className = 'card-wrapper bingo-complete';
+        const overlay = document.createElement('div');
+        overlay.style.position = 'absolute';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.display = 'flex';
+        overlay.style.justifyContent = 'center';
+        overlay.style.alignItems = 'center';
+        overlay.style.zIndex = '10';
+        overlay.style.pointerEvents = 'none';
+
+        const bingoText = document.createElement('div');
+        bingoText.textContent = 'BINGO!';
+        bingoText.style.color = 'white';
+        bingoText.style.fontSize = '2.4em';
+        bingoText.style.fontWeight = '900';
+        bingoText.style.fontFamily = "'Montserrat', sans-serif";
+        bingoText.style.textShadow = `
+          0 0 8px rgba(0, 0, 0, 0.8),
+          0 0 16px rgba(255, 215, 0, 0.6),
+          0 0 24px rgba(255, 215, 0, 0.4)
+        `;
+        bingoText.style.letterSpacing = '2px';
+        bingoText.style.textAlign = 'center';
+        bingoText.style.background = 'rgba(0, 0, 0, 0.5)';
+        bingoText.style.padding = '8px 20px';
+        bingoText.style.borderRadius = '10px';
+        bingoText.style.backdropFilter = 'blur(3px)';
+        bingoText.style.webkitBackdropFilter = 'blur(3px)';
+        overlay.appendChild(bingoText);
+        wrapper.appendChild(overlay);
+      }
+    } else {
+      // --- RENDERIZAÇÃO CORRETA DO BINGO 75 (5x5) ---
+      for (let i = 0; i < 25; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        const val = item.card[i];
+        if (val === 'FREE') {
+          cell.textContent = '★';
+          cell.classList.add('free');
+        } else {
+          cell.textContent = val.toString();
+          cell.dataset.num = val.toString();
+          if (roomsDrawnNumbers.includes(val)) {
+            cell.classList.add('marked');
+          }
+        }
+        grid.appendChild(cell);
+      }
+    }
+
+    wrapper.appendChild(grid);
+    container.appendChild(wrapper);
+  });
+}
 
   // Funções auxiliares de som e voz (mantidas como placeholders)
   function playSound(type, number) { /* implementar se desejar */ }
