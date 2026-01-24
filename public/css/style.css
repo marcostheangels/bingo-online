@@ -7,6 +7,39 @@ body {
 }
 .container { max-width: 1200px; margin: 0 auto; }
 
+/* === FUNDO DINÂMICO DE FICHAS (COMUM A TODAS AS TELAS) === */
+#chips-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(circle at center, #2e1052 0%, #000000 100%);
+}
+
+.chip-bg,
+.chip-particle {
+  position: absolute;
+  border-radius: 50%;
+  border: 3px dashed rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.chip-bg::after,
+.chip-particle::after {
+  content: '';
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
 /* === TELA DE LOGIN MODERNA === */
 #login-screen {
   position: fixed;
@@ -14,40 +47,10 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at center, #2e1052 0%, #000000 100%);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-}
-
-#chips-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.chip-particle {
-  position: absolute;
-  border-radius: 50%;
-  border: 4px dashed rgba(255, 255, 255, 0.4);
-  box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.3);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.chip-particle::after {
-  content: '';
-  width: 60%;
-  height: 60%;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .login-card {
@@ -148,37 +151,6 @@ body {
   .login-card .logo h1 { font-size: 1.5rem; }
 }
 
-/* === FUNDO DINÂMICO DE FICHAS NA SALA === */
-#chips-background {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: -1;
-  background: radial-gradient(circle at center, #2e1052 0%, #000000 100%);
-}
-
-.chip-bg {
-  position: absolute;
-  border-radius: 50%;
-  border: 3px dashed rgba(255, 255, 255, 0.3);
-  box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.chip-bg::after {
-  content: '';
-  width: 60%;
-  height: 60%;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-}
-
 /* === ESTILO DA ÁREA DO JOGO === */
 #game-area { 
   display: none; 
@@ -187,6 +159,8 @@ body {
   -webkit-backdrop-filter: blur(5px);
   border-radius: 16px;
   padding: 20px;
+  position: relative;
+  z-index: 5;
 }
 
 .header {
@@ -633,6 +607,8 @@ body {
   opacity: 1;
   visibility: visible;
 }
+
+/* ... (mantenha todas as suas animações de vitória exatamente como estavam) ... */
 
 .line-card {
   position: relative;
