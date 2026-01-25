@@ -150,7 +150,7 @@ const MAX_CARDS_PER_PLAYER = 10;
 const JACKPOT_BALL_LIMIT = 60;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '0589';
 const MAX_BOTS_ALLOWED = 10;
-const COUNTDOWN_DURATION = 25; // ⏱️ 25 segundos
+const COUNTDOWN_DURATION = 25;
 
 // ✅ Palavras-chave e respostas da IA
 const AI_KEYWORDS = [
@@ -291,53 +291,10 @@ function getBotCardCount(totalBots) {
   return 1;
 }
 
-// ✅ Verifica se há humanos COM CARTELAS na sala
-function hasHumanWithCards(roomType) {
+// ✅ Verifica se há humanos na sala (com ou sem cartela)
+function hasHumanInRoom(roomType) {
   const room = rooms[roomType];
-  return Object.values(room.players).some(p =>
-    !p.isBot &&
-    ((roomType === 'bingo90' && p.cards90 && p.cards90.length > 0) ||
-     (roomType === 'bingo75' && p.cards75 && p.cards75.length > 0))
-  );
-}
-
-// ✅ Iniciar contagem regressiva
-function startCountdown(roomType) {
-  const room = rooms[roomType];
-  if (room.countdownActive || room.gameActive || room.gameCompleted) return;
-
-  room.countdownActive = true;
-  let seconds = COUNTDOWN_DURATION;
-  io.to(roomType).emit('countdown-start', { seconds });
-
-  const tick = () => {
-    if (!rooms[roomType] || !rooms[roomType].countdownActive) return;
-    seconds--;
-    if (seconds >= 0) {
-      io.to(roomType).emit('countdown-update', { seconds });
-      room.countdownTimeout = setTimeout(tick, 1000);
-    } else {
-      // Tempo esgotado → iniciar sorteio
-      rooms[roomType].countdownActive = false;
-      if (hasHumanWithCards(roomType)) {
-        resumeDraw(roomType);
-      } else {
-        rooms[roomType].countdownActive = false;
-      }
-    }
-  };
-
-  room.countdownTimeout = setTimeout(tick, 1000);
-}
-
-// ✅ Cancelar contagem regressiva
-function cancelCountdown(roomType) {
-  const room = rooms[roomType];
-  if (room.countdownTimeout) {
-    clearTimeout(room.countdownTimeout);
-    room.countdownTimeout = null;
-  }
-  room.countdownActive = false;
+  return Object.values(room.players).some(p => !p.isBot);
 }
 
 // ✅ Mensagens automáticas a cada 45s
@@ -345,7 +302,7 @@ function startAutoMessages(roomType) {
   const room = rooms[roomType];
   if (room.autoMessageInterval) clearInterval(room.autoMessageInterval);
   room.autoMessageInterval = setInterval(() => {
-    if (!hasHumanWithCards(roomType)) return;
+    if (!hasHumanInRoom(roomType)) return;
     const messages = [
       "✨ Alguém está prestes a fazer BINGO! Fiquem atentos!",
       "💰 O pote está crescendo! Quem será o próximo vencedor?",
@@ -552,7 +509,6 @@ function getLineStatusForCard(card, drawnNumbers) {
   };
 }
 
-// ✅ CORREÇÃO: Nome correto da função
 function calculateBallsLeftForCard(card, drawnNumbers) {
   const markedInRow = [0, 0, 0];
   for (let r = 0; r < 3; r++) {
@@ -576,7 +532,6 @@ function calculateBallsLeftForCard(card, drawnNumbers) {
   };
 }
 
-// ✅ NOVA FUNÇÃO: Contar cartelas "na boa" (faltando exatamente 1 bola)
 function countCardsOneBallAway(roomType) {
   const room = rooms[roomType];
   let stats = {
@@ -650,71 +605,44 @@ function pauseDraw(roomType) {
 
 function resumeDraw(roomType) {
   const room = rooms[roomType];
-  cancelCountdown(roomType); // Cancela qualquer contagem pendente
+  pauseDraw(roomType); // Cancela qualquer contagem pendente
 
-  let humanHasCards = false;
-  for (const player of Object.values(room.players)) {
-    if (!player.isBot &&
-      ((roomType === 'bingo90' && player.cards90.length > 0) ||
-       (roomType === 'bingo75' && player.cards75.length > 0))) {
-      humanHasCards = true;
-      break;
-    }
+  // Adicionar bots faltantes
+  let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
+  while (currentBots < room.maxBots) {
+    addBotToRoom(roomType);
+    currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
   }
 
-  if (humanHasCards && !room.gameActive && !room.gameCompleted) {
-    let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
-    while (currentBots < room.maxBots) {
-      addBotToRoom(roomType);
-      currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
-    }
-
-    for (const [id, player] of Object.entries(room.players)) {
-      if (player.isBot) {
-        const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
-        const cardCount = Math.min(getBotCardCount(totalBotsNow), Math.floor(player.chips / PRICE_PER_CARD));
-        if (cardCount > 0 && player.cards90.length === 0 && player.cards75.length === 0) {
-          const totalCost = cardCount * PRICE_PER_CARD;
-          player.chips -= totalCost;
-          room.pot += totalCost;
-          room.jackpot += Math.floor(totalCost * 0.5);
-          if (roomType === 'bingo90') {
-            player.cards90 = Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card()));
-            player.cards75 = [];
-          } else {
-            player.cards75 = Array(cardCount).fill().map(() => generateBingo75Card());
-            player.cards90 = [];
-          }
-          console.log(`🤖 Bot ${player.name} comprou ${cardCount} cartelas. Chips restantes: ${player.chips}`);
+  // Bots compram cartelas SOMENTE AGORA
+  for (const [id, player] of Object.entries(room.players)) {
+    if (player.isBot) {
+      const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
+      const cardCount = Math.min(getBotCardCount(totalBotsNow), Math.floor(player.chips / PRICE_PER_CARD));
+      if (cardCount > 0 && player.cards90.length === 0 && player.cards75.length === 0) {
+        const totalCost = cardCount * PRICE_PER_CARD;
+        player.chips -= totalCost;
+        room.pot += totalCost;
+        room.jackpot += Math.floor(totalCost * 0.5);
+        if (roomType === 'bingo90') {
+          player.cards90 = Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card()));
+          player.cards75 = [];
+        } else {
+          player.cards75 = Array(cardCount).fill().map(() => generateBingo75Card());
+          player.cards90 = [];
         }
+        console.log(`🤖 Bot ${player.name} comprou ${cardCount} cartelas. Chips restantes: ${player.chips}`);
       }
     }
-
-    io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
-    io.to(roomType).emit('room-state', {
-      drawnNumbers: room.drawnNumbers,
-      lastNumber: room.lastNumber,
-      gameActive: room.gameActive,
-      pot: room.pot,
-      currentStage: room.currentStage,
-      jackpot: room.jackpot,
-      gameCompleted: room.gameCompleted,
-      players: Object.fromEntries(
-        Object.entries(room.players).map(([id, p]) => [id, {
-          name: p.name, chips: p.chips, isBot: p.isBot,
-          winsCount: p.winsCount, currentWins: p.currentWins
-        }])
-      )
-    });
   }
 
-  if (!hasHumanWithCards(roomType)) {
-    console.log(`⏸️ Standby: nenhum humano com cartela na sala ${roomType}`);
-    room.gameActive = false;
+  io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
+
+  if (room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
+    io.to(roomType).emit('game-end', 'Todos os números foram sorteados!');
+    startAutoRestart(roomType);
     return;
   }
-
-  if (room.gameActive || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) return;
 
   room.gameActive = true;
   room.drawInterval = setInterval(() => {
@@ -755,15 +683,37 @@ function resumeDraw(roomType) {
   }, 3000);
 }
 
+// ✅ Iniciar contagem regressiva (sempre que chamado)
+function startCountdown(roomType) {
+  const room = rooms[roomType];
+  if (room.countdownActive || room.gameActive) return;
+
+  room.countdownActive = true;
+  let seconds = COUNTDOWN_DURATION;
+  io.to(roomType).emit('countdown-start', { seconds });
+
+  const tick = () => {
+    if (!rooms[roomType] || !rooms[roomType].countdownActive) return;
+    seconds--;
+    if (seconds >= 0) {
+      io.to(roomType).emit('countdown-update', { seconds });
+      room.countdownTimeout = setTimeout(tick, 1000);
+    } else {
+      rooms[roomType].countdownActive = false;
+      resumeDraw(roomType); // Inicia o sorteio mesmo sem cartelas
+    }
+  };
+
+  room.countdownTimeout = setTimeout(tick, 1000);
+}
+
+// ✅ Reinício automático após bingo
 function startAutoRestart(roomType) {
   const room = rooms[roomType];
   if (room.autoRestartTimeout) clearTimeout(room.autoRestartTimeout);
   io.to(roomType).emit('countdown-start', { seconds: 25 });
   room.autoRestartTimeout = setTimeout(() => {
-    const fakeSocket = {
-      data: { roomType },
-      id: 'system'
-    };
+    const fakeSocket = { data: { roomType }, id: 'system' };
     handleAutoRestart(fakeSocket, roomType);
   }, 25000);
 }
@@ -894,11 +844,7 @@ async function handleWin(roomType, allWinners) {
   if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
     startAutoRestart(roomType);
   } else {
-    setTimeout(() => {
-      if (rooms[roomType] && !rooms[roomType].gameCompleted) {
-        resumeDraw(roomType);
-      }
-    }, 3000);
+    resumeDraw(roomType);
   }
 }
 
@@ -990,11 +936,9 @@ async function handleAutoRestart(socket, roomType) {
   const room = rooms[roomType];
   if (!room) return;
   const playersToKeep = {};
-  let activeBots = 0;
   for (const [id, player] of Object.entries(room.players)) {
     if (player.isBot && player.chips <= 0) continue;
     playersToKeep[id] = player;
-    if (player.isBot) activeBots++;
   }
   if (room.addBotOnNextRestart && room.maxBots < MAX_BOTS_ALLOWED) {
     room.maxBots += 1;
@@ -1027,28 +971,26 @@ async function handleAutoRestart(socket, roomType) {
   room.autoRestartTimeout = null;
   room.currentWinnerId = null;
   for (const [id, player] of Object.entries(room.players)) {
-    if (player.isBot) {
-      player.cards75 = [];
-      player.cards90 = [];
-    } else {
-      player.cards75 = [];
-      player.cards90 = [];
-    }
+    player.cards75 = [];
+    player.cards90 = [];
+    player.currentWins = 0;
   }
   io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
   io.to(roomType).emit('room-reset');
   broadcastPlayerList(roomType);
   broadcastRanking(roomType);
-  console.log(`🔄 Jogo reiniciado automaticamente. Bots: ${currentBots} (máximo: ${room.maxBots})`);
+  console.log(`🔄 Sala reiniciada. Iniciando contagem de 25s...`);
+
+  // ✅ INICIAR TIMER MESMO SEM CARTELAS
+  startCountdown(roomType);
 }
 
 // ✅ ESCUTA DE CONEXÕES SOCKET.IO
 io.on('connection', (socket) => {
   socket.on('start-draw', () => {
-    // Agora este evento é redundante, mas mantido por compatibilidade
+    // Redundante, mas mantido por compatibilidade
     const roomType = socket.data?.roomType;
-    if (roomType && !rooms[roomType].gameActive && hasHumanWithCards(roomType)) {
-      cancelCountdown(roomType);
+    if (roomType && !rooms[roomType].gameActive) {
       resumeDraw(roomType);
     }
   });
@@ -1198,8 +1140,8 @@ io.on('connection', (socket) => {
       startAutoMessages(roomType);
     }
 
-    // ✅ INICIAR CONTAGEM REGRESSIVA SE HOUVER HUMANO COM CARTELAS
-    if (hasHumanWithCards(roomType) && !room.gameActive && !room.gameCompleted) {
+    // ✅ INICIAR TIMER AO ENTRAR (mesmo sem cartela)
+    if (!room.gameActive && !room.gameCompleted) {
       startCountdown(roomType);
     }
   });
@@ -1240,12 +1182,6 @@ io.on('connection', (socket) => {
       io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
       broadcastPlayerList(roomType);
       broadcastRanking(roomType);
-
-      // ✅ Reiniciar contagem se houver humano com cartelas
-      if (hasHumanWithCards(roomType) && !room.gameActive && !room.gameCompleted) {
-        cancelCountdown(roomType);
-        startCountdown(roomType);
-      }
     } catch (err) {
       console.error('Erro buy-cards:', err);
       socket.emit('error', 'Erro ao comprar cartelas.');
@@ -1293,12 +1229,10 @@ io.on('connection', (socket) => {
   });
 
   socket.on('restart-game', () => {
+    // Evento mantido, mas não usado (timer automático substitui)
     const roomType = socket.data?.roomType;
     if (!roomType) return socket.emit('error', 'Sala inválida.');
-    const fakeSocket = {
-      data: { roomType },
-      id: 'manual'
-    };
+    const fakeSocket = { data: { roomType }, id: 'manual' };
     handleAutoRestart(fakeSocket, roomType);
   });
 
@@ -1335,19 +1269,13 @@ io.on('connection', (socket) => {
       socket.leave(roomType);
       broadcastPlayerList(roomType);
       broadcastRanking(roomType);
-      if (!hasHumanWithCards(roomType)) {
+      if (!hasHumanInRoom(roomType)) {
         pauseDraw(roomType);
-        cancelCountdown(roomType);
         if (rooms[roomType].autoMessageInterval) {
           clearInterval(rooms[roomType].autoMessageInterval);
           rooms[roomType].autoMessageInterval = null;
         }
-        console.log(`⏸️ Sala ${roomType} em standby: sem humanos com cartela.`);
-      } else {
-        // Reinicia contagem se ainda houver humanos
-        if (!rooms[roomType].gameActive && !rooms[roomType].gameCompleted) {
-          startCountdown(roomType);
-        }
+        console.log(`⏸️ Sala ${roomType} em standby: sem humanos.`);
       }
     }
   });
