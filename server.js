@@ -173,6 +173,7 @@ const MAX_CARDS_PER_PLAYER = 10;
 const JACKPOT_BALL_LIMIT = 60;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '0589';
 const MAX_BOTS_ALLOWED = 10;
+const COUNTDOWN_DURATION = 25; // ✅ ADICIONADO AQUI
 
 // ✅ Palavras-chave e respostas da IA
 const AI_KEYWORDS = [
@@ -720,6 +721,7 @@ async function handleWin(roomType, allWinners) {
   const currentStage = room.currentStage;
   if (room.stageCompleted[currentStage]) return;
   room.stageCompleted[currentStage] = true;
+
   let prize = 0;
   if (currentStage === 'linha1') {
     prize = Math.floor(room.pot * 0.20);
@@ -732,12 +734,14 @@ async function handleWin(roomType, allWinners) {
     room.gameCompleted = true;
   }
   prize = Math.max(prize, 100);
+
   const results = distributePrize(room, allWinners, prize);
   results.forEach(result => {
     const player = room.players[result.playerId];
     player.winsCount = (player.winsCount || 0) + 1;
     player.currentWins = (player.currentWins || 0) + 1;
   });
+
   let jackpotWinners = [];
   let wonJackpot = false;
   if (currentStage === 'bingo' && room.drawnNumbers.length <= JACKPOT_BALL_LIMIT) {
@@ -746,16 +750,19 @@ async function handleWin(roomType, allWinners) {
     room.jackpot = 1000000;
     jackpotWinners = distributePrize(room, allWinners, jackpotPrize);
   }
+
   const uniqueWinnerNames = [...new Set(results.map(r => r.playerName))];
   const winnerNames = uniqueWinnerNames.join(', ');
   const totalPrize = results.reduce((sum, r) => sum + r.prize, 0);
   if (results.length > 0) {
     room.currentWinnerId = results[0].playerId;
   }
+
   if (shouldAddBotOnWin(winnerNames)) {
     room.addBotOnNextRestart = true;
     console.log(`✅ Vitória de Markim ou Marília! Bot será adicionado no próximo restart.`);
   }
+
   let formattedMessage = "";
   if (currentStage === 'linha1') {
     const msgs = [
@@ -776,12 +783,14 @@ async function handleWin(roomType, allWinners) {
     ];
     formattedMessage = msgs[Math.floor(Math.random() * msgs.length)];
   }
+
   io.to(roomType).emit('chat-message', {
     message: formattedMessage,
     sender: "Sistema",
     isBot: false,
     type: currentStage
   });
+
   const humanWinners = results.filter(r => !room.players[r.playerId].isBot);
   for (const hw of humanWinners) {
     const player = room.players[hw.playerId];
@@ -801,6 +810,7 @@ async function handleWin(roomType, allWinners) {
       }, 2000);
     }
   }
+
   if (currentStage === 'bingo' && humanWinners.length > 0) {
     const humanNames = humanWinners.map(h => h.playerName).join(', ');
     setTimeout(() => {
@@ -812,6 +822,7 @@ async function handleWin(roomType, allWinners) {
       });
     }, 1000);
   }
+
   if (wonJackpot) {
     const jackpotUniqueNames = [...new Set(jackpotWinners.map(w => w.playerName))];
     const jackpotNames = jackpotUniqueNames.join(', ');
@@ -825,6 +836,7 @@ async function handleWin(roomType, allWinners) {
       });
     }, 1500);
   }
+
   io.to(roomType).emit('player-won', {
     winners: results,
     winnerNames,
@@ -835,9 +847,12 @@ async function handleWin(roomType, allWinners) {
     wonJackpot: wonJackpot,
     currentWinnerId: room.currentWinnerId
   });
+
   broadcastPlayerList(roomType);
   broadcastRanking(roomType);
+
   pauseDraw(roomType);
+
   if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
     startAutoRestart(roomType);
   } else {
@@ -849,15 +864,19 @@ async function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
   const room = rooms[roomType];
   const currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
   if (currentBots >= room.maxBots) return;
+
   const usedNames = new Set();
   Object.values(room.players).forEach(p => { if (p.isBot) usedNames.add(p.name); });
+
   let name;
   let attempts = 0;
   do {
     name = BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)];
     attempts++;
   } while (usedNames.has(name) && attempts < 100);
+
   if (usedNames.has(name)) name = `${name} ${Math.floor(Math.random() * 1000)}`;
+
   const botId = `bot_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
   room.players[botId] = {
     name: name,
@@ -868,6 +887,7 @@ async function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
     winsCount: 0,
     currentWins: 0
   };
+
   console.log(`🤖 Bot adicionado: ${name} entrou com ${initialChips} chips.`);
 }
 
@@ -932,22 +952,27 @@ function findPlayerByName(roomType, playerName) {
 async function handleAutoRestart(socket, roomType) {
   const room = rooms[roomType];
   if (!room) return;
+
   const playersToKeep = {};
   for (const [id, player] of Object.entries(room.players)) {
     if (player.isBot && player.chips <= 0) continue;
     playersToKeep[id] = player;
   }
+
   if (room.addBotOnNextRestart && room.maxBots < MAX_BOTS_ALLOWED) {
     room.maxBots += 1;
     room.addBotOnNextRestart = false;
   }
   room.maxBots = Math.min(room.maxBots, MAX_BOTS_ALLOWED);
+
   room.players = playersToKeep;
+
   let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
   while (currentBots < room.maxBots) {
     await addBotToRoom(roomType, INITIAL_CHIPS);
     currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
   }
+
   const specialPlayers = {};
   const bots = {};
   for (const [id, player] of Object.entries(room.players)) {
@@ -958,6 +983,7 @@ async function handleAutoRestart(socket, roomType) {
     }
   }
   await savePersistedChips(specialPlayers, bots);
+
   room.drawnNumbers = [];
   room.lastNumber = null;
   room.pot = 0;
@@ -967,15 +993,18 @@ async function handleAutoRestart(socket, roomType) {
   room.gameActive = false;
   room.autoRestartTimeout = null;
   room.currentWinnerId = null;
+
   for (const [id, player] of Object.entries(room.players)) {
     player.cards75 = [];
     player.cards90 = [];
     player.currentWins = 0;
   }
+
   io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
   io.to(roomType).emit('room-reset');
   broadcastPlayerList(roomType);
   broadcastRanking(roomType);
+
   console.log(`🔄 Jogo reiniciado automaticamente. Bots: ${currentBots} (máximo: ${room.maxBots})`);
 }
 
@@ -1008,8 +1037,10 @@ io.on('connection', (socket) => {
       drawnNumbers: room.drawnNumbers,
       lastNumber: number
     });
+
     const nearWinStats = countCardsOneBallAway(roomType);
     io.to(roomType).emit('near-win-stats', nearWinStats);
+
     if (roomType === 'bingo90') {
       Object.keys(room.players).forEach(playerId => {
         const player = room.players[playerId];
@@ -1023,11 +1054,13 @@ io.on('connection', (socket) => {
         }
       });
     }
+
     const winners = checkWinForAllPlayers(roomType);
     if (winners) handleWin(roomType, winners);
   });
 
   console.log('🔌 Jogador conectado:', socket.id);
+
   socket.on('join-room', async ({ playerName, roomType, savedChips, savedCards75, savedCards90 }) => {
     if (!rooms[roomType]) {
       socket.emit('error', 'Sala inválida');
@@ -1037,6 +1070,7 @@ io.on('connection', (socket) => {
     const room = rooms[roomType];
     const persisted = await loadPersistedChips();
     const existingPlayer = findPlayerByName(roomType, playerName);
+
     let playerId, playerData;
     if (existingPlayer) {
       playerId = existingPlayer[0];
@@ -1073,8 +1107,10 @@ io.on('connection', (socket) => {
         currentWins: 0
       }, roomType);
     }
+
     socket.join(roomType);
     socket.data = { roomType };
+
     let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
     while (currentBots < room.maxBots) {
       await addBotToRoom(roomType);
@@ -1082,6 +1118,7 @@ io.on('connection', (socket) => {
       if (newBotCount === currentBots) break;
       currentBots = newBotCount;
     }
+
     if (!room.players[playerId].isBot) {
       io.to(roomType).emit('chat-message', {
         message: `👋 Bem-vindo(a), ${playerName}! Preparado(a) para ganhar?`,
@@ -1090,12 +1127,14 @@ io.on('connection', (socket) => {
         type: "welcome"
       });
     }
+
     socket.emit('room-welcome', {
       roomName: room.name,
       roomId: roomType,
       currentStage: room.currentStage,
       gameCompleted: room.gameCompleted
     });
+
     socket.emit('room-state', {
       drawnNumbers: room.drawnNumbers,
       lastNumber: room.lastNumber,
@@ -1111,6 +1150,7 @@ io.on('connection', (socket) => {
         }])
       )
     });
+
     const player = room.players[playerId];
     if (player.cards75.length > 0) {
       socket.emit('cards-received', {
@@ -1131,8 +1171,10 @@ io.on('connection', (socket) => {
         cardType: '90'
       });
     }
+
     broadcastPlayerList(roomType);
     broadcastRanking(roomType);
+
     if (!room.autoMessageInterval) {
       startAutoMessages(roomType);
     }
@@ -1151,22 +1193,28 @@ io.on('connection', (socket) => {
       const room = rooms[roomType];
       const player = room.players[socket.id];
       if (!player || player.isBot) return;
+
       const currentCardCount = cardType === '75' ? player.cards75.length : player.cards90.length;
       if (currentCardCount + count > MAX_CARDS_PER_PLAYER) {
         return socket.emit('error', `Você já tem ${currentCardCount} cartelas. Máximo permitido: ${MAX_CARDS_PER_PLAYER}.`);
       }
+
       const totalCost = count * PRICE_PER_CARD;
       if (player.chips < totalCost) return socket.emit('error', 'Chips insuficientes');
+
       player.chips -= totalCost;
       room.pot += totalCost;
       room.jackpot += Math.floor(totalCost * 0.5);
+
       const cards = [];
       for (let i = 0; i < count; i++) {
         const card = cardType === '75' ? generateBingo75Card() : validateAndFixBingo90Card(generateBingo90Card());
         cards.push(card);
       }
+
       if (cardType === '75') player.cards75 = player.cards75.concat(cards);
       else player.cards90 = player.cards90.concat(cards);
+
       socket.emit('cards-received', {
         cards: cards.map(card => ({
           card,
@@ -1175,6 +1223,7 @@ io.on('connection', (socket) => {
         })),
         cardType
       });
+
       io.to(socket.id).emit('update-player', { chips: player.chips });
       io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
       broadcastPlayerList(roomType);
@@ -1195,6 +1244,7 @@ io.on('connection', (socket) => {
       if (!player || player.isBot || winType !== room.currentStage || room.stageCompleted[winType]) {
         return socket.emit('error', 'Etapa inválida.');
       }
+
       let hasWon = false;
       for (let i = 0; i < player.cards90.length; i++) {
         const card = validateAndFixBingo90Card(player.cards90[i]);
@@ -1205,6 +1255,7 @@ io.on('connection', (socket) => {
           hasWon = true; break;
         }
       }
+
       if (hasWon) {
         const allWinners = checkWinForAllPlayers(roomType);
         if (allWinners) handleWin(roomType, allWinners);
@@ -1295,11 +1346,9 @@ function validatePlayerState(player, roomType) {
 function startCountdown(roomType) {
   const room = rooms[roomType];
   if (room.countdownActive || room.gameActive || room.gameCompleted) return;
-
   room.countdownActive = true;
   let seconds = COUNTDOWN_DURATION;
   io.to(roomType).emit('countdown-start', { seconds });
-
   const tick = () => {
     if (!rooms[roomType] || !rooms[roomType].countdownActive) return;
     seconds--;
@@ -1311,7 +1360,6 @@ function startCountdown(roomType) {
       resumeDraw(roomType);
     }
   };
-
   room.countdownTimeout = setTimeout(tick, 1000);
 }
 
