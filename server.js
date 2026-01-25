@@ -616,7 +616,8 @@ function resumeDraw(roomType) {
       break;
     }
   }
-  // ✅ Só adicionar bots e comprar cartelas se houver humanos com cartelas
+
+  // ✅ Só adicionar bots e comprar cartelas se houver humanos com cartelas E o sorteio foi iniciado
   if (humanHasCards && !room.gameActive && !room.gameCompleted) {
     // Adicionar bots faltantes
     let currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
@@ -624,7 +625,8 @@ function resumeDraw(roomType) {
       addBotToRoom(roomType);
       currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
     }
-    // ✅ Função: Fazer bots comprarem cartelas AGORA
+
+    // ✅ AGORA: Bots compram cartelas SOMENTE quando o sorteio é iniciado (resumeDraw)
     for (const [id, player] of Object.entries(room.players)) {
       if (player.isBot) {
         const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
@@ -645,9 +647,11 @@ function resumeDraw(roomType) {
         }
       }
     }
-    // ✅ EMITIR ATUALIZAÇÃO DO POTE E JACKPOT PARA TODOS OS JOGADORES
+
+    // ✅ EMITIR ATUALIZAÇÃO DO POTE E JACKPOT
     io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
-    // ✅ FORÇAR ENVIO DO ESTADO COMPLETO PARA ATUALIZAR CHIPS DOS BOTS
+
+    // ✅ FORÇAR ENVIO DO ESTADO COMPLETO
     io.to(roomType).emit('room-state', {
       drawnNumbers: room.drawnNumbers,
       lastNumber: room.lastNumber,
@@ -664,12 +668,15 @@ function resumeDraw(roomType) {
       )
     });
   }
+
   if (!hasHumanWithCards(roomType)) {
     console.log(`⏸️ Standby: nenhum humano com cartela na sala ${roomType}`);
     room.gameActive = false;
     return;
   }
+
   if (room.gameActive || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) return;
+
   room.gameActive = true;
   room.drawInterval = setInterval(() => {
     const number = drawNumber(roomType);
@@ -686,9 +693,10 @@ function resumeDraw(roomType) {
       drawnNumbers: room.drawnNumbers,
       lastNumber: number
     });
-    // ✅ Emitir estatísticas "na boa" após cada número
+
     const nearWinStats = countCardsOneBallAway(roomType);
     io.to(roomType).emit('near-win-stats', nearWinStats);
+
     if (roomType === 'bingo90') {
       Object.keys(room.players).forEach(playerId => {
         const player = room.players[playerId];
@@ -702,9 +710,10 @@ function resumeDraw(roomType) {
         }
       });
     }
+
     const winners = checkWinForAllPlayers(roomType);
     if (winners) handleWin(roomType, winners);
-  }, 3000); // 👈 INTERVALO AUMENTADO PARA 3 SEGUNDOS
+  }, 3000);
 }
 
 function startAutoRestart(roomType) {
@@ -751,10 +760,8 @@ async function handleWin(roomType, allWinners) {
     room.jackpot = 1000000;
     jackpotWinners = distributePrize(room, allWinners, jackpotPrize);
   }
-  // ✅ REMOVER NOMES DUPLICADOS
   const uniqueWinnerNames = [...new Set(results.map(r => r.playerName))];
   const winnerNames = uniqueWinnerNames.join(', ');
-  // ✅ CORREÇÃO: totalPrize DEVE SER CALCULADO ANTES DE SER USADO
   const totalPrize = results.reduce((sum, r) => sum + r.prize, 0);
   if (results.length > 0) {
     room.currentWinnerId = results[0].playerId;
@@ -763,7 +770,6 @@ async function handleWin(roomType, allWinners) {
     room.addBotOnNextRestart = true;
     console.log(`✅ Vitória de Markim ou Marília! Bot será adicionado no próximo restart.`);
   }
-  // ✅ Mensagem de vitória
   let formattedMessage = "";
   if (currentStage === 'linha1') {
     const msgs = [
@@ -790,7 +796,6 @@ async function handleWin(roomType, allWinners) {
     isBot: false,
     type: currentStage
   });
-  // ✅ Verificar vitórias consecutivas (apenas humanos)
   const humanWinners = results.filter(r => !room.players[r.playerId].isBot);
   for (const hw of humanWinners) {
     const player = room.players[hw.playerId];
@@ -810,7 +815,6 @@ async function handleWin(roomType, allWinners) {
       }, 2000);
     }
   }
-  // ✅ Mensagem especial para humanos que fazem bingo
   if (currentStage === 'bingo' && humanWinners.length > 0) {
     const humanNames = humanWinners.map(h => h.playerName).join(', ');
     setTimeout(() => {
@@ -822,11 +826,10 @@ async function handleWin(roomType, allWinners) {
       });
     }, 1000);
   }
-  // ✅ Jackpot com nomes únicos
   if (wonJackpot) {
     const jackpotUniqueNames = [...new Set(jackpotWinners.map(w => w.playerName))];
     const jackpotNames = jackpotUniqueNames.join(', ');
-    const jackpotAmount = room.jackpot; // valor ANTES do reset
+    const jackpotAmount = room.jackpot;
     setTimeout(() => {
       io.to(roomType).emit('chat-message', {
         message: `[JACKPOT]💰💰💰 JACKPOT HISTÓRICO! ${jackpotNames} levaram R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
@@ -852,7 +855,6 @@ async function handleWin(roomType, allWinners) {
   if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
     startAutoRestart(roomType);
   } else {
-    // ✅ AQUI ESTÁ A CORREÇÃO PRINCIPAL: delay de 3 segundos antes de retomar o sorteio
     setTimeout(() => {
       if (rooms[roomType] && !rooms[roomType].gameCompleted) {
         resumeDraw(roomType);
@@ -875,7 +877,6 @@ async function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
   } while (usedNames.has(name) && attempts < 100);
   if (usedNames.has(name)) name = `${name} ${Math.floor(Math.random() * 1000)}`;
   const botId = `bot_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-  // ✅ Bots entram SEM cartelas e COM todos os chips
   room.players[botId] = {
     name: name,
     chips: initialChips,
@@ -967,7 +968,6 @@ async function handleAutoRestart(socket, roomType) {
     await addBotToRoom(roomType, INITIAL_CHIPS);
     currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
   }
-  // ✅ Salvar chips persistentes ANTES de reiniciar
   const specialPlayers = {};
   const bots = {};
   for (const [id, player] of Object.entries(room.players)) {
@@ -987,7 +987,6 @@ async function handleAutoRestart(socket, roomType) {
   room.gameActive = false;
   room.autoRestartTimeout = null;
   room.currentWinnerId = null;
-  // ✅ CORREÇÃO: Bots NÃO compram cartelas no restart
   for (const [id, player] of Object.entries(room.players)) {
     if (player.isBot) {
       player.cards75 = [];
@@ -1017,7 +1016,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ✅ Novo evento: desenhar próxima bola (chamado pelo cliente em mobile)
   socket.on('draw-next-number', () => {
     const roomType = socket.data?.roomType;
     if (!roomType || !rooms[roomType]) return;
@@ -1034,10 +1032,8 @@ io.on('connection', (socket) => {
       drawnNumbers: room.drawnNumbers,
       lastNumber: number
     });
-    // ✅ Emitir estatísticas "na boa" após cada número
     const nearWinStats = countCardsOneBallAway(roomType);
     io.to(roomType).emit('near-win-stats', nearWinStats);
-    // Atualiza cartelas dos humanos (só para Bingo 90)
     if (roomType === 'bingo90') {
       Object.keys(room.players).forEach(playerId => {
         const player = room.players[playerId];
@@ -1164,13 +1160,9 @@ io.on('connection', (socket) => {
     if (!room.autoMessageInterval) {
       startAutoMessages(roomType);
     }
-    if (hasHumanWithCards(roomType) && !room.gameActive && !room.gameCompleted) {
-      setTimeout(() => {
-        if (hasHumanWithCards(roomType)) {
-          resumeDraw(roomType);
-        }
-      }, 1000);
-    }
+
+    // ✅ REMOVIDO: Nenhum início automático aqui!
+    // O jogo só começa quando o jogador clica em "Iniciar Sorteio"
   });
 
   socket.on('buy-cards', ({ count, cardType }) => {
@@ -1308,9 +1300,8 @@ io.on('connection', (socket) => {
       }
     }
   });
-}); // ← Fecha io.on('connection', ...)
+});
 
-// ✅ Função de validação de estado do jogador
 function validatePlayerState(player, roomType) {
   if (player.chips == null || typeof player.chips !== 'number' || player.chips < 0) player.chips = INITIAL_CHIPS;
   if (!Array.isArray(player.cards90)) player.cards90 = [];
@@ -1325,7 +1316,6 @@ function validatePlayerState(player, roomType) {
   return player;
 }
 
-// ✅ Iniciar servidor
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, async () => {
   await createTableIfNotExists();
