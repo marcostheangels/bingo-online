@@ -618,8 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       const gameArea = document.getElementById('game-area');
       if (gameArea && gameArea.style.display !== 'none') {
-        showCountdown(25);
-        // Garantir que o fundo de fichas apareça
+                // Garantir que o fundo de fichas apareça
         startChipsBackground('chips-background');
       }
     }, 1000);
