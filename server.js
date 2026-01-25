@@ -101,7 +101,7 @@ const io = require('socket.io')(server, {
   }
 });
 
-// ✅ SERVIDOR DE ARQUIVOS ESTÁTICOS COM LOGS
+// ✅ SERVIDOR DE ARQUIVOS ESTÁTICOS COM LOGS E CORREÇÃO PARA RAILWAY
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.js')) {
@@ -110,7 +110,6 @@ app.use(express.static(path.join(__dirname, 'public'), {
       res.set('Content-Type', 'text/css');
     }
   },
-  // Mostra no console quais arquivos estão sendo servidos
   index: false
 }));
 
@@ -120,7 +119,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Fallback para SPA
+// Fallback para SPA (evita 404 em rotas diretas)
 app.get('*', (req, res) => {
   console.log(`🔄 Fallback para index.html: ${req.url}`);
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -174,7 +173,6 @@ const MAX_CARDS_PER_PLAYER = 10;
 const JACKPOT_BALL_LIMIT = 60;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '0589';
 const MAX_BOTS_ALLOWED = 10;
-const COUNTDOWN_DURATION = 25;
 
 // ✅ Palavras-chave e respostas da IA
 const AI_KEYWORDS = [
@@ -275,8 +273,6 @@ const rooms = {
     gameCompleted: false,
     addBotOnNextRestart: false,
     autoRestartTimeout: null,
-    countdownTimeout: null,
-    countdownActive: false,
     currentWinnerId: null,
     autoMessageInterval: null
   },
@@ -295,8 +291,6 @@ const rooms = {
     gameCompleted: false,
     addBotOnNextRestart: false,
     autoRestartTimeout: null,
-    countdownTimeout: null,
-    countdownActive: false,
     currentWinnerId: null,
     autoMessageInterval: null
   }
@@ -315,10 +309,14 @@ function getBotCardCount(totalBots) {
   return 1;
 }
 
-// ✅ Verifica se há humanos na sala (com ou sem cartela)
-function hasHumanInRoom(roomType) {
+// ✅ Verifica se há humanos COM CARTELAS na sala
+function hasHumanWithCards(roomType) {
   const room = rooms[roomType];
-  return Object.values(room.players).some(p => !p.isBot);
+  return Object.values(room.players).some(p =>
+    !p.isBot &&
+    ((roomType === 'bingo90' && p.cards90 && p.cards90.length > 0) ||
+     (roomType === 'bingo75' && p.cards75 && p.cards75.length > 0))
+  );
 }
 
 // ✅ Mensagens automáticas a cada 45s
@@ -326,7 +324,7 @@ function startAutoMessages(roomType) {
   const room = rooms[roomType];
   if (room.autoMessageInterval) clearInterval(room.autoMessageInterval);
   room.autoMessageInterval = setInterval(() => {
-    if (!hasHumanInRoom(roomType)) return;
+    if (!hasHumanWithCards(roomType)) return;
     const messages = [
       "✨ Alguém está prestes a fazer BINGO! Fiquem atentos!",
       "💰 O pote está crescendo! Quem será o próximo vencedor?",
@@ -707,31 +705,6 @@ function resumeDraw(roomType) {
   }, 3000);
 }
 
-// ✅ Iniciar contagem regressiva (sempre que chamado)
-function startCountdown(roomType) {
-  const room = rooms[roomType];
-  if (room.countdownActive || room.gameActive) return;
-
-  room.countdownActive = true;
-  let seconds = COUNTDOWN_DURATION;
-  io.to(roomType).emit('countdown-start', { seconds });
-
-  const tick = () => {
-    if (!rooms[roomType] || !rooms[roomType].countdownActive) return;
-    seconds--;
-    if (seconds >= 0) {
-      io.to(roomType).emit('countdown-update', { seconds });
-      room.countdownTimeout = setTimeout(tick, 1000);
-    } else {
-      rooms[roomType].countdownActive = false;
-      resumeDraw(roomType); // Inicia o sorteio mesmo sem cartelas
-    }
-  };
-
-  room.countdownTimeout = setTimeout(tick, 1000);
-}
-
-// ✅ Reinício automático após bingo
 function startAutoRestart(roomType) {
   const room = rooms[roomType];
   if (room.autoRestartTimeout) clearTimeout(room.autoRestartTimeout);
@@ -1003,19 +976,19 @@ async function handleAutoRestart(socket, roomType) {
   io.to(roomType).emit('room-reset');
   broadcastPlayerList(roomType);
   broadcastRanking(roomType);
-  console.log(`🔄 Sala reiniciada. Iniciando contagem de 25s...`);
-
-  // ✅ INICIAR TIMER MESMO SEM CARTELAS
-  startCountdown(roomType);
+  console.log(`🔄 Jogo reiniciado automaticamente. Bots: ${currentBots} (máximo: ${room.maxBots})`);
 }
 
 // ✅ ESCUTA DE CONEXÕES SOCKET.IO
 io.on('connection', (socket) => {
   socket.on('start-draw', () => {
-    // Redundante, mas mantido por compatibilidade
     const roomType = socket.data?.roomType;
     if (roomType && !rooms[roomType].gameActive) {
-      resumeDraw(roomType);
+      if (hasHumanWithCards(roomType)) {
+        resumeDraw(roomType);
+      } else {
+        socket.emit('error', 'Nenhum jogador humano com cartela na sala.');
+      }
     }
   });
 
@@ -1253,7 +1226,6 @@ io.on('connection', (socket) => {
   });
 
   socket.on('restart-game', () => {
-    // Evento mantido, mas não usado (timer automático substitui)
     const roomType = socket.data?.roomType;
     if (!roomType) return socket.emit('error', 'Sala inválida.');
     const fakeSocket = { data: { roomType }, id: 'manual' };
@@ -1293,13 +1265,13 @@ io.on('connection', (socket) => {
       socket.leave(roomType);
       broadcastPlayerList(roomType);
       broadcastRanking(roomType);
-      if (!hasHumanInRoom(roomType)) {
+      if (!hasHumanWithCards(roomType)) {
         pauseDraw(roomType);
         if (rooms[roomType].autoMessageInterval) {
           clearInterval(rooms[roomType].autoMessageInterval);
           rooms[roomType].autoMessageInterval = null;
         }
-        console.log(`⏸️ Sala ${roomType} em standby: sem humanos.`);
+        console.log(`⏸️ Sala ${roomType} em standby: sem humanos com cartela.`);
       }
     }
   });
@@ -1317,6 +1289,30 @@ function validatePlayerState(player, roomType) {
   }
   if (roomType === 'bingo90') player.cards90 = player.cards90.map(card => validateAndFixBingo90Card(card));
   return player;
+}
+
+// ✅ Iniciar contagem regressiva
+function startCountdown(roomType) {
+  const room = rooms[roomType];
+  if (room.countdownActive || room.gameActive || room.gameCompleted) return;
+
+  room.countdownActive = true;
+  let seconds = COUNTDOWN_DURATION;
+  io.to(roomType).emit('countdown-start', { seconds });
+
+  const tick = () => {
+    if (!rooms[roomType] || !rooms[roomType].countdownActive) return;
+    seconds--;
+    if (seconds >= 0) {
+      io.to(roomType).emit('countdown-update', { seconds });
+      room.countdownTimeout = setTimeout(tick, 1000);
+    } else {
+      rooms[roomType].countdownActive = false;
+      resumeDraw(roomType);
+    }
+  };
+
+  room.countdownTimeout = setTimeout(tick, 1000);
 }
 
 const PORT = process.env.PORT || 3000;
