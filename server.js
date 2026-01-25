@@ -704,7 +704,7 @@ function resumeDraw(roomType) {
     }
     const winners = checkWinForAllPlayers(roomType);
     if (winners) handleWin(roomType, winners);
-  }, 3000); // 👈 INTERVALO AUMENTADO PARA 5 SEGUNDOS
+  }, 3000); // 👈 INTERVALO AUMENTADO PARA 3 SEGUNDOS
 }
 
 function startAutoRestart(roomType) {
@@ -717,7 +717,7 @@ function startAutoRestart(roomType) {
       id: 'system'
     };
     handleAutoRestart(fakeSocket, roomType);
-  }, 15000);
+  }, 25000);
 }
 
 async function handleWin(roomType, allWinners) {
@@ -852,7 +852,7 @@ async function handleWin(roomType, allWinners) {
   if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
     startAutoRestart(roomType);
   } else {
-    // ✅ AQUI ESTÁ A ALTERAÇÃO PRINCIPAL: delay de 3 segundos antes de retomar
+    // ✅ AQUI ESTÁ A CORREÇÃO PRINCIPAL: delay de 3 segundos antes de retomar o sorteio
     setTimeout(() => {
       if (rooms[roomType] && !rooms[roomType].gameCompleted) {
         resumeDraw(roomType);
@@ -1308,7 +1308,7 @@ io.on('connection', (socket) => {
       }
     }
   });
-}); // ← ⚠️ Este fecha o io.on('connection', ...)
+}); // ← Fecha io.on('connection', ...)
 
 // ✅ Função de validação de estado do jogador
 function validatePlayerState(player, roomType) {
