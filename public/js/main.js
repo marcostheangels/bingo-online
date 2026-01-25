@@ -10,13 +10,24 @@ let playerName = '';
 let currentStage = 'linha1';
 let roomsState = {}; // ← Estado global da sala
 
-// ✅ CONEXÃO
+// ✅ CONEXÃO (CORRIGIDA: removido espaço extra)
 const SOCKET_URL = 'https://bingo-online-production.up.railway.app';
 socket = io(SOCKET_URL, {
   transports: ['websocket'],
   reconnection: true,
   reconnectionAttempts: Infinity
 });
+
+// ✅ Função de fala segura (evita erros)
+function speak(text) {
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'pt-BR';
+    utterance.rate = 0.9;
+    speechSynthesis.speak(utterance);
+  }
+  // Se não suportado, não faz nada (sem erro)
+}
 
 // ✅ Funções de Administração
 function toggleAdminMode() {
