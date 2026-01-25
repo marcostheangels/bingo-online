@@ -4,100 +4,32 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Bingo MultiPlayer</title>
-  <!-- Socket.IO -->
   <script src="/socket.io/socket.io.js"></script>
-  <!-- Fontes -->
   <link href="https://fonts.googleapis.com/css2?family=Goldman:wght@400;700&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
-  <!-- CSS Externo -->
   <link rel="stylesheet" href="css/style.css">
   <style>
-    /* ✅ ESTILO DO TIMER (integrado ao tema existente) */
+    /* ✅ TIMER VISUAL LEVE — SEM FUNDO BLOQUEANTE */
     #countdown-timer {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(circle at center, #300000 0%, #000 100%);
+      top: 20px;
+      right: 20px;
       z-index: 1000;
-      display: none;
-      justify-content: center;
-      align-items: center;
       pointer-events: none;
     }
 
-    .rays {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 250vmax;
-      height: 250vmax;
-      margin-top: -125vmax;
-      margin-left: -125vmax;
-      background: conic-gradient(from 0deg, transparent 0deg, rgba(255,215,0,0.1) 15deg, transparent 30deg);
-      animation: rotateRays 20s linear infinite;
-      z-index: 2;
-    }
-
     .timer-frame {
-      position: relative;
-      z-index: 10;
-      width: 320px;
-      padding: 40px 20px;
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(15px);
-      -webkit-backdrop-filter: blur(15px);
-      border: 4px solid;
-      border-image: linear-gradient(to bottom, #FFD700, #554000) 1;
+      width: 120px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      border: 2px solid #FFD700;
+      border-radius: 50%;
       text-align: center;
-      box-shadow: 0 0 50px rgba(0,0,0,1), 0 0 30px rgba(255, 215, 0, 0.4);
-      animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    }
-
-    .header-title {
-      font-family: 'Goldman', cursive;
-      font-size: 1.2rem;
-      background: linear-gradient(180deg, #FFF5A5 0%, #FFD700 25%, #B8860B 50%, #FFD700 75%, #FFF5A5 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      letter-spacing: 3px;
-      margin-bottom: 20px;
-    }
-
-    .circle-container {
-      position: relative;
-      width: 200px;
-      height: 200px;
-      margin: 0 auto;
-    }
-
-    .timer-svg {
-      transform: rotate(-90deg);
-      width: 200px;
-      height: 200px;
-    }
-
-    .track-circle {
-      fill: none;
-      stroke: rgba(255, 255, 255, 0.05);
-      stroke-width: 12;
-    }
-
-    .progress-circle {
-      fill: none;
-      stroke: #FFD700;
-      stroke-width: 14;
-      stroke-linecap: round;
-      stroke-dasharray: 565.48;
-      stroke-dashoffset: 0;
-      transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
-      filter: drop-shadow(0 0 8px #FFD700);
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
     }
 
     .time-text {
-      position: absolute;
-      inset: 0;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -105,99 +37,59 @@
     }
 
     #number {
-      font-size: 5rem;
+      font-size: 2.2rem;
       font-weight: 900;
-      line-height: 1;
-      text-shadow: 0 0 20px rgba(255,255,255,0.3);
+      color: white;
+      text-shadow: 0 0 8px rgba(255,255,255,0.5);
     }
 
     .seconds-label {
-      font-size: 0.8rem;
+      font-size: 0.6rem;
       color: #FFD700;
-      letter-spacing: 2px;
+      letter-spacing: 1px;
       text-transform: uppercase;
-    }
-
-    @keyframes rotateRays { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-    
-    @keyframes pulseCritical {
-      0% { filter: drop-shadow(0 0 5px #ff003c); transform: scale(1); }
-      50% { filter: drop-shadow(0 0 25px #ff003c); transform: scale(1.05); }
-      100% { filter: drop-shadow(0 0 5px #ff003c); transform: scale(1); }
-    }
-
-    .critical {
-      stroke: #ff003c !important;
-      filter: drop-shadow(0 0 15px #ff003c) !important;
     }
 
     .critical-text {
       color: #ff003c !important;
       animation: pulseCritical 0.5s infinite;
     }
+
+    @keyframes pulseCritical {
+      0%, 100% { filter: drop-shadow(0 0 5px #ff003c); transform: scale(1); }
+      50% { filter: drop-shadow(0 0 15px #ff003c); transform: scale(1.1); }
+    }
   </style>
 </head>
 <body>
-  <!-- ✅ FUNDO DINÂMICO DE FICHAS (tanto no login quanto na sala) -->
+  <!-- ✅ FUNDO DINÂMICO DE FICHAS -->
   <div id="chips-background" style="display: block;"></div>
 
-  <!-- ✅ TIMER VISUAL (invisível por padrão) -->
-  <div id="countdown-timer">
-    <div class="rays"></div>
+  <!-- ✅ TIMER VISUAL (LEVE, NO CANTO) -->
+  <div id="countdown-timer" style="display: none;">
     <div class="timer-frame">
-      <div class="header-title">PRÓXIMO SORTEIO</div>
-      <div class="circle-container">
-        <svg class="timer-svg" viewBox="0 0 200 200">
-          <circle class="track-circle" cx="100" cy="100" r="90"></circle>
-          <circle id="progress" class="progress-circle" cx="100" cy="100" r="90"></circle>
-        </svg>
-        <div class="time-text">
-          <span id="number">25</span>
-          <span class="seconds-label">Seg</span>
-        </div>
+      <div class="time-text">
+        <span id="number">25</span>
+        <span class="seconds-label">Seg</span>
       </div>
     </div>
   </div>
 
   <div class="container">
-    <!-- TELA DE LOGIN MODERNA -->
+    <!-- TELA DE LOGIN -->
     <div id="login-screen">
-      <!-- ✅ FICHAS ANIMADAS NA TELA DE LOGIN -->
       <div id="chips-container"></div>
-
       <div class="login-card">
         <div class="logo">
           <h1>Bingo <span>Multi</span> Player</h1>
         </div>
         <p class="subtitle">Escolha seu modo de jogo</p>
-
-        <input
-          type="text"
-          id="player-name"
-          placeholder="Digite seu nome (2-15 letras)"
-          maxlength="15"
-          autocomplete="off"
-          class="input-box"
-        />
-
+        <input type="text" id="player-name" placeholder="Digite seu nome (2-15 letras)" maxlength="15" autocomplete="off" class="input-box" />
         <div class="game-modes">
           <button id="join-bingo75" class="mode-btn usa">🇺🇸 Bingo 75</button>
           <button id="join-bingo90" class="mode-btn br">🇧🇷 Bingo 90</button>
         </div>
       </div>
-    </div>
-
-    <!-- MENSAGEM ADMIN -->
-    <div id="admin-message"></div>
-
-    <!-- CONTROLES ADMIN -->
-    <div id="admin-controls" style="display:none;margin:20px auto;max-width:500px;background:rgba(255,255,255,0.1);padding:15px;border-radius:8px;">
-      <h3>🔧 Controles Administrativos</h3>
-      <input type="text" id="admin-player-name" placeholder="Nome do Jogador" style="margin:5px;padding:8px;width:calc(33% - 10px);">
-      <input type="number" id="admin-amount" placeholder="Quantidade" style="margin:5px;padding:8px;width:calc(33% - 10px);">
-      <input type="password" id="admin-password" placeholder="Senha" style="margin:5px;padding:8px;width:calc(33% - 10px);">
-      <button id="send-admin-command" style="margin:5px;padding:8px;">Enviar</button>
     </div>
 
     <!-- ÁREA DO JOGO -->
@@ -235,11 +127,10 @@
         </label>
         <button id="set-10-cards">10</button>
         <button id="buy-btn">Comprar (1000 chips/ Cada Cartela)</button>
-        <!-- ❌ Botão "Iniciar Sorteio" REMOVIDO (agora automático) -->
-        <!-- ❌ Botão Linha 1 REMOVIDO -->
+        <!-- ❌ Botão "Iniciar Sorteio" REMOVIDO -->
+        <!-- ❌ Botão "Reiniciar" REMOVIDO -->
         <button id="line2-btn">Linha 2</button>
         <button id="bingo-btn">BINGO!</button>
-        <button id="restart-btn">🔄 Reiniciar</button>
       </div>
 
       <!-- CHAT -->
@@ -260,12 +151,12 @@
         <div class="history" id="history"></div>
       </div>
 
-      <!-- ✅ BARRA DE FASE -->
+      <!-- BARRA DE FASE -->
       <div id="stage-indicator">
         <span id="stage-text">Linha 1</span>
       </div>
 
-      <!-- ✅ PAINEL: CARTELAS "NA BOA" -->
+      <!-- PAINEL: CARTELAS "NA BOA" -->
       <div id="near-win-panel" style="
         background: rgba(0, 0, 0, 0.4);
         border: 2px solid #4fc3f7;
@@ -298,7 +189,7 @@
       <div class="cards-container" id="cards-container"></div>
     </div>
 
-    <!-- OVERLAYS DE VITÓRIA -->
+    <!-- OVERLAYS DE VITÓRIA (mantidos) -->
     <div id="line-victory-overlay">
       <div class="rays-emerald"></div>
       <div class="line-frame">
@@ -351,114 +242,49 @@
     </div>
   </div>
 
-  <!-- SCRIPTS EXTERNOS -->
+  <!-- SCRIPTS -->
   <script src="js/audio.js"></script>
   <script src="js/gameLogic.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/chat.js"></script>
   <script src="js/main.js"></script>
 
-  <!-- ✅ SCRIPT DE FICHAS ANIMADAS NA TELA DE LOGIN -->
+  <!-- ✅ SCRIPT DO TIMER LEVE -->
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      // ✅ FICHAS NA TELA DE LOGIN
-      const loginChips = document.getElementById('chips-container');
-      if (loginChips) {
-        const colors = ['#e63946', '#ffd700', '#1d3557', '#52b788', '#333333'];
-        
-        function createLoginChip() {
-          const chip = document.createElement('div');
-          chip.className = 'chip-particle';
-          
-          const size = Math.random() * (80 - 40) + 40;
-          const color = colors[Math.floor(Math.random() * colors.length)];
-          const startPos = Math.random() * 100;
-          const duration = Math.random() * (10 - 5) + 5;
-          const rotation = Math.random() * 360;
-
-          chip.style.width = `${size}px`;
-          chip.style.height = `${size}px`;
-          chip.style.backgroundColor = color;
-          chip.style.left = `${startPos}%`;
-          chip.style.bottom = `-100px`;
-          chip.style.opacity = Math.random() * (0.8 - 0.4) + 0.4;
-          
-          loginChips.appendChild(chip);
-
-          const animation = chip.animate([
-            { transform: `translateY(0) rotate(${rotation}deg)`, opacity: 0 },
-            { opacity: 1, offset: 0.2 },
-            { transform: `translateY(-120vh) rotate(${rotation + 720}deg)`, opacity: 0 }
-          ], {
-            duration: duration * 1000,
-            easing: 'linear'
-          });
-
-          animation.onfinish = () => chip.remove();
-        }
-
-        setInterval(createLoginChip, 400);
-        for(let i = 0; i < 10; i++) setTimeout(createLoginChip, i * 300);
-      }
-    });
-  </script>
-
-  <!-- ✅ SCRIPT DO TIMER VIA SOCKET.IO -->
-  <script>
-    let countdownActive = false;
     const countdownEl = document.getElementById('countdown-timer');
     const numberEl = document.getElementById('number');
-    const progressEl = document.getElementById('progress');
-    const circumference = 2 * Math.PI * 90;
-    const duration = 25;
 
-    // Atualiza visualmente o timer
-    function updateCountdown(seconds) {
-      numberEl.textContent = seconds;
-      const offset = circumference - (seconds / duration) * circumference;
-      progressEl.style.strokeDashoffset = offset;
-
-      if (seconds <= 5) {
-        progressEl.classList.add('critical');
-        numberEl.classList.add('critical-text');
-      } else {
-        progressEl.classList.remove('critical');
-        numberEl.classList.remove('critical-text');
-      }
+    function hideCountdown() {
+      countdownEl.style.display = 'none';
     }
 
-    // Escuta eventos do servidor
+    function showCountdown(seconds) {
+      numberEl.textContent = seconds;
+      if (seconds <= 5) {
+        numberEl.classList.add('critical-text');
+      } else {
+        numberEl.classList.remove('critical-text');
+      }
+      countdownEl.style.display = 'block';
+    }
+
+    // Escuta do servidor
     socket.on('countdown-start', (data) => {
-      countdownActive = true;
-      countdownEl.style.display = 'flex';
-      updateCountdown(data.seconds);
+      showCountdown(data.seconds);
     });
 
     socket.on('countdown-update', (data) => {
-      if (countdownActive) {
-        updateCountdown(data.seconds);
-        if (data.seconds === 0) {
-          // Timer terminou → esconde após breve flash
-          setTimeout(() => {
-            countdownEl.style.display = 'none';
-            countdownActive = false;
-          }, 300);
-        }
+      showCountdown(data.seconds);
+      if (data.seconds === 0) {
+        setTimeout(hideCountdown, 300);
       }
     });
 
-    // Esconde o timer se o jogo começar manualmente ou reiniciar
-    socket.on('room-reset', () => {
-      countdownEl.style.display = 'none';
-      countdownActive = false;
-    });
-
-    socket.on('number-drawn', () => {
-      if (countdownActive) {
-        countdownEl.style.display = 'none';
-        countdownActive = false;
-      }
-    });
+    // Esconde em eventos críticos
+    socket.on('room-reset', hideCountdown);
+    socket.on('number-drawn', hideCountdown);
+    socket.on('player-won', hideCountdown);
+    socket.on('game-end', hideCountdown);
   </script>
 </body>
 </html>
