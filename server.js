@@ -168,7 +168,7 @@ const BOT_NAMES = [
 
 // ✅ CONFIGURAÇÕES JUSTAS
 const PRICE_PER_CARD = 1000;
-const INITIAL_CHIPS = 100000;
+const INITIAL_CHIPS = 10000;
 const MAX_CARDS_PER_PLAYER = 10;
 const JACKPOT_BALL_LIMIT = 60;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '0589';
@@ -644,7 +644,8 @@ function resumeDraw(roomType) {
     currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
   }
 
-  // Bots compram cartelas SOMENTE AGORA
+  // ✅ Bots compram cartelas SOMENTE AGORA (antes do sorteio)
+  let totalPotFromBots = 0;
   for (const [id, player] of Object.entries(room.players)) {
     if (player.isBot) {
       const totalBotsNow = Object.keys(room.players).filter(pid => room.players[pid].isBot).length;
@@ -652,7 +653,7 @@ function resumeDraw(roomType) {
       if (cardCount > 0 && player.cards90.length === 0 && player.cards75.length === 0) {
         const totalCost = cardCount * PRICE_PER_CARD;
         player.chips -= totalCost;
-        room.pot += totalCost;
+        totalPotFromBots += totalCost;
         room.jackpot += Math.floor(totalCost * 0.5);
         if (roomType === 'bingo90') {
           player.cards90 = Array(cardCount).fill().map(() => validateAndFixBingo90Card(generateBingo90Card()));
@@ -665,6 +666,9 @@ function resumeDraw(roomType) {
       }
     }
   }
+
+  // ✅ Adicionar chips dos bots ao pote
+  room.pot += totalPotFromBots;
 
   io.to(roomType).emit('pot-update', { pot: room.pot, jackpot: room.jackpot });
 
@@ -741,7 +745,7 @@ function startAutoRestart(roomType) {
   if (room.autoRestartTimeout) clearTimeout(room.autoRestartTimeout);
   io.to(roomType).emit('countdown-start', { seconds: 25 });
   room.autoRestartTimeout = setTimeout(() => {
-    const fakeSocket = { data: { roomType }, id: 'system' };
+    const fakeSocket = { emit: () => {}, data: { roomType }, id: 'system' };
     handleAutoRestart(fakeSocket, roomType);
   }, 25000);
 }
@@ -855,10 +859,10 @@ async function handleWin(roomType, allWinners) {
 
   if (wonJackpot) {
     const jackpotUniqueNames = [...new Set(jackpotWinners.map(w => w.playerName))];
-    const jackpotNames = jackpotUniqueNames.join(', ');
+    const jackpotAmount = room.jackpot;
     setTimeout(() => {
       io.to(roomType).emit('chat-message', {
-        message: `[JACKPOT]💰💰💰 JACKPOT HISTÓRICO! ${jackpotNames} levaram R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
+        message: `[JACKPOT]💰💰💰 JACKPOT HISTÓRICO! ${jackpotUniqueNames.join(', ')} levaram R$ ${jackpotAmount.toLocaleString('pt-BR')}![/JACKPOT]`,
         sender: "Sistema",
         isBot: false,
         type: "jackpot"
@@ -1325,7 +1329,7 @@ io.on('connection', (socket) => {
   socket.on('restart-game', () => {
     const roomType = socket.data?.roomType;
     if (!roomType) return socket.emit('error', 'Sala inválida.');
-    const fakeSocket = { data: { roomType }, id: 'manual' };
+    const fakeSocket = { emit: () => {}, data: { roomType }, id: 'manual' };
     handleAutoRestart(fakeSocket, roomType);
   });
 
