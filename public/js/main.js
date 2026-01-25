@@ -9,6 +9,7 @@ let gameEnded = false;
 let playerName = '';
 let currentStage = 'linha1';
 let roomsState = {};
+let gamePaused = false; // ✅ Nova variável para pausar o jogo no frontend
 
 // ✅ CONEXÃO
 const SOCKET_URL = 'https://bingo-online-production.up.railway.app';
@@ -138,7 +139,7 @@ function updateControlButtons(stage) {
   }
 }
 
-// ✅ Atualizar tudo relacionado a chips
+// ✅ Atualizar tudo relacionado a chips (incluindo bots)
 function refreshAllChipDisplays() {
   const player = socket.id ? roomsState?.players?.[socket.id] : null;
   if (player) {
@@ -311,8 +312,10 @@ function showOverlay(id, duration = 3000) {
   const overlay = document.getElementById(id);
   if (overlay) {
     overlay.style.display = 'flex';
+    gamePaused = true; // ✅ Pausar o jogo durante a animação
     setTimeout(() => {
       overlay.style.display = 'none';
+      gamePaused = false; // ✅ Retomar após a animação
     }, duration);
   }
 }
@@ -416,8 +419,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   if (sendAdmin) sendAdmin.addEventListener('click', sendAdminCommand);
   if (buyBtn) buyBtn.addEventListener('click', () => {
-    if (gameEnded) {
-      alert('O jogo terminou. Clique em "Reiniciar Jogo".');
+    if (gameEnded || gamePaused) { // ✅ Não permitir comprar durante vitória
+      alert('Aguarde o fim da animação de vitória.');
       return;
     }
     const count = parseInt(document.getElementById('card-count')?.value) || 1;
@@ -428,11 +431,11 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.emit('buy-cards', { count, cardType });
   });
   if (line2Btn) line2Btn.addEventListener('click', () => {
-    if (gameEnded) return;
+    if (gameEnded || gamePaused) return;
     socket.emit('claim-win', { winType: 'linha2' });
   });
   if (bingoBtn) bingoBtn.addEventListener('click', () => {
-    if (gameEnded) return;
+    if (gameEnded || gamePaused) return;
     socket.emit('claim-win', { winType: 'bingo' });
   });
   if (restartBtn) restartBtn.addEventListener('click', () => {
@@ -464,6 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const roomTitle = document.getElementById('room-title');
     if (roomTitle) roomTitle.textContent = `Sala: ${data.roomName}`;
     gameEnded = data.gameCompleted || false;
+    gamePaused = false;
     updateControlButtons(data.currentStage || 'linha1');
     if (window.loginChipsInterval) clearInterval(window.loginChipsInterval);
     setTimeout(() => startChipsBackground('chips-background'), 100);
@@ -528,6 +532,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   socket.on('number-drawn', (data) => {
+    if (gamePaused) return; // ✅ Não atualizar durante vitória
     if (lastNumberDisplay) lastNumberDisplay.textContent = data.number;
     roomsDrawnNumbers = data.drawnNumbers;
     if (ballsCountDisplay) ballsCountDisplay.textContent = roomsDrawnNumbers.length;
@@ -541,6 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   socket.on('player-won', (data) => {
+    if (gamePaused) return;
     // Anunciar por voz
     if (data.winType === 'linha1') {
       speak(`Parabéns, ${data.winnerNames}! Linha 1!`);
@@ -574,6 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
     roomsDrawnNumbers = [];
     playerCards = [];
     gameEnded = false;
+    gamePaused = false;
     const cardsContainer = document.getElementById('cards-container');
     const history = document.getElementById('history');
     const chatMessages = document.getElementById('chat-messages');
@@ -590,11 +597,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const chipsBg = document.getElementById('chips-background');
     if (chipsBg) chipsBg.style.display = 'none';
 
-    // Reiniciar timer automaticamente
+    // Reiniciar timer automaticamente após 1 segundo
     setTimeout(() => {
       const gameArea = document.getElementById('game-area');
       if (gameArea && gameArea.style.display !== 'none') {
         showCountdown(25);
+        // Garantir que o fundo de fichas apareça
+        startChipsBackground('chips-background');
       }
     }, 1000);
   });
