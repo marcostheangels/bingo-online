@@ -1315,7 +1315,6 @@ io.on('connection', (socket) => {
       }
     }
   });
-});
 
 function validatePlayerState(player, roomType) {
   if (player.chips == null || typeof player.chips !== 'number' || player.chips < 0) player.chips = INITIAL_CHIPS;
