@@ -855,7 +855,7 @@ async function handleWin(roomType, allWinners) {
   });
   broadcastPlayerList(roomType);
   broadcastRanking(roomType);
-  set Timeout(()=>{
+  setTimeout(()=>{
   if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
     startAutoRestart(roomType);
   } else {
