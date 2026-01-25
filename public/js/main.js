@@ -10,7 +10,7 @@ let playerName = '';
 let currentStage = 'linha1';
 let roomsState = {};
 
-// ✅ CONEXÃO (URL corrigida)
+// ✅ CONEXÃO
 const SOCKET_URL = 'https://bingo-online-production.up.railway.app';
 socket = io(SOCKET_URL, {
   transports: ['websocket'],
@@ -306,7 +306,18 @@ function showCountdown(seconds) {
   countdownActive = true;
 }
 
-// ✅ CÁLCULO DE BOLAS FALTANTES (suporte a ambos os modos)
+// ✅ Mostrar overlays de vitória
+function showOverlay(id, duration = 3000) {
+  const overlay = document.getElementById(id);
+  if (overlay) {
+    overlay.style.display = 'flex';
+    setTimeout(() => {
+      overlay.style.display = 'none';
+    }, duration);
+  }
+}
+
+// ✅ CÁLCULO DE BOLAS FALTANTES
 function calculateBallsLeftForCard(card, drawnNumbers, cardType) {
   if (cardType === '75') {
     let marked = 0;
@@ -317,7 +328,7 @@ function calculateBallsLeftForCard(card, drawnNumbers, cardType) {
         marked++;
       }
     }
-    return { forBingo: 24 - marked }; // 24 números reais + 1 FREE
+    return { forBingo: 24 - marked };
   } else {
     const markedInRow = [0, 0, 0];
     for (let r = 0; r < 3; r++) {
@@ -520,6 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (lastNumberDisplay) lastNumberDisplay.textContent = data.number;
     roomsDrawnNumbers = data.drawnNumbers;
     if (ballsCountDisplay) ballsCountDisplay.textContent = roomsDrawnNumbers.length;
+    updateHistory(data.drawnNumbers);
     markDrawnNumbers(data.number);
     renderCards();
     speak(data.number.toString());
@@ -529,9 +541,33 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   socket.on('player-won', (data) => {
+    // Anunciar por voz
+    if (data.winType === 'linha1') {
+      speak(`Parabéns, ${data.winnerNames}! Linha 1!`);
+      showOverlay('line-victory-overlay');
+      document.getElementById('line1-winner-name').textContent = data.winnerNames;
+      document.getElementById('line1-chips-text').textContent = data.totalPrize.toLocaleString('pt-BR');
+    } else if (data.winType === 'linha2') {
+      speak(`Parabéns, ${data.winnerNames}! Linha 2!`);
+      showOverlay('line2-victory-overlay');
+      document.getElementById('line2-winner-name').textContent = data.winnerNames;
+      document.getElementById('line2-chips-text').textContent = data.totalPrize.toLocaleString('pt-BR');
+    } else if (data.winType === 'bingo') {
+      speak(`Parabéns, ${data.winnerNames}! Bingo!`);
+      if (data.wonJackpot) {
+        showOverlay('jackpot-overlay');
+        document.getElementById('jackpot-winner-name').textContent = data.winnerNames;
+        document.getElementById('jackpot-prize-amount').textContent = data.jackpotAmount.toLocaleString('pt-BR');
+        document.getElementById('jackpot-balls-info').textContent = `✨ BINGO EM ${data.ballsCount} BOLAS ✨`;
+      } else {
+        showOverlay('bingo-victory-overlay');
+        document.getElementById('bingo-winner-name').textContent = data.winnerNames;
+        document.getElementById('bingo-prize-amount').textContent = `R$ ${data.totalPrize.toLocaleString('pt-BR')}`;
+      }
+    }
+
     if (data.newStage) updateControlButtons(data.newStage);
-    if (data.winners[0]?.winType === 'bingo') gameEnded = true;
-    setTimeout(() => { socket.emit('sync-state'); }, 500);
+    if (data.winType === 'bingo') gameEnded = true;
   });
 
   socket.on('room-reset', () => {
@@ -553,6 +589,14 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshAllChipDisplays();
     const chipsBg = document.getElementById('chips-background');
     if (chipsBg) chipsBg.style.display = 'none';
+
+    // Reiniciar timer automaticamente
+    setTimeout(() => {
+      const gameArea = document.getElementById('game-area');
+      if (gameArea && gameArea.style.display !== 'none') {
+        showCountdown(25);
+      }
+    }, 1000);
   });
 
   socket.on('error', (msg) => showAdminMessage(msg, 'error'));
