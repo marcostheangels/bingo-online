@@ -120,20 +120,16 @@ app.post('/api/feedback', (req, res) => {
   if (last && (now - last) < FEEDBACK_MIN_INTERVAL_MS) {
     return res.status(429).json({ error: 'Aguarde antes de enviar outro feedback.' });
   }
-
   const { playerName, message, roomType } = req.body;
   if (!playerName || !message || message.length < 5 || message.length > 500) {
     return res.status(400).json({ error: 'Mensagem inválida. Use 5 a 500 caracteres.' });
   }
-
   feedbackLimiter.set(ip, now);
   setTimeout(() => feedbackLimiter.delete(ip), FEEDBACK_MIN_INTERVAL_MS);
-
   const logEntry = `[${new Date().toISOString()}] [${roomType || 'unknown'}] ${playerName}: ${message}\n`;
   fs.appendFile('feedback.log', logEntry, (err) => {
     if (err) console.error('Erro ao salvar feedback:', err);
   });
-
   console.log('📩 Novo feedback recebido:', logEntry.trim());
   res.json({ success: true });
 });
@@ -162,7 +158,6 @@ const AI_KEYWORDS = [
   'bot', 'humano','pix','saque','retirar','depósito','pagar','saldo','dinheiro','moeda','bônus',
   'grátis', 'vitória', 'dica', 'estratégia', 'ajuda', '?'
 ];
-
 const AI_RESPONSES = {
   general: [
     "No bingo, cada cartela é uma chance! Quanto mais você tem, maiores suas chances!",
@@ -219,7 +214,6 @@ const AI_RESPONSES = {
 };
 
 let lastAiResponse = '';
-
 function getSmartAiResponse(message) {
   const lower = message.toLowerCase();
   if (lower.includes('jackpot')) {
@@ -230,7 +224,6 @@ function getSmartAiResponse(message) {
     return getRandomUnique(AI_RESPONSES.general, 'general');
   }
 }
-
 function getRandomUnique(list, category) {
   let response;
   do {
@@ -299,7 +292,7 @@ function hasHumanWithCards(roomType) {
   return Object.values(room.players).some(p =>
     !p.isBot &&
     ((roomType === 'bingo90' && p.cards90 && p.cards90.length > 0) ||
-      (roomType === 'bingo75' && p.cards75 && p.cards75.length > 0))
+     (roomType === 'bingo75' && p.cards75 && p.cards75.length > 0))
   );
 }
 
@@ -618,7 +611,7 @@ function resumeDraw(roomType) {
   for (const player of Object.values(room.players)) {
     if (!player.isBot &&
       ((roomType === 'bingo90' && player.cards90.length > 0) ||
-        (roomType === 'bingo75' && player.cards75.length > 0))) {
+       (roomType === 'bingo75' && player.cards75.length > 0))) {
       humanHasCards = true;
       break;
     }
@@ -856,16 +849,16 @@ async function handleWin(roomType, allWinners) {
   broadcastPlayerList(roomType);
   broadcastRanking(roomType);
   pauseDraw(roomType);
-
-if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
-  startAutoRestart(roomType);
-} else {
-  setTimeout(() => {
-    if (rooms[roomType] && !rooms[roomType].gameCompleted) {
-      resumeDraw(roomType);
-    }
-  }, 3000);
-
+  if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
+    startAutoRestart(roomType);
+  } else {
+    // ✅ AQUI ESTÁ A ALTERAÇÃO PRINCIPAL: delay de 3 segundos antes de retomar
+    setTimeout(() => {
+      if (rooms[roomType] && !rooms[roomType].gameCompleted) {
+        resumeDraw(roomType);
+      }
+    }, 3000);
+  }
 }
 
 async function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
@@ -1011,6 +1004,7 @@ async function handleAutoRestart(socket, roomType) {
   console.log(`🔄 Jogo reiniciado automaticamente. Bots: ${currentBots} (máximo: ${room.maxBots})`);
 }
 
+// ✅ ESCUTA DE CONEXÕES SOCKET.IO
 io.on('connection', (socket) => {
   socket.on('start-draw', () => {
     const roomType = socket.data?.roomType;
@@ -1062,7 +1056,6 @@ io.on('connection', (socket) => {
   });
 
   console.log('🔌 Jogador conectado:', socket.id);
-
   socket.on('join-room', async ({ playerName, roomType, savedChips, savedCards75, savedCards90 }) => {
     if (!rooms[roomType]) {
       socket.emit('error', 'Sala inválida');
@@ -1237,8 +1230,8 @@ io.on('connection', (socket) => {
         const card = validateAndFixBingo90Card(player.cards90[i]);
         const result = checkCardAchievements(card, room.drawnNumbers);
         if ((winType === 'linha1' && result.linha1) ||
-          (winType === 'linha2' && result.linha2) ||
-          (winType === 'bingo' && result.bingo)) {
+            (winType === 'linha2' && result.linha2) ||
+            (winType === 'bingo' && result.bingo)) {
           hasWon = true; break;
         }
       }
@@ -1315,8 +1308,9 @@ io.on('connection', (socket) => {
       }
     }
   });
-});
+}); // ← ⚠️ Este fecha o io.on('connection', ...)
 
+// ✅ Função de validação de estado do jogador
 function validatePlayerState(player, roomType) {
   if (player.chips == null || typeof player.chips !== 'number' || player.chips < 0) player.chips = INITIAL_CHIPS;
   if (!Array.isArray(player.cards90)) player.cards90 = [];
@@ -1336,5 +1330,4 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, async () => {
   await createTableIfNotExists();
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
-${PORT}`);
 });
