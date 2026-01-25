@@ -101,7 +101,22 @@ const io = require('socket.io')(server, {
   }
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+// ✅ SERVIDOR DE ARQUIVOS ESTÁTICOS COM CORREÇÃO PARA RAILWAY
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.js')) {
+      res.set('Content-Type', 'application/javascript');
+    } else if (filePath.endsWith('.css')) {
+      res.set('Content-Type', 'text/css');
+    }
+  }
+}));
+
+// ✅ Fallback para SPA (evita 404 em rotas diretas)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.use(express.json());
 
 // ✅ Função de sanitização
