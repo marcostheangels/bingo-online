@@ -28,7 +28,7 @@ function speak(text) {
   }
 }
 
-// ✅ Função de chat (faltava!)
+// ✅ Função de chat
 function addChatMessage(message, sender, isBot, isSystem = false) {
   const chatMessages = document.getElementById('chat-messages');
   if (!chatMessages) return;
@@ -282,7 +282,7 @@ function startChipsBackground(containerId, isLogin = false) {
   }
 }
 
-// ✅ TIMER VISUAL (movido para cá)
+// ✅ TIMER VISUAL
 let countdownActive = false;
 function hideCountdown() {
   const el = document.getElementById('countdown-timer');
@@ -306,20 +306,57 @@ function showCountdown(seconds) {
   countdownActive = true;
 }
 
+// ✅ CÁLCULO DE BOLAS FALTANTES (suporte a ambos os modos)
+function calculateBallsLeftForCard(card, drawnNumbers, cardType) {
+  if (cardType === '75') {
+    let marked = 0;
+    for (let i = 0; i < 25; i++) {
+      if (card[i] === 'FREE') {
+        marked++;
+      } else if (drawnNumbers.includes(card[i])) {
+        marked++;
+      }
+    }
+    return { forBingo: 24 - marked }; // 24 números reais + 1 FREE
+  } else {
+    const markedInRow = [0, 0, 0];
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (card[r][c] !== null && drawnNumbers.includes(card[r][c])) markedInRow[r]++;
+      }
+    }
+    const ballsForLine1 = Math.min(5 - markedInRow[0], 5 - markedInRow[1], 5 - markedInRow[2]);
+    const sorted = [...markedInRow].sort((a, b) => b - a);
+    const ballsForLine2 = (5 - sorted[0]) + (5 - sorted[1]);
+    const ballsForBingo = 15 - markedInRow.reduce((a,b) => a+b, 0);
+    return {
+      forLine1: Math.max(0, ballsForLine1),
+      forLine2: Math.max(0, ballsForLine2),
+      forBingo: Math.max(0, ballsForBingo)
+    };
+  }
+}
+
+function getBallsLeftForCurrentStage(card, drawnNumbers, stage, cardType) {
+  const stats = calculateBallsLeftForCard(card, drawnNumbers, cardType);
+  if (cardType === '75') {
+    return stats.forBingo;
+  }
+  if (stage === 'linha1') return stats.forLine1;
+  if (stage === 'linha2') return stats.forLine2;
+  return stats.forBingo;
+}
+
 // ✅ Restante principal
 document.addEventListener('DOMContentLoaded', () => {
-  // Inicia animação na tela de login
   startChipsBackground('chips-container', true);
 
   const playerNameInput = document.getElementById('player-name');
   const loginScreen = document.getElementById('login-screen');
   const gameArea = document.getElementById('game-area');
-  const potDisplay = document.getElementById('pot-display');
-  const jackpotDisplay = document.getElementById('jackpot-display');
   const ballsCountDisplay = document.getElementById('balls-count');
   const lastNumberDisplay = document.getElementById('last-number');
 
-  // Evento de clique para modo admin
   if (playerNameInput) {
     playerNameInput.addEventListener('click', function() {
       clickCount++;
@@ -485,7 +522,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ballsCountDisplay) ballsCountDisplay.textContent = roomsDrawnNumbers.length;
     markDrawnNumbers(data.number);
     renderCards();
-    // playSound('sorteio', data.number); // opcional
     speak(data.number.toString());
     const remainingForJackpot = Math.max(0, 60 - roomsDrawnNumbers.length);
     const jackpotRemaining = document.getElementById('jackpot-remaining');
@@ -493,7 +529,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   socket.on('player-won', (data) => {
-    // Removido chamadas a funções inexistentes
     if (data.newStage) updateControlButtons(data.newStage);
     if (data.winners[0]?.winType === 'bingo') gameEnded = true;
     setTimeout(() => { socket.emit('sync-state'); }, 500);
@@ -555,7 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.loginChipsInterval) clearInterval(window.loginChipsInterval);
   });
 
-  // Funções auxiliares (mantidas)
+  // Funções auxiliares
   function updateHistory(numbers) {
     const hist = document.getElementById('history');
     if (!hist) return;
@@ -585,15 +620,15 @@ document.addEventListener('DOMContentLoaded', () => {
         (cardType === '90' && item.card.length === 3 && item.card.every(row => Array.isArray(row) && row.length === 9)))
     );
     const sortedCards = [...validCards].sort((a, b) => {
-      const ballsA = getBallsLeftForCurrentStage(a.card, roomsDrawnNumbers, currentStage);
-      const ballsB = getBallsLeftForCurrentStage(b.card, roomsDrawnNumbers, currentStage);
+      const ballsA = getBallsLeftForCurrentStage(a.card, roomsDrawnNumbers, currentStage, cardType);
+      const ballsB = getBallsLeftForCurrentStage(b.card, roomsDrawnNumbers, currentStage, cardType);
       return ballsA - ballsB;
     });
     sortedCards.forEach((item, idx) => { item.index = idx; });
     sortedCards.forEach(item => {
       const wrapper = document.createElement('div');
       wrapper.className = 'card-wrapper';
-      const ballsLeftForStage = getBallsLeftForCurrentStage(item.card, roomsDrawnNumbers, currentStage);
+      const ballsLeftForStage = getBallsLeftForCurrentStage(item.card, roomsDrawnNumbers, currentStage, cardType);
       if (ballsLeftForStage === 1) wrapper.classList.add('near-win');
       wrapper.innerHTML = `<div class="card-title">Cartela ${item.index + 1}</div>`;
       const grid = document.createElement('div');
@@ -679,30 +714,5 @@ document.addEventListener('DOMContentLoaded', () => {
       wrapper.appendChild(grid);
       container.appendChild(wrapper);
     });
-  }
-
-  function getBallsLeftForCurrentStage(card, drawnNumbers, stage) {
-    const stats = calculateBallsLeftForCard(card, drawnNumbers);
-    if (stage === 'linha1') return stats.forLine1;
-    if (stage === 'linha2') return stats.forLine2;
-    return stats.forBingo;
-  }
-
-  function calculateBallsLeftForCard(card, drawnNumbers) {
-    const markedInRow = [0, 0, 0];
-    for (let r = 0; r < 3; r++) {
-      for (let c = 0; c < 9; c++) {
-        if (card[r][c] !== null && drawnNumbers.includes(card[r][c])) markedInRow[r]++;
-      }
-    }
-    const ballsForLine1 = Math.min(5 - markedInRow[0], 5 - markedInRow[1], 5 - markedInRow[2]);
-    const sorted = [...markedInRow].sort((a, b) => b - a);
-    const ballsForLine2 = (5 - sorted[0]) + (5 - sorted[1]);
-    const ballsForBingo = 15 - markedInRow.reduce((a,b) => a+b, 0);
-    return {
-      forLine1: Math.max(0, ballsForLine1),
-      forLine2: Math.max(0, ballsForLine2),
-      forBingo: Math.max(0, ballsForBingo)
-    };
   }
 });
