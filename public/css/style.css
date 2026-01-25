@@ -152,13 +152,8 @@ body {
 }
 
 /* === ESTILO DA ÁREA DO JOGO === */
-  #game-area {
-    display: none;
-  }
-  #login-screen {
-    display: block;
-  }
-
+#game-area {
+  display: none;
   background: rgba(12, 12, 26, 0.85);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
@@ -612,8 +607,6 @@ body {
   opacity: 1;
   visibility: visible;
 }
-
-/* ... (mantenha todas as suas animações de vitória exatamente como estavam) ... */
 
 .line-card {
   position: relative;
