@@ -855,14 +855,17 @@ async function handleWin(roomType, allWinners) {
   });
   broadcastPlayerList(roomType);
   broadcastRanking(roomType);
-// ✅ Aguarda tempo para animação de vitória antes de continuar
-setTimeout(()=> {
-  if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
-    startAutoRestart(roomType);
-  } else {
-    resumeDraw(roomType);
-  }
-}, 4000);
+  pauseDraw(roomType);
+
+if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
+  startAutoRestart(roomType);
+} else {
+  setTimeout(() => {
+    if (rooms[roomType] && !rooms[roomType].gameCompleted) {
+      resumeDraw(roomType);
+    }
+  }, 3000);
+
 }
 
 async function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
