@@ -251,14 +251,20 @@
 
   <!-- ✅ SCRIPT DO TIMER LEVE -->
   <script>
-    const countdownEl = document.getElementById('countdown-timer');
-    const numberEl = document.getElementById('number');
+    <script>
+  const countdownEl = document.getElementById('countdown-timer');
+  const numberEl = document.getElementById('number');
+  let countdownActive = false;
 
-    function hideCountdown() {
-      countdownEl.style.display = 'none';
-    }
+  function hideCountdown() {
+    countdownEl.style.display = 'none';
+    countdownActive = false;
+  }
 
-    function showCountdown(seconds) {
+  function showCountdown(seconds) {
+    // ✅ Só mostra se o jogador já estiver na sala (game-area visível)
+    const gameArea = document.getElementById('game-area');
+    if (gameArea && gameArea.style.display !== 'none') {
       numberEl.textContent = seconds;
       if (seconds <= 5) {
         numberEl.classList.add('critical-text');
@@ -266,25 +272,35 @@
         numberEl.classList.remove('critical-text');
       }
       countdownEl.style.display = 'block';
+      countdownActive = true;
     }
+  }
 
-    // Escuta do servidor
-    socket.on('countdown-start', (data) => {
-      showCountdown(data.seconds);
-    });
+  // Escuta eventos do servidor
+  socket.on('countdown-start', (data) => {
+    showCountdown(data.seconds);
+  });
 
-    socket.on('countdown-update', (data) => {
+  socket.on('countdown-update', (data) => {
+    if (countdownActive) {
       showCountdown(data.seconds);
       if (data.seconds === 0) {
         setTimeout(hideCountdown, 300);
       }
-    });
+    }
+  });
 
-    // Esconde em eventos críticos
-    socket.on('room-reset', hideCountdown);
-    socket.on('number-drawn', hideCountdown);
-    socket.on('player-won', hideCountdown);
-    socket.on('game-end', hideCountdown);
-  </script>
+  // Esconde em todos os eventos críticos
+  socket.on('room-reset', hideCountdown);
+  socket.on('number-drawn', hideCountdown);
+  socket.on('player-won', hideCountdown);
+  socket.on('game-end', hideCountdown);
+
+  // ✅ Garantir que o login desaparece ao entrar
+  socket.on('room-welcome', () => {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('game-area').style.display = 'block';
+  });
+</script>
 </body>
 </html>
