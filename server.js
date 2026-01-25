@@ -1336,4 +1336,5 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, async () => {
   await createTableIfNotExists();
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
+${PORT}`);
 });
