@@ -166,6 +166,7 @@ const BOT_NAMES = [
   "Saco de Estopa", "Meia-Noite", "Catuaba", "Pau de Virar Tripa", "Caneca furada"
 ];
 
+
 // ✅ CONFIGURAÇÕES JUSTAS
 const PRICE_PER_CARD = 1000;
 const INITIAL_CHIPS = 100000;
@@ -174,6 +175,8 @@ const JACKPOT_BALL_LIMIT = 60;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '0589';
 const MAX_BOTS_ALLOWED = 10;
 const COUNTDOWN_DURATION = 25; // ✅ ADICIONADO AQUI
+
+// ... [resto do arquivo permanece igual] ...
 
 // ✅ Palavras-chave e respostas da IA
 const AI_KEYWORDS = [
