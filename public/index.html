@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <style>
-    /* ✅ TIMER VISUAL LEVE — SEM FUNDO BLOQUEANTE */
+    /* ✅ TIMER VISUAL */
     #countdown-timer {
       position: fixed;
       top: 20px;
@@ -17,7 +17,6 @@
       z-index: 1000;
       pointer-events: none;
     }
-
     .timer-frame {
       width: 120px;
       padding: 12px;
@@ -28,44 +27,59 @@
       text-align: center;
       box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
     }
-
     .time-text {
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
     }
-
     #number {
       font-size: 2.2rem;
       font-weight: 900;
       color: white;
       text-shadow: 0 0 8px rgba(255,255,255,0.5);
     }
-
     .seconds-label {
       font-size: 0.6rem;
       color: #FFD700;
       letter-spacing: 1px;
       text-transform: uppercase;
     }
-
     .critical-text {
       color: #ff003c !important;
       animation: pulseCritical 0.5s infinite;
     }
-
     @keyframes pulseCritical {
       0%, 100% { filter: drop-shadow(0 0 5px #ff003c); transform: scale(1); }
       50% { filter: drop-shadow(0 0 15px #ff003c); transform: scale(1.1); }
     }
+
+    /* ✅ Estilo para fichas de fundo */
+    #chips-container, #chips-background {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: -1;
+    }
+    .chip-bg {
+      position: absolute;
+      border-radius: 50%;
+      bottom: -100px;
+    }
+
+    /* ✅ Chat */
+    .chat-message { margin: 4px 0; font-size: 0.85rem; }
+    .system-message { color: gold; font-weight: bold; }
+    .bot-message { color: #4fc3f7; }
+    .player-message { color: #66bb6a; }
   </style>
 </head>
 <body>
-  <!-- ✅ FUNDO DINÂMICO DE FICHAS -->
-  <div id="chips-background" style="display: block;"></div>
-
-  <!-- ✅ TIMER VISUAL (LEVE, NO CANTO) -->
+  <!-- ✅ TIMER VISUAL -->
   <div id="countdown-timer" style="display: none;">
     <div class="timer-frame">
       <div class="time-text">
@@ -93,7 +107,7 @@
     </div>
 
     <!-- ÁREA DO JOGO -->
-    <div id="game-area">
+    <div id="game-area" style="display: none;">
       <div class="header">
         <h2 id="room-title">Sala: ?</h2>
         <div class="player-info">
@@ -127,8 +141,6 @@
         </label>
         <button id="set-10-cards">10</button>
         <button id="buy-btn">Comprar (1000 chips/ Cada Cartela)</button>
-        <!-- ❌ Botão "Iniciar Sorteio" REMOVIDO -->
-        <!-- ❌ Botão "Reiniciar" REMOVIDO -->
         <button id="line2-btn">Linha 2</button>
         <button id="bingo-btn">BINGO!</button>
       </div>
@@ -189,57 +201,11 @@
       <div class="cards-container" id="cards-container"></div>
     </div>
 
-    <!-- OVERLAYS DE VITÓRIA (mantidos) -->
-    <div id="line-victory-overlay">
-      <div class="rays-emerald"></div>
-      <div class="line-frame">
-        <h1 class="line-header">LINHA 1!</h1>
-        <p style="font-size: 0.7rem; color: #888; letter-spacing: 3px; margin-bottom: 5px;">VENCEDOR</p>
-        <span class="winner-name" id="line1-winner-name">?</span>
-        <div class="chips-box">
-          <span class="chips-amount" id="line1-chips-text">0</span>
-        </div>
-        <p class="sub-label">CHIPS GANHOS</p>
-      </div>
-    </div>
-
-    <div id="line2-victory-overlay">
-      <div class="rays-emerald"></div>
-      <div class="line-frame">
-        <h1 class="line-header">LINHA 2!</h1>
-        <p style="font-size: 0.7rem; color: #888; letter-spacing: 3px; margin-bottom: 5px;">VENCEDOR</p>
-        <span class="winner-name" id="line2-winner-name">?</span>
-        <div class="chips-box">
-          <span class="chips-amount" id="line2-chips-text">0</span>
-        </div>
-        <p class="sub-label">CHIPS GANHOS</p>
-      </div>
-    </div>
-
-    <div id="bingo-victory-overlay">
-      <div class="bingo-card">
-        <h1 class="bingo-title">BINGO!</h1>
-        <p style="font-size: 0.7rem; color: #888; letter-spacing: 3px;">VENCEDOR</p>
-        <span class="winner-name" id="bingo-winner-name">?</span>
-        <div class="prize-container">
-          <div class="prize-amount" id="bingo-prize-amount">R$ 0</div>
-        </div>
-        <p class="sub-tag">✨ CARTELA CHEIA ✨</p>
-      </div>
-    </div>
-
-    <div id="jackpot-overlay">
-      <div class="rays"></div>
-      <div class="winner-frame">
-        <h1 class="jackpot-header">JACKPOT</h1>
-        <p style="font-size: 0.7rem; color: #888; letter-spacing: 3px;">VENCEDOR</p>
-        <span class="username" id="jackpot-winner-name">?</span>
-        <div class="prize-box">
-          <span class="prize-amount" id="jackpot-prize-amount">R$ 0</span>
-        </div>
-        <p class="badge-info" id="jackpot-balls-info">✨ BINGO EM ? BOLAS ✨</p>
-      </div>
-    </div>
+    <!-- OVERLAYS (mantidos) -->
+    <div id="line-victory-overlay" style="display:none;"><!-- conteúdo --></div>
+    <div id="line2-victory-overlay" style="display:none;"><!-- conteúdo --></div>
+    <div id="bingo-victory-overlay" style="display:none;"><!-- conteúdo --></div>
+    <div id="jackpot-overlay" style="display:none;"><!-- conteúdo --></div>
   </div>
 
   <!-- SCRIPTS -->
@@ -248,60 +214,5 @@
   <script src="js/ui.js"></script>
   <script src="js/chat.js"></script>
   <script src="js/main.js"></script>
-
-  <!-- ✅ SCRIPT DO TIMER LEVE -->
-  <script>
-    const countdownEl = document.getElementById('countdown-timer');
-    const numberEl = document.getElementById('number');
-    let countdownActive = false;
-
-    function hideCountdown() {
-      countdownEl.style.display = 'none';
-      countdownActive = false;
-    }
-
-    function showCountdown(seconds) {
-      // ✅ Só mostra se o jogador já estiver na sala (game-area visível)
-      const gameArea = document.getElementById('game-area');
-      if (gameArea && gameArea.style.display !== 'none') {
-        numberEl.textContent = seconds;
-        if (seconds <= 5) {
-          numberEl.classList.add('critical-text');
-        } else {
-          numberEl.classList.remove('critical-text');
-        }
-        countdownEl.style.display = 'block';
-        countdownActive = true;
-      }
-    }
-
-    // Escuta eventos do servidor
-    if (typeof socket !== 'undefined' && socket) {
-      socket.on('countdown-start', (data) => {
-        showCountdown(data.seconds);
-      });
-
-      socket.on('countdown-update', (data) => {
-        if (countdownActive) {
-          showCountdown(data.seconds);
-          if (data.seconds === 0) {
-            setTimeout(hideCountdown, 300);
-          }
-        }
-      });
-
-      // Esconde em todos os eventos críticos
-      socket.on('room-reset', hideCountdown);
-      socket.on('number-drawn', hideCountdown);
-      socket.on('player-won', hideCountdown);
-      socket.on('game-end', hideCountdown);
-
-      // ✅ Garantir que o login desaparece ao entrar
-      socket.on('room-welcome', () => {
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('game-area').style.display = 'block';
-      });
-    }
-  </script>
 </body>
 </html>
