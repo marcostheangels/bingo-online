@@ -855,12 +855,14 @@ async function handleWin(roomType, allWinners) {
   });
   broadcastPlayerList(roomType);
   broadcastRanking(roomType);
-  pauseDraw(roomType);
+// ✅ Aguarda tempo para animação de vitória antes de continuar
+setTimeout(()=> {
   if (currentStage === 'bingo' || room.drawnNumbers.length >= (roomType === 'bingo75' ? 75 : 90)) {
     startAutoRestart(roomType);
   } else {
     resumeDraw(roomType);
   }
+}, 4000);
 }
 
 async function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
