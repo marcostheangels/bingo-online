@@ -861,9 +861,8 @@ async function handleWin(roomType, allWinners) {
   } else {
     resumeDraw(roomType);
   }
-}
 
-async function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
+    async function addBotToRoom(roomType, initialChips = INITIAL_CHIPS) {
   const room = rooms[roomType];
   const currentBots = Object.keys(room.players).filter(id => id.startsWith('bot_')).length;
   if (currentBots >= room.maxBots) return;
