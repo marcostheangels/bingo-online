@@ -717,7 +717,7 @@ function startAutoRestart(roomType) {
       id: 'system'
     };
     handleAutoRestart(fakeSocket, roomType);
-  }, 25000);
+  }, 15000);
 }
 
 async function handleWin(roomType, allWinners) {
