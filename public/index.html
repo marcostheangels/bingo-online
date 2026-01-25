@@ -76,6 +76,71 @@
     .system-message { color: gold; font-weight: bold; }
     .bot-message { color: #4fc3f7; }
     .player-message { color: #66bb6a; }
+
+    /* ✅ Histórico de bolas */
+    .history {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 8px;
+    }
+    .ball {
+      width: 28px;
+      height: 28px;
+      background: #ffd700;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      color: #1a1a2e;
+      font-size: 0.8rem;
+    }
+
+    /* ✅ Overlays de vitória (CORRIGIDO) */
+    #line-victory-overlay,
+    #line2-victory-overlay,
+    #bingo-victory-overlay,
+    #jackpot-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      color: white;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .line-frame, .bingo-card, .winner-frame {
+      text-align: center;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 15px;
+      border: 2px solid gold;
+    }
+    .line-header, .bingo-title, .jackpot-header {
+      font-size: 3rem;
+      color: gold;
+      margin: 0 0 10px;
+    }
+    .winner-name {
+      font-size: 1.8rem;
+      color: white;
+      margin: 10px 0;
+    }
+    .chips-box, .prize-container, .prize-box {
+      background: gold;
+      color: #1a1a2e;
+      padding: 10px 20px;
+      border-radius: 10px;
+      margin: 10px 0;
+      font-weight: bold;
+      font-size: 1.4rem;
+    }
   </style>
 </head>
 <body>
@@ -201,11 +266,54 @@
       <div class="cards-container" id="cards-container"></div>
     </div>
 
-    <!-- OVERLAYS (mantidos) -->
-    <div id="line-victory-overlay" style="display:none;"><!-- conteúdo --></div>
-    <div id="line2-victory-overlay" style="display:none;"><!-- conteúdo --></div>
-    <div id="bingo-victory-overlay" style="display:none;"><!-- conteúdo --></div>
-    <div id="jackpot-overlay" style="display:none;"><!-- conteúdo --></div>
+    <!-- OVERLAYS DE VITÓRIA (CORRIGIDOS) -->
+    <div id="line-victory-overlay">
+      <div class="line-frame">
+        <h1 class="line-header">LINHA 1!</h1>
+        <p style="font-size: 0.7rem; color: #888; letter-spacing: 3px; margin-bottom: 5px;">VENCEDOR</p>
+        <span class="winner-name" id="line1-winner-name">?</span>
+        <div class="chips-box">
+          <span class="chips-amount" id="line1-chips-text">0</span>
+        </div>
+        <p class="sub-label">CHIPS GANHOS</p>
+      </div>
+    </div>
+
+    <div id="line2-victory-overlay">
+      <div class="line-frame">
+        <h1 class="line-header">LINHA 2!</h1>
+        <p style="font-size: 0.7rem; color: #888; letter-spacing: 3px; margin-bottom: 5px;">VENCEDOR</p>
+        <span class="winner-name" id="line2-winner-name">?</span>
+        <div class="chips-box">
+          <span class="chips-amount" id="line2-chips-text">0</span>
+        </div>
+        <p class="sub-label">CHIPS GANHOS</p>
+      </div>
+    </div>
+
+    <div id="bingo-victory-overlay">
+      <div class="bingo-card">
+        <h1 class="bingo-title">BINGO!</h1>
+        <p style="font-size: 0.7rem; color: #888; letter-spacing: 3px;">VENCEDOR</p>
+        <span class="winner-name" id="bingo-winner-name">?</span>
+        <div class="prize-container">
+          <div class="prize-amount" id="bingo-prize-amount">R$ 0</div>
+        </div>
+        <p class="sub-tag">✨ CARTELA CHEIA ✨</p>
+      </div>
+    </div>
+
+    <div id="jackpot-overlay">
+      <div class="winner-frame">
+        <h1 class="jackpot-header">JACKPOT</h1>
+        <p style="font-size: 0.7rem; color: #888; letter-spacing: 3px;">VENCEDOR</p>
+        <span class="username" id="jackpot-winner-name">?</span>
+        <div class="prize-box">
+          <span class="prize-amount" id="jackpot-prize-amount">R$ 0</span>
+        </div>
+        <p class="badge-info" id="jackpot-balls-info">✨ BINGO EM ? BOLAS ✨</p>
+      </div>
+    </div>
   </div>
 
   <!-- SCRIPTS -->
