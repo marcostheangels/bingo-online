@@ -532,7 +532,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   socket.on('number-drawn', (data) => {
-    if (gamePaused) return; // ✅ Não atualizar durante vitória
+  if (gamePaused) return; // ✅ Não atualizar durante vitória
+
+}); 
     if (lastNumberDisplay) lastNumberDisplay.textContent = data.number;
     roomsDrawnNumbers = data.drawnNumbers;
     if (ballsCountDisplay) ballsCountDisplay.textContent = roomsDrawnNumbers.length;
@@ -545,6 +547,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (jackpotRemaining) jackpotRemaining.textContent = `Bolas restantes para Jackpot: ${remainingForJackpot}`;
   });
 
+  if (gamePaused) return; // ✅ Evitar múltiplas animações
+  gamePaused = true; // ✅ Pausar imediatamente
+
+  // ... resto do código ...
+
+  // ✅ Após a animação, retomar
+  setTimeout(() => {
+    gamePaused = false;
+    if (data.winType === 'bingo') {
+      // Não retomar sorteio — espera reinício
+    } else {
+      // Opcional: retomar sorteio para próximas etapas
+    }
+  }, 3000);
+});
   socket.on('player-won', (data) => {
     if (gamePaused) return;
     // Anunciar por voz
